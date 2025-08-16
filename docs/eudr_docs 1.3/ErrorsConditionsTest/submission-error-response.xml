@@ -1,0 +1,31 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<S:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/"
+    xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+    <env:Header>
+        <ns3:Message xmlns:ns3="http://ec.europa.eu/sanco/tracesnt/message/v1" severity="debugging">
+            <ns3:ID>WS_REQUEST_ID</ns3:ID>
+            <ns3:Message>826753c1-ea9f-4429-b3ae-f5bbe9fa4c93</ns3:Message>
+        </ns3:Message>
+    </env:Header>
+    <S:Body>
+        <S:Fault xmlns:ns3="http://www.w3.org/2003/05/soap-envelope" xmlns="">
+            <faultcode>S:Client</faultcode>
+            <faultstring>You are not authorized to submit this DDS</faultstring>
+            <detail>
+                <ns5:DdsPermissionDeniedException
+                    xmlns:ns6="urn:un:unece:uncefact:codelist:standard:ISO:ISO2AlphaLanguageCode:2006-10-27"
+                    xmlns:ns4="http://ec.europa.eu/sanco/tracesnt/error/v01"
+                    xmlns:ns3="http://ec.europa.eu/tracesnt/certificate/eudr/model/v1"
+                    xmlns:ns2="http://ec.europa.eu/sanco/tracesnt/base/v4"
+                    xmlns="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:21"
+                    xmlns:ns5="http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1">
+                    <ns4:Error>
+                        <ns4:ID>EUDR-WEBSERVICE-USER-ACTIVITY-NOT-ALLOWED</ns4:ID>
+                        <ns4:Message languageID="en">The user is claiming to use an EUDR role that
+                            it does not have in TRACES NT</ns4:Message>
+                    </ns4:Error>
+                </ns5:DdsPermissionDeniedException>
+            </detail>
+        </S:Fault>
+    </S:Body>
+</S:Envelope>

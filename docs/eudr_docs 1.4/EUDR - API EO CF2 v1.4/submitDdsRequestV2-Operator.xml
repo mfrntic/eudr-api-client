@@ -1,0 +1,48 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://ec.europa.eu/tracesnt/certificate/eudr/submission/v2" xmlns:v12="http://ec.europa.eu/tracesnt/certificate/eudr/model/v2" xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4">
+    <soapenv:Header>
+        <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
+                           xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsu:Timestamp wsu:Id="TS-FC74784C4EFD20748F17171497363004">
+                <wsu:Created>{{wsse_created}}</wsu:Created>
+                <wsu:Expires>{{wsse_expires}}</wsu:Expires>
+            </wsu:Timestamp>
+            <wsse:UsernameToken wsu:Id="UsernameToken-FC74784C4EFD20748F17171497363003">
+                <wsse:Username>{{wsse_username}}</wsse:Username>
+                <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">{{wsse_passwordDigest}}</wsse:Password>
+                <wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">{{wsse_nonce}}</wsse:Nonce>
+                <wsu:Created>{{wsse_created}}</wsu:Created>
+            </wsse:UsernameToken>
+        </wsse:Security>
+        <v4:WebServiceClientId>eudr-test</v4:WebServiceClientId>
+    </soapenv:Header>
+    <soapenv:Body>
+        <v2:SubmitStatementRequest>
+            <v2:operatorType>OPERATOR</v2:operatorType>
+            <v2:statement>
+            <v12:internalReferenceNumber>BE 102</v12:internalReferenceNumber>
+            <v12:activityType>IMPORT</v12:activityType>
+            <v12:countryOfActivity>BE</v12:countryOfActivity>
+            <v12:commodities>
+                <v12:descriptors>
+                    <v12:descriptionOfGoods>here is the description of goods</v12:descriptionOfGoods>
+                    <v12:goodsMeasure>
+                        <v12:volume>88</v12:volume>
+                        <v12:netWeight>77</v12:netWeight>
+                    </v12:goodsMeasure>
+                </v12:descriptors>
+                
+                <v12:hsHeading>1806</v12:hsHeading>
+                
+                <v12:producers>
+                    <v12:country>FR</v12:country>
+                    
+                    <v12:name>Producer 1</v12:name>
+                    
+                    <v12:geometryGeojson>eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJwcm9wZXJ0aWVzIjp7IlByb2R1Y3Rpb25QbGFjZSI6IkZhcm0gMSJ9LCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1szLjUzNzU5OCw0NC44NDAyOTFdLFs0Ljg1NTk1Nyw0Ni4zNzcyNTRdLFs1LjQyNzI0Niw0NC45NjQ3OThdLFszLjUzNzU5OCw0NC44NDAyOTFdXV19fV19</v12:geometryGeojson>
+                </v12:producers>
+            </v12:commodities>
+            <v12:geoLocationConfidential>false</v12:geoLocationConfidential>
+            </v2:statement>
+        </v2:SubmitStatementRequest>
+    </soapenv:Body>
+</soapenv:Envelope>

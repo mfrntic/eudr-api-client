@@ -21,7 +21,7 @@ class EudrRetrievalClient {
   /**
    * Create a new EUDR Retrieval Service client
    * @param {Object} config - Configuration object
-   * @param {string} config.wsdlUrl - Service WSDL URL (required)
+   * @param {string} config.endpoint - Service endpoint URL (required)
    * @param {string} config.username - Authentication username (required)
    * @param {string} config.password - Authentication password (required)
    * @param {string} config.webServiceClientId - Client ID (required)
@@ -43,8 +43,14 @@ class EudrRetrievalClient {
     // Validate required configuration first
     this.validateConfig();
 
-    // Extract the endpoint from the WSDL URL
-    this.endpoint = this.config.wsdlUrl.replace('?wsdl', '');
+    // Set endpoint - prioritize endpoint, fallback to wsdlUrl for compatibility
+    if (this.config.endpoint) {
+      this.endpoint = this.config.endpoint;
+    } else if (this.config.wsdlUrl) {
+      this.endpoint = this.config.wsdlUrl.replace('?wsdl', '');
+    } else {
+      throw new Error('Either endpoint or wsdlUrl must be provided');
+    }
   }
 
   /**
@@ -53,12 +59,28 @@ class EudrRetrievalClient {
    * @throws {Error} If required configuration is missing
    */
   validateConfig() {
-    const requiredFields = ['wsdlUrl', 'username', 'password', 'webServiceClientId'];
+    // Check that either endpoint or wsdlUrl is provided
+    if (!this.config.endpoint && !this.config.wsdlUrl) {
+      throw new Error('Either endpoint or wsdlUrl must be provided');
+    } 
+    
+    const requiredFields = ['username', 'password', 'webServiceClientId'];
     for (const field of requiredFields) {
       if (!this.config[field]) {
         throw new Error(`Missing required configuration: ${field}`);
       }
     }
+  }
+
+  /**
+   * Helper method to create endpoint from base URL and service name
+   * @static
+   * @param {string} baseUrl - Base URL (e.g., from EUDR_TRACES_BASE_URL env var)
+   * @param {string} serviceName - Service name (default: 'EUDRRetrievalServiceV1')
+   * @returns {string} Complete endpoint URL
+   */
+  static createEndpointFromBaseUrl(baseUrl, serviceName = 'EUDRRetrievalServiceV1') {
+    return `${baseUrl}/tracesnt/ws/${serviceName}`;
   }
 
   /**

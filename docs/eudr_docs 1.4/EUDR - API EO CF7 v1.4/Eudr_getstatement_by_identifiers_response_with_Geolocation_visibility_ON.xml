@@ -1,0 +1,57 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+    <S:Header>
+        <ns0:Security xmlns:ns1="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:ns0="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+            <ns1:Timestamp>
+                <ns1:Created>2024-09-23T11:08:58.822+02:00</ns1:Created>
+                <ns1:Expires>2024-09-23T11:09:03.822+02:00</ns1:Expires>
+            </ns1:Timestamp>
+        </ns0:Security>
+    </S:Header>
+    <S:Body>
+        <ns5:GetStatementByIdentifiersResponse xmlns="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:21" xmlns:ns2="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:ns3="http://ec.europa.eu/tracesnt/certificate/eudr/model/v1" xmlns:ns4="http://ec.europa.eu/sanco/tracesnt/error/v01" xmlns:ns5="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v1" xmlns:ns6="urn:un:unece:uncefact:codelist:standard:ISO:ISO2AlphaLanguageCode:2006-10-27">
+            <ns5:statement>
+                <ns5:referenceNumber>24FRIOBORU2228</ns5:referenceNumber>
+                <ns5:activityType>IMPORT</ns5:activityType>
+                <ns5:status>
+                    <ns3:status>AVAILABLE</ns3:status>
+                    <ns3:date>2024-09-23T11:05:00.000</ns3:date>
+                </ns5:status>
+                <ns5:operator>
+                    <ns3:name>FR DDS OPER TRAD AUTH REP</ns3:name>
+                    <ns3:country>FR</ns3:country>
+                </ns5:operator>
+                <ns5:commodities>
+                    <ns3:descriptors>
+                        <ns3:descriptionOfGoods>Test Coffee</ns3:descriptionOfGoods>
+                        <ns3:goodsMeasure>
+                            <ns3:volume>1000.00</ns3:volume>
+                            <ns3:netWeight>1000.000</ns3:netWeight>
+                            <ns3:numberOfUnits>1000</ns3:numberOfUnits>
+                            <ns3:universalUnit>LTR</ns3:universalUnit>
+                        </ns3:goodsMeasure>
+                    </ns3:descriptors>
+                    <ns3:hsHeading>0901</ns3:hsHeading>
+                    <ns3:speciesInfo>
+                        <ns3:scientificName>Coffea bengalensis</ns3:scientificName>
+                        <ns3:commonName>Coffee</ns3:commonName>
+                    </ns3:speciesInfo>
+                    <ns3:producers>
+                        <ns3:country>BE</ns3:country>
+                        <ns3:geometryGeojson>eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJwcm9wZXJ0aWVzIjp7IlByb2R1Y3Rpb25QbGFjZSI6IiIsIkFyZWEiOjI2NjQ5MS44MX0sImdlb21ldHJ5Ijp7InR5cGUiOiJQb2x5Z29uIiwiY29vcmRpbmF0ZXMiOltbWzMuNTU5NTcsNTAuNzY0MjU5XSxbMy41NTk1Nyw1MS4wNDEzOTRdLFs0Ljc5MDAzOSw1MS4wNDEzOTRdLFs0Ljc5MDAzOSw1MC43NjQyNTldLFszLjU1OTU3LDUwLjc2NDI1OV1dXX19XX0=</ns3:geometryGeojson>
+                    </ns3:producers>
+                    <ns3:producers>
+                        <ns3:country>FR</ns3:country>
+                        <ns3:geometryGeojson>eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJwcm9wZXJ0aWVzIjp7IlByb2R1Y3Rpb25QbGFjZSI6IiIsIkFyZWEiOjgyOTI5Mi45Nn0sImdlb21ldHJ5Ijp7InR5cGUiOiJQb2x5Z29uIiwiY29vcmRpbmF0ZXMiOltbWzIuMTA5Mzc1LDQ4LjM3MDg0OF0sWzIuMTA5Mzc1LDQ5LjkyMjkzNV0sWzIuNzY4NTU1LDQ5LjkyMjkzNV0sWzIuNzY4NTU1LDQ4LjM3MDg0OF0sWzIuMTA5Mzc1LDQ4LjM3MDg0OF1dXX19XX0=</ns3:geometryGeojson>
+                    </ns3:producers>
+                </ns5:commodities>
+                <ns5:associateStatement>
+                    <ns5:referenceNumber>24FRY1QRAM2021</ns5:referenceNumber>
+                </ns5:associateStatement>
+                <ns5:associateStatement>
+                    <ns5:referenceNumber>24FRGACXQ42073</ns5:referenceNumber>
+                </ns5:associateStatement>
+            </ns5:statement>
+        </ns5:GetStatementByIdentifiersResponse>
+    </S:Body>
+</S:Envelope>

@@ -33,7 +33,7 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
 - ✅ **100% API Coverage** - Both V1 and V2 EUDR APIs fully implemented
 - ✅ **Production-Ready** - Battle-tested with real EUDR systems
 - ✅ **Well-Documented** - Comprehensive documentation with real examples
-- ✅ **Enterprise Features** - Robust error handling, retry logic, and logging
+- ✅ **Enterprise Features** - Robust error handling, logging, and comprehensive validation
 - ✅ **Easy Integration** - Simple API with real-world examples
 
 ## Table of Contents
@@ -41,17 +41,24 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
 - [Quick Start](#quick-start)
   - [Installation](#installation)
   - [Basic Setup](#basic-setup)
+  - [Configuration](#configuration)
 - [Real-World Examples](#real-world-examples)
   - [Trade Operations](#trade-operations)
   - [Import Operations](#import-operations)
   - [Domestic Production](#domestic-production)
   - [Authorized Representatives](#authorized-representatives)
-- [API Services](#api-services)
-- [Configuration](#configuration)
-- [Advanced Usage](#advanced-usage)
-- [Testing](tests/README.md)
-- [Troubleshooting](#troubleshooting)
 - [API Reference](#api-reference)
+  - [Services Overview](#services-overview)
+  - [Echo Service](#echo-service)
+  - [Submission Service](#submission-service)
+  - [Retrieval Service](#retrieval-service)
+  - [Data Types](#data-types)
+  - [Advanced Usage](#advanced-usage)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+  - [Common Issues](#common-issues)
+  - [Debug Mode](#debug-mode)
+  - [FAQ](#faq)
 - [Contributing](#contributing)
 - [License](#license)
 - [Support](#support)
@@ -115,6 +122,35 @@ const result = await client.submitDds({
 });
 
 console.log('✅ DDS Submitted. Identifier:', result.ddsIdentifier);
+```
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file in your project root:
+
+```bash
+# EUDR API Credentials
+EUDR_TRACES_USERNAME=your-username
+EUDR_TRACES_PASSWORD=your-password
+EUDR_TRACES_BASE_URL=https://webgate.acceptance.ec.europa.eu
+EUDR_WEB_SERVICE_CLIENT_ID=eudr-test
+
+# Optional: Logging
+EUDR_LOG_LEVEL=info  # trace, debug, info, warn, error, fatal
+```
+
+### Configuration Options
+
+```javascript
+const config = {
+  // Required
+  endpoint: 'https://webgate.acceptance.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1',
+  username: 'your-username',
+  password: 'your-password',
+  webServiceClientId: 'eudr-test', 
+};
 ```
 
 ## Real-World Examples
@@ -356,13 +392,49 @@ const representativeResult = await client.submitDds({
 console.log(`✅ Representative DDS submitted. Identifier: ${representativeResult.ddsIdentifier}`);
 ```
 
-## API Services
+## API Reference
 
-### 1. Submission Service
+### Services Overview
 
-Submit, amend, and retract DDS statements.
+The EUDR API Client provides three main services for interacting with the EUDR TRACES system:
 
-**V1 Client (`EudrSubmissionClient`)**
+1. **Echo Service** - Test connectivity and authentication
+2. **Submission Service** - Submit, amend, and retract DDS statements (available in V1 and V2)
+3. **Retrieval Service** - Retrieve DDS information and supply chain data
+
+Each service is designed for specific operations within the EUDR compliance workflow.
+
+### Echo Service
+
+Test connectivity and authentication with the EUDR system.
+
+```javascript
+const { EudrEchoClient } = require('eudr-api-client');
+const echoClient = new EudrEchoClient(config);
+
+// Test connection
+const response = await echoClient.echo('Hello EUDR');
+
+console.log('Echo response:', response.status);
+```
+
+#### Methods
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `echo(params)` | Test service connectivity | `message` (String) | Promise with echo response |
+
+#### Example
+```javascript
+const response = await echoClient.echo('Hello EUDR');
+// Returns: { message: 'Hello EUDR' }
+```
+
+### Submission Service
+
+Submit, amend, and retract DDS statements. Available in both V1 and V2 APIs with different validation requirements.
+
+#### V1 Client (`EudrSubmissionClient`)
+
 ```javascript
 const { EudrSubmissionClient } = require('eudr-api-client');
 const submissionClient = new EudrSubmissionClient(config);
@@ -377,7 +449,8 @@ const amendResult = await submissionClient.amendDds(submitResult.ddsIdentifier, 
 const retractResult = await submissionClient.retractDds(submitResult.ddsIdentifier);
 ```
 
-**V2 Client (`EudrSubmissionClientV2`)**
+#### V2 Client (`EudrSubmissionClientV2`)
+
 ```javascript
 const { EudrSubmissionClientV2 } = require('eudr-api-client');
 const submissionClientV2 = new EudrSubmissionClientV2(configV2);
@@ -392,7 +465,7 @@ const amendResultV2 = await submissionClientV2.amendDds(submitResultV2.ddsIdenti
 const retractResultV2 = await submissionClientV2.retractDds(submitResultV2.ddsIdentifier);
 ```
 
-### 2. Retrieval Service
+### Retrieval Service
 
 Retrieve DDS information and supply chain data.
 
@@ -413,352 +486,6 @@ const fullDds = await retrievalClient.getStatementByIdentifiers('25NLSN6LX69730'
 const referencedDds = await retrievalClient.getReferencedDDS('25NLWPAZWQ8865', 'GLE9SMMM');
 ```
 
-### 3. Echo Service
-
-Test connectivity and authentication.
-
-```javascript
-const { EudrEchoClient } = require('eudr-api-client');
-const echoClient = new EudrEchoClient(config);
-
-// Test connection
-const response = await echoClient.echo('Hello EUDR');
-
-console.log('Echo response:', response.status);
-```
-
-## Configuration
-
-### Environment Variables
-
-Create a `.env` file in your project root:
-
-```bash
-# EUDR API Credentials
-EUDR_TRACES_USERNAME=your-username
-EUDR_TRACES_PASSWORD=your-password
-EUDR_TRACES_BASE_URL=https://webgate.acceptance.ec.europa.eu
-EUDR_WEB_SERVICE_CLIENT_ID=your-client-id
-
-# Optional: Logging
-EUDR_LOG_LEVEL=info  # trace, debug, info, warn, error, fatal
-```
-
-### Configuration Options
-
-```javascript
-const config = {
-  // Required
-  endpoint: 'https://webgate.acceptance.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1',
-  username: 'your-username',
-  password: 'your-password',
-  webServiceClientId: 'eudr-test,
-  
-  // Optional
-  soapAction: 'http://ec.europa.eu/tracesnt/eudr/submission',
-  timestampValidity: 60,        // seconds (default: 60)
-  timeout: 30000              // milliseconds (default: 30000)
-};
-```
-
-## Advanced Usage
-
-### Using V2 API
-
-The V2 API has stricter validation and different field requirements:
-
-```javascript
-const { EudrSubmissionClientV2 } = require('eudr-api-client');
-
-const clientV2 = new EudrSubmissionClientV2({
-  endpoint: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRSubmissionServiceV2`,
-  username: process.env.EUDR_TRACES_USERNAME,
-  password: process.env.EUDR_TRACES_PASSWORD,
-  webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID
-});
-
-// V2 requires specific fields based on activity type
-const v2Result = await clientV2.submitDds({
-  operatorType: "OPERATOR",
-  statement: {
-    internalReferenceNumber: "DLE20/357",
-    activityType: "DOMESTIC",
-    operator: {
-      operatorAddress: {  // V2 uses operatorAddress instead of nameAndAddress
-        name: "GreenWood Solutions Ltd.",
-        country: "HR",
-        street: "Trg Republike 15",
-        postalCode: "10000",
-        city: "Zagreb",
-        fullAddress: "Trg Republike 15, 10000 Zagreb"
-      },
-      email: "info@greenwood-solutions.hr",
-      phone: "+385 (001) 480-4111"
-    },
-    countryOfActivity: "HR",
-    borderCrossCountry: "HR",
-    commodities: [{
-      descriptors: {
-        descriptionOfGoods: "Wood products",
-        goodsMeasure: {
-          supplementaryUnit: 20,  // V2 uses supplementaryUnit for DOMESTIC
-          supplementaryUnitQualifier: "MTQ"  // Cubic meters
-        }
-      },
-      hsHeading: "4401",
-      speciesInfo: {
-        scientificName: "Fagus silvatica",
-        commonName: "BUKVA OBIČNA"
-      },
-      producers: [{
-        country: "HR",
-        name: "GreenWood Solutions Ltd.",
-        geometryGeojson: "base64-encoded-geojson"
-      }]
-    }],
-    geoLocationConfidential: false
-  }
-});
-```
-
-### Error Handling
-
-The library provides comprehensive error handling:
-
-```javascript
-try {
-  const result = await client.submitDds(ddsData);
-  console.log('Success:', result);
-} catch (error) {
-  if (error.code === 'EUDR_VALIDATION_ERROR') {
-    console.error('Validation failed:', error.details);
-  } else if (error.code === 'EUDR_AUTH_ERROR') {
-    console.error('Authentication failed:', error.message);
-  } else if (error.code === 'EUDR_NETWORK_ERROR') {
-    console.error('Network error:', error.message);
-  } else {
-    console.error('Unexpected error:', error);
-  }
-}
-```
-
-### Custom Logging
-
-The library uses a flexible logging system based on Pino. You can control the log level using the `EUDR_LOG_LEVEL` environment variable.
-
-```javascript
-// logger.js
-const { logger, createLogger } = require('eudr-api-client/utils/logger');
-
-// The default logger is exported and used throughout the library
-logger.info('Starting EUDR submission');
-
-// You can create a separate logger if needed, but the library clients
-// will still use the default one.
-const customLogger = createLogger({ 
-  level: 'debug',
-  name: 'my-app'
-});
-
-customLogger.debug('This is a debug message from a custom logger.');
-```
-
-To see detailed logs from the library, set the environment variable:
-```bash
-# Set log level for the current session
-export EUDR_LOG_LEVEL=debug
-
-# Run your application
-node your-app.js
-```
-
-### Batch Operations
-
-Process multiple DDS submissions efficiently:
-
-```javascript
-const submissions = [
-  { /* DDS data 1 */ },
-  { /* DDS data 2 */ },
-  { /* DDS data 3 */ }
-];
-
-const results = await Promise.all(
-  submissions.map(async (dds) => {
-    try {
-      return await client.submitDds(dds);
-    } catch (error) {
-      return { error: error.message, dds };
-    }
-  })
-);
-
-// Process results
-results.forEach((result, index) => {
-  if (result.error) {
-    console.error(`❌ Submission ${index + 1} failed:`, result.error);
-  } else {
-    console.log(`✅ Submission ${index + 1} success:`, result.referenceNumber);
-  }
-});
-```
-
-### Writing Tests
-
-```javascript
-const { expect } = require('chai');
-const { EudrSubmissionClient } = require('eudr-api-client');
-
-describe('My EUDR Tests', function() {
-  let client;
-  
-  before(function() {
-    client = new EudrSubmissionClient(config);
-  });
-  
-  it('should submit DDS successfully', async function() {
-    const result = await client.submitDds(testData);
-    expect(result).to.have.property('ddsIdentifier');
-    expect(result.ddsIdentifier).to.be.a('string');
-  });
-});
-```
-
-## Troubleshooting
-
-### Common Issues
-
-#### 1. Authentication Errors
-
-```
-Error: Authentication failed: Invalid credentials
-```
-
-**Solution**: Verify your username, password, and webServiceClientId are correct.
-
-#### 2. Network Timeouts
-
-```
-Error: Request timeout of 30000ms exceeded
-```
-
-**Solution**: Increase the timeout in configuration:
-
-```javascript
-const client = new EudrSubmissionClient({
-  ...config,
-  timeout: 60000  // 60 seconds
-});
-```
-
-#### 3. Validation Errors
-
-```
-Error: Validation failed: Missing required field 'borderCrossCountry'
-```
-
-**Solution**: Check the API version requirements. V1 and V2 have different field requirements.
-
-#### 4. GeoJSON Encoding
-
-```
-Error: Invalid geometryGeojson format
-```
-
-**Solution**: Ensure GeoJSON is properly Base64 encoded:
-
-```javascript
-const geojson = {
-  type: "FeatureCollection",
-  features: [/* your features */]
-};
-
-const encoded = Buffer.from(JSON.stringify(geojson)).toString('base64');
-```
-
-### Debug Mode
-
-Enable detailed logging for troubleshooting:
-
-```bash
-# Set environment variable
-export EUDR_LOG_LEVEL=trace
-
-# Or in your code
-process.env.EUDR_LOG_LEVEL = 'trace';
-```
-
-### Getting Help
-
-1. Check the [FAQ](#frequently-asked-questions)
-2. Review [test examples](./tests/services/)
-3. Open an [issue on GitHub](https://github.com/eudr-api-client/eudr-api-client/issues)
-4. Contact support: support@eudr-api.eu
-
-## Frequently Asked Questions
-
-### Q: What's the difference between V1 and V2 APIs?
-
-**A**: V2 has stricter validation and different field requirements:
-- V2 requires `operatorAddress` with structured address fields
-- V2 uses `supplementaryUnit` for DOMESTIC activities
-- V2 requires `percentageEstimationOrDeviation` when using `netWeight`
-
-### Q: How do I encode GeoJSON data?
-
-**A**: Use Base64 encoding:
-
-```javascript
-const geojson = { /* your GeoJSON */ };
-const encoded = Buffer.from(JSON.stringify(geojson)).toString('base64');
-```
-
-### Q: Can I use this library in production?
-
-**A**: Yes! The library is production-ready and tested against real EUDR systems.
-
-### Q: How do I handle rate limiting?
-
-**A**: The library includes automatic retry logic. You can customize it:
-
-```javascript
-const client = new EudrSubmissionClient({
-  ...config,
-  retryConfig: {
-    retries: 5,
-    retryDelay: 2000
-  }
-});
-```
-
-### Q: What HS codes are supported?
-
-**A**: The EUDR system supports specific HS codes for regulated commodities:
-- Wood: 4401, 4403, 4406, 4407, 4408, 4409, 4410, 4411, 4412, 4413, 4414, 4415, 4416, 4418, 9403, 9406
-- Cocoa: 1801, 1802, 1803, 1804, 1805, 1806
-- Coffee: 0901
-- Palm oil: 1511, 1513
-- Rubber: 4001, 4005, 4006, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4015, 4016, 4017
-- Soya: 1201, 1208, 1507
-- Cattle: 0102, 0201, 0202, 0206, 4101, 4104, 4107
-
-## API Reference
-
-### 🧪 EudrEchoClient
-Service for testing connectivity and authentication.
-
-#### Methods
-| Method | Description | Parameters | Returns |
-|--------|-------------|------------|---------|
-| `echo(params)` | Test service connectivity | `message` (String) | Promise with echo response |
-
-#### Detailed Method Reference
-**`echo(params)`**
-```javascript
-const response = await echoClient.echo('Hello EUDR');
-
-// Returns: { message: 'Hello EUDR' }
-```
 ---
 ### 📝 EudrSubmissionClient
 The main client for submitting, amending, and retracting DDS statements (V1 API).
@@ -948,8 +675,8 @@ const referencedDds = await retrievalClient.getReferencedDDS('25NLWPAZWQ8865', '
 
 // Returns: Referenced DDS object
 ```
----
-### 📊 Data Types
+
+### Data Types
 
 #### DDS Statement Structure (V1)
 ```javascript
@@ -1024,10 +751,10 @@ const referencedDds = await retrievalClient.getReferencedDDS('25NLWPAZWQ8865', '
       descriptors: {
         descriptionOfGoods: String,
         goodsMeasure: {
-          supplementaryUnit?: Number, // V2 API - required for DOMESTIC
+          netWeight?: Number,         // V2 API - standard weight field
+          percentageEstimationOrDeviation?: Number,
+          supplementaryUnit?: Number, // V2 API - for DOMESTIC activities
           supplementaryUnitQualifier?: String, // V2 API - e.g., 'MTQ'
-          netWeight?: Number,         // V2 API - requires percentageEstimationOrDeviation
-          percentageEstimationOrDeviation?: Number // V2 API - required with netWeight
         }
       },
       hsHeading: String,
@@ -1052,7 +779,7 @@ const referencedDds = await retrievalClient.getReferencedDDS('25NLWPAZWQ8865', '
 
 #### Response Types
 
-**Successful Submission Response (V1):**
+**Successful Submission Response:**
 ```javascript
 {
   httpStatus: 200,
@@ -1062,15 +789,282 @@ const referencedDds = await retrievalClient.getReferencedDDS('25NLWPAZWQ8865', '
 }
 ```
 
-**Successful Submission Response (V2):**
+### Advanced Usage
+
+#### Using V2 API
+
+The V2 API has stricter validation and different field requirements:
+
 ```javascript
-{
-  httpStatus: 200,
-  ddsIdentifier: 'uuid-string',
-  raw: 'raw-xml-response',
-  parsed: { /* parsed XML object */ }
+const { EudrSubmissionClientV2 } = require('eudr-api-client');
+
+const clientV2 = new EudrSubmissionClientV2({
+  endpoint: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRSubmissionServiceV2`,
+  username: process.env.EUDR_TRACES_USERNAME,
+  password: process.env.EUDR_TRACES_PASSWORD,
+  webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID
+});
+
+// V2 requires specific fields based on activity type
+const v2Result = await clientV2.submitDds({
+  operatorType: "OPERATOR",
+  statement: {
+    internalReferenceNumber: "DLE20/357",
+    activityType: "DOMESTIC",
+    operator: {
+      operatorAddress: {  // V2 uses operatorAddress instead of nameAndAddress
+        name: "GreenWood Solutions Ltd.",
+        country: "HR",
+        street: "Trg Republike 15",
+        postalCode: "10000",
+        city: "Zagreb",
+        fullAddress: "Trg Republike 15, 10000 Zagreb"
+      },
+      email: "info@greenwood-solutions.hr",
+      phone: "+385 (001) 480-4111"
+    },
+    countryOfActivity: "HR",
+    borderCrossCountry: "HR",
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: "Wood products",
+        goodsMeasure: {
+          supplementaryUnit: 20,  // V2 uses supplementaryUnit for DOMESTIC
+          supplementaryUnitQualifier: "MTQ"  // Cubic meters
+        }
+      },
+      hsHeading: "4401",
+      speciesInfo: {
+        scientificName: "Fagus silvatica",
+        commonName: "BUKVA OBIČNA"
+      },
+      producers: [{
+        country: "HR",
+        name: "GreenWood Solutions Ltd.",
+        geometryGeojson: "base64-encoded-geojson"
+      }]
+    }],
+    geoLocationConfidential: false
+  }
+});
+```
+
+#### Error Handling
+
+The library provides comprehensive error handling:
+
+```javascript
+try {
+  const result = await client.submitDds(ddsData);
+  console.log('Success:', result);
+} catch (error) {
+  if (error.response) {
+    console.error('API Error:', error.response.status, error.response.data);
+  } else if (error.request) {
+    console.error('Network Error:', error.message);
+  } else {
+    console.error('Unexpected Error:', error.message);
+  }
 }
 ```
+
+#### Custom Logging
+
+The library uses a flexible logging system based on Pino. You can control the log level using the `EUDR_LOG_LEVEL` environment variable.
+
+```javascript
+// logger.js
+const { logger, createLogger } = require('eudr-api-client');
+
+// The default logger is exported and used throughout the library
+logger.info('Starting EUDR submission');
+
+// You can control logging level via environment variable
+process.env.EUDR_LOG_LEVEL = 'debug';
+```
+
+To see detailed logs from the library, set the environment variable:
+```bash
+# Set log level for the current session
+export EUDR_LOG_LEVEL=debug
+
+# Run your application
+node your-app.js
+```
+
+#### Batch Operations
+
+Process multiple DDS submissions efficiently:
+
+```javascript
+const submissions = [
+  { /* DDS data 1 */ },
+  { /* DDS data 2 */ },
+  { /* DDS data 3 */ }
+];
+
+const results = await Promise.all(
+  submissions.map(async (dds) => {
+    try {
+      return await client.submitDds(dds);
+    } catch (error) {
+      return { error: error.message, dds };
+    }
+  })
+);
+
+// Process results
+results.forEach((result, index) => {
+  if (result.error) {
+    console.error(`❌ Submission ${index + 1} failed:`, result.error);
+  } else {
+    console.log(`✅ Submission ${index + 1} success:`, result.referenceNumber);
+  }
+});
+```
+
+#### Writing Tests
+
+```javascript
+const { expect } = require('chai');
+const { EudrSubmissionClient } = require('eudr-api-client');
+
+describe('My EUDR Tests', function() {
+  let client;
+  
+  before(function() {
+    client = new EudrSubmissionClient(config);
+  });
+  
+  it('should submit DDS successfully', async function() {
+    const result = await client.submitDds(testData);
+    expect(result).to.have.property('ddsIdentifier');
+    expect(result.ddsIdentifier).to.be.a('string');
+  });
+});
+```
+
+## Testing
+
+For comprehensive testing documentation, see [tests/README.md](tests/README.md).
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Authentication Errors
+
+```
+Error: Authentication failed: Invalid credentials
+```
+
+**Solution**: Verify your username, password, and webServiceClientId are correct.
+
+#### 2. Network Timeouts
+
+```
+Error: Request timeout of 30000ms exceeded
+```
+
+**Solution**: Increase the timeout in configuration:
+
+```javascript
+const client = new EudrSubmissionClient({
+  ...config,
+  timeout: 60000  // 60 seconds
+});
+```
+
+#### 3. Validation Errors
+
+```
+Error: Validation failed: Missing required field 'borderCrossCountry'
+```
+
+**Solution**: Check the API version requirements. V1 and V2 have different field requirements.
+
+#### 4. GeoJSON Encoding
+
+```
+Error: Invalid geometryGeojson format
+```
+
+**Solution**: Ensure GeoJSON is properly Base64 encoded:
+
+```javascript
+const geojson = {
+  type: "FeatureCollection",
+  features: [/* your features */]
+};
+
+const encoded = Buffer.from(JSON.stringify(geojson)).toString('base64');
+```
+
+### Debug Mode
+
+Enable detailed logging for troubleshooting:
+
+```bash
+# Set environment variable
+export EUDR_LOG_LEVEL=trace
+
+# Or in your code
+process.env.EUDR_LOG_LEVEL = 'trace';
+```
+
+### FAQ
+
+#### Q: What's the difference between V1 and V2 APIs?
+
+**A**: V2 has stricter validation and different field requirements:
+- V2 requires `operatorAddress` with structured address fields
+- V2 uses `supplementaryUnit` for DOMESTIC activities
+- V2 requires `percentageEstimationOrDeviation` when using `netWeight`
+
+#### Q: How do I encode GeoJSON data?
+
+**A**: Use Base64 encoding:
+
+```javascript
+const geojson = { /* your GeoJSON */ };
+const encoded = Buffer.from(JSON.stringify(geojson)).toString('base64');
+```
+
+#### Q: How do I handle rate limiting?
+
+**A**: The library provides comprehensive error handling. You can implement your own retry logic using try-catch blocks:
+
+```javascript
+const maxRetries = 3;
+let attempt = 0;
+
+while (attempt < maxRetries) {
+  try {
+    const result = await client.submitDds(ddsData);
+    console.log('Success:', result);
+    break;
+  } catch (error) {
+    attempt++;
+    if (attempt === maxRetries) {
+      console.error('Max retries reached:', error);
+      throw error;
+    }
+    console.log(`Attempt ${attempt} failed, retrying...`);
+    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+  }
+}
+```
+
+#### Q: What HS codes are supported?
+
+**A**: The EUDR system supports specific HS codes for regulated commodities:
+- Wood: 4401, 4403, 4406, 4407, 4408, 4409, 4410, 4411, 4412, 4413, 4414, 4415, 4416, 4418, 9403, 9406
+- Cocoa: 1801, 1802, 1803, 1804, 1805, 1806
+- Coffee: 0901
+- Palm oil: 1511, 1513
+- Rubber: 4001, 4005, 4006, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4015, 4016, 4017
+- Soya: 1201, 1208, 1507
+- Cattle: 0102, 0201, 0202, 0206, 4101, 4104, 4107
 
 ## Contributing
 

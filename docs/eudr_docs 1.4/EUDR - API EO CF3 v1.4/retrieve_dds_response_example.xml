@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+    <S:Header>
+        <ns0:Security xmlns:ns0="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:ns1="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <ns1:Timestamp>
+                <ns1:Created>2024-05-07T16:22:30.611+02:00</ns1:Created>
+                <ns1:Expires>2024-05-07T16:22:35.613+02:00</ns1:Expires>
+            </ns1:Timestamp>
+        </ns0:Security>
+    </S:Header>
+    <S:Body>
+        <ns4:GetStatementInfoResponse xmlns="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:21" xmlns:ns2="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:ns3="http://ec.europa.eu/tracesnt/certificate/eudr/model/v1" xmlns:ns4="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v1" xmlns:ns5="http://ec.europa.eu/sanco/tracesnt/error/v01" xmlns:ns6="urn:un:unece:uncefact:codelist:standard:ISO:ISO2AlphaLanguageCode:2006-10-27">
+            <ns4:statementInfo>
+                <ns4:identifier>3f09ab3f-4c97-4663-8463-89d58f1d646b</ns4:identifier>
+                <ns4:identifier>FR-0000001</ns4:identifier>
+                <ns4:referenceNumber>24FRXVV3VOS991</ns4:referenceNumber>
+                <ns4:verificationNumber>SEKUYXPP</ns4:verificationNumber>
+                <ns4:status>AVAILABLE</ns4:status>
+            </ns4:statementInfo>
+        </ns4:GetStatementInfoResponse>
+    </S:Body>
+</S:Envelope>

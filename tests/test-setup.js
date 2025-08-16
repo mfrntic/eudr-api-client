@@ -69,8 +69,7 @@ const testConfig = {
   webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test',
   timestampValidity: 60,
   timeout: parseInt(process.env.EUDR_TRACES_TIMEOUT) || 30000,
-  endpoint: process.env.EUDR_TRACES_BASE_URL + '/tracesnt/ws',
-  wsdlUrl: process.env.EUDR_TRACES_BASE_URL + '/tracesnt/ws/EUDRRetrievalServiceV1?wsdl'
+  endpoint: process.env.EUDR_TRACES_BASE_URL + '/tracesnt/ws', 
 };
 
 // Validate required environment variables

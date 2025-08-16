@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+    <S:Header>
+        <ns0:Security xmlns:ns0="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:ns1="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <ns1:Timestamp>
+                <ns1:Created>2024-05-07T16:22:11.731+02:00</ns1:Created>
+                <ns1:Expires>2024-05-07T16:22:16.733+02:00</ns1:Expires>
+            </ns1:Timestamp>
+        </ns0:Security
+    ></S:Header>
+    <S:Body>
+        <ns5:SubmitStatementResponse xmlns="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:21" xmlns:ns2="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:ns3="http://ec.europa.eu/tracesnt/certificate/eudr/model/v1" xmlns:ns4="http://ec.europa.eu/sanco/tracesnt/error/v01" xmlns:ns5="http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1" xmlns:ns6="urn:un:unece:uncefact:codelist:standard:ISO:ISO2AlphaLanguageCode:2006-10-27">
+            <ns5:ddsIdentifier>3f09ab3f-4c97-4663-8463-89d58f1d646b</ns5:ddsIdentifier>
+        </ns5:SubmitStatementResponse>
+    </S:Body>
+</S:Envelope>

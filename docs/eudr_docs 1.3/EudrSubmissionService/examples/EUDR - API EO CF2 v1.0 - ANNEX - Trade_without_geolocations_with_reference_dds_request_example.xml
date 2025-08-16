@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1" xmlns:v11="http://ec.europa.eu/tracesnt/certificate/eudr/model/v1" xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4">
+    <soapenv:Header>    
+        <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" soapenv:mustUnderstand="1">
+            <wsu:Timestamp wsu:Id="TS-541F39C6FDB97C7A1B171509172198888">
+                <wsu:Created>2024-05-07T14:22:01Z</wsu:Created>
+                <wsu:Expires>2024-05-07T14:30:21Z</wsu:Expires>
+            </wsu:Timestamp>
+            <wsse:UsernameToken wsu:Id="UsernameToken-541F39C6FDB97C7A1B171509172198787">
+                <wsse:Username>username</wsse:Username>
+                <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest"/>
+                <wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">ArTR2Hm4F45stJfvlsHv3A==</wsse:Nonce>
+                <wsu:Created>2024-05-07T14:22:01.987Z</wsu:Created>
+            </wsse:UsernameToken>
+        </wsse:Security>
+        <v4:WebServiceClientId>eudr-repository</v4:WebServiceClientId>
+    </soapenv:Header>
+    <soapenv:Body>
+        <v1:SubmitStatementRequest>
+            <v1:operatorType>TRADER</v1:operatorType>
+            <v1:statement>
+				<v11:internalReferenceNumber>FR-000004</v11:internalReferenceNumber>
+				<v11:activityType>TRADE</v11:activityType>
+				<v11:countryOfActivity>FR</v11:countryOfActivity>
+				<v11:borderCrossCountry>FR</v11:borderCrossCountry>
+				<v11:comment>Some comments for the CA</v11:comment>
+				<v11:commodities>
+					<v11:descriptors>
+						<v11:descriptionOfGoods>here is the description of goods</v11:descriptionOfGoods>
+						<v11:goodsMeasure>
+							<v11:volume>20</v11:volume>
+							<v11:netWeight>40</v11:netWeight>
+							<v11:supplementaryUnit>10</v11:supplementaryUnit>
+							<v11:supplementaryUnitQualifier>MTQ</v11:supplementaryUnitQualifier>
+						</v11:goodsMeasure>
+					</v11:descriptors>
+					<v11:hsHeading>1806</v11:hsHeading>
+					<v11:speciesInfo>
+						<v11:scientificName>Test</v11:scientificName>
+						<v11:commonName>Test</v11:commonName>
+					</v11:speciesInfo>
+				</v11:commodities>
+				<v11:geoLocationConfidential>false</v11:geoLocationConfidential>
+				<v11:associatedStatements>
+					<v11:referenceNumber>24FR9DXMIWUG91</v11:referenceNumber>
+					<v11:verificationNumber>U8H1FW38</v11:verificationNumber>
+				</v11:associatedStatements>				
+            </v1:statement>
+        </v1:SubmitStatementRequest>
+    </soapenv:Body>
+</soapenv:Envelope>

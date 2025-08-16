@@ -1,0 +1,10 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:v1="http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1">
+   <soapenv:Header>
+      <v4:WebServiceClientId>eudr-repository</v4:WebServiceClientId>
+   </soapenv:Header>
+   <soapenv:Body>
+      <v1:RetractStatementRequest>
+         <v1:ddsIdentifier>f4fbfae9-7a45-47d5-bb99-3737728849d2</v1:ddsIdentifier>
+      </v1:RetractStatementRequest>
+   </soapenv:Body>
+</soapenv:Envelope>

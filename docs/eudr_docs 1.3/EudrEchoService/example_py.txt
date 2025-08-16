@@ -1,0 +1,80 @@
+Error:
+TypeError: {http://ec.europa.eu/tracesnt/eudr/echo}EudrEchoRequestType() got an unexpected keyword argument 'Header'. Signature: `query: xsd:string`
+
+Example with zeep library:
+
+As the user is already using zeep library to connect to the web service, he could as well use the WSSE function provided there, so no need to rebuild the digest password.
+The key changes there are the usage of  zeep.wsse (with use_digest=True) and the specific header passed directly to the testEcho function.
+This is just a working example, some improvements needs to be done like error handling, transport timeout, default header....”
+
+import datetime
+
+from zeep
+import Client
+
+from zeep.wsse.username
+import UsernameToken
+
+from zeep.wsse.utils
+import WSU
+
+
+# Generate the timestamp token
+
+timestamp_token = WSU.Timestamp()
+
+today_datetime = datetime.datetime.utcnow()
+
+expires_datetime = today_datetime + datetime.timedelta(minutes=2)
+
+timestamp_elements = [
+
+WSU.Created(today_datetime.isoformat(sep='T',
+timespec='milliseconds')+'Z'),
+
+WSU.Expires(expires_datetime.isoformat(sep='T',
+timespec='milliseconds')+'Z')
+
+]
+
+timestamp_token.extend(timestamp_elements)
+
+
+# Username and password for WSSE
+
+username = 'xxxxxxxxx'
+
+password = 'xxxxxxxxxxxxxx'
+
+wsdl_url = 'https://webgate.acceptance.ec.europa.eu/tracesnt-alpha/ws/EudrEchoService?wsdl'
+
+
+# Create the WSSE header
+
+wsse = UsernameToken(username, password, 
+timestamp_token=timestamp_token,
+use_digest=True)
+
+
+# Initialize the client with the WSSE
+
+client = Client(wsdl_url, wsse=wsse)
+
+
+# Create the specific header
+
+header = {"webServiceClientId":
+"eudr-repository"}
+
+
+# Call the service and store the response
+
+response = client.service.testEcho('test 213154',
+_soapheaders=header)
+
+
+# Print the response
+
+print(response)
+
+

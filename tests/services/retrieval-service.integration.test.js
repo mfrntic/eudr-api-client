@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 const { EudrRetrievalClient } = require('../../services');
 
-describe('EudrRetrievalClient - Integration Tests', function () {
+describe('EudrRetrievalClient - CF3 Integration Tests', function () {
   let retrievalClient;
   let testDdsIdentifiers = [];
 
@@ -33,7 +33,7 @@ describe('EudrRetrievalClient - Integration Tests', function () {
     console.log("------------------------------------------------------------------------------------------------");
     // Initialize retrieval service with test configuration
     retrievalClient = new EudrRetrievalClient({
-      wsdlUrl: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRRetrievalServiceV1?wsdl`,
+      endpoint: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRRetrievalServiceV1`,
       username: process.env.EUDR_TRACES_USERNAME,
       password: process.env.EUDR_TRACES_PASSWORD,
       webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test',
@@ -50,9 +50,10 @@ describe('EudrRetrievalClient - Integration Tests', function () {
       'test-uuid-98765-43210-fedcba'  // Another test UUID
     ];
 
-    // Real reference and verification numbers from successful retrieval
-    this.realReferenceNumber = '25HRD5I3WZ1046';
-    this.realVerificationNumber = 'SI17WKC3';
+    // Note: CF7 operations (getStatementByIdentifiers, getReferencedDDS) are disabled
+    // as this test suite uses CF3 endpoint (EUDRRetrievalServiceV1)
+    // this.realReferenceNumber = '25HRD5I3WZ1046';
+    // this.realVerificationNumber = 'SI17WKC3';
   });
 
   after(async function () {
@@ -60,17 +61,11 @@ describe('EudrRetrievalClient - Integration Tests', function () {
   });
 
   describe('🔧 Configuration & Validation', function () {
-    it('should throw error when wsdlUrl is missing', function () {
-      expect(() => new EudrRetrievalClient({
-        username: 'test',
-        password: 'test',
-        webServiceClientId: 'test'
-      })).to.throw('Missing required configuration: wsdlUrl');
-    });
+
 
     it('should throw error when username is missing', function () {
       expect(() => new EudrRetrievalClient({
-        wsdlUrl: 'http://test.com?wsdl',
+        endpoint: 'http://test.com',
         password: 'test',
         webServiceClientId: 'test'
       })).to.throw('Missing required configuration: username');
@@ -78,7 +73,7 @@ describe('EudrRetrievalClient - Integration Tests', function () {
 
     it('should throw error when password is missing', function () {
       expect(() => new EudrRetrievalClient({
-        wsdlUrl: 'http://test.com?wsdl',
+        endpoint: 'http://test.com',
         username: 'test',
         webServiceClientId: 'test'
       })).to.throw('Missing required configuration: password');
@@ -101,12 +96,15 @@ describe('EudrRetrievalClient - Integration Tests', function () {
     });
   });
 
-  describe('📋 Core Functionality - All Retrieval Methods', function () {
+  describe('📋 Core Functionality - CF3 Retrieval Methods', function () {
     describe('getDdsInfoByInternalReferenceNumber', function () {
       it('should retrieve DDS by internal reference number', async function () {
         try {
           const result = await retrievalClient.getDdsInfoByInternalReferenceNumber('TEST-REF-001');
+          // console.log(result);
           expect(result).to.be.an('object');
+          expect(result.httpStatus).to.be.equal(200);
+          expect(result.ddsInfo).to.be.an('array');
         } catch (error) {
           if (error.details && error.details.status === 500) {
             // API returned error response as expected
@@ -134,7 +132,8 @@ describe('EudrRetrievalClient - Integration Tests', function () {
       it('should retrieve DDS by UUID', async function () {
         try {
           const result = await retrievalClient.getDdsInfo(testDdsIdentifiers[0]);
-          expect(result).to.be.an('object');
+          expect(result.httpStatus).to.be.equal(200);
+          expect(result.ddsInfo[0].identifier).to.be.equal(testDdsIdentifiers[0]);
         } catch (error) {
           if (error.details && error.details.status === 500) {
             // API returned error response as expected
@@ -147,7 +146,8 @@ describe('EudrRetrievalClient - Integration Tests', function () {
       it('should retrieve multiple DDS by UUIDs', async function () {
         try {
           const result = await retrievalClient.getDdsInfo(testDdsIdentifiers.slice(0, 2));
-          expect(result).to.be.an('object');
+          expect(result.httpStatus).to.be.equal(200);
+          expect(result.ddsInfo).to.be.an('array');
         } catch (error) {
           if (error.details && error.details.status === 500) {
             // API returned error response as expected
@@ -160,17 +160,20 @@ describe('EudrRetrievalClient - Integration Tests', function () {
       it('should reject invalid UUIDs with proper error response', async function () {
         try {
           const result = await retrievalClient.getDdsInfo('invalid-uuid-format');
-          expect(result).to.be.an('object');
+
         } catch (error) {
-          if (error.details && error.details.status === 500) {
-            // API properly rejected invalid UUID format
-          } else {
-            throw error;
-          }
+          expect(error.error).to.be.true;
+          expect(error.details.status).to.be.equal(500);
+
+
+
         }
       });
     });
 
+    // Note: getStatementByIdentifiers is a CF7 operation and requires CF7 endpoint
+    // This test is disabled for CF3 endpoint compatibility
+    /*
     describe('getStatementByIdentifiers', function () {
       it('should retrieve statement by verification and reference numbers', async function () {
         try {
@@ -178,14 +181,13 @@ describe('EudrRetrievalClient - Integration Tests', function () {
             this.realReferenceNumber,
             this.realVerificationNumber
           );
-
           expect(result).to.be.an('object');
+          expect(result.httpStatus).to.be.equal(200);
+          expect(result.ddsInfo).to.be.an('array');
         } catch (error) {
-          if (error.details && error.details.status === 500) {
-            // API returned error response as expected
-          } else {
-            throw error;
-          }
+
+          throw error;
+
         }
       });
 
@@ -198,15 +200,17 @@ describe('EudrRetrievalClient - Integration Tests', function () {
 
           expect(result).to.be.an('object');
         } catch (error) {
-          if (error.details && error.details.status === 500) {
-            // API properly rejected invalid verification number
-          } else {
-            throw error;
-          }
+          expect(error.error).to.be.true;
+          expect(error.details.status).to.be.equal(500);
+
         }
       });
     });
+    */
 
+    // Note: getReferencedDDS is a CF7 operation and requires CF7 endpoint
+    // This test is disabled for CF3 endpoint compatibility
+    /*
     describe('getReferencedDDS', function () {
       it('should retrieve referenced DDS by reference number', async function () {
         try {
@@ -214,23 +218,21 @@ describe('EudrRetrievalClient - Integration Tests', function () {
             this.realReferenceNumber,
             'SEC123' // Security number is required
           );
-
+          console.log(result);
           expect(result).to.be.an('object');
         } catch (error) {
-          if (error.details && error.details.status === 500) {
-            // API returned error response as expected
-          } else {
-            throw error;
-          }
+          console.log(error);
+          throw error;
         }
       });
     });
+    */
   });
 
   describe('⚠️ Error Handling', function () {
     it('should handle invalid credentials gracefully', async function () {
       const invalidService = new EudrRetrievalClient({
-        wsdlUrl: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRRetrievalServiceV1?wsdl`,
+        endpoint: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRRetrievalServiceV1`,
         username: 'invalid_username',
         password: 'invalid_password',
         webServiceClientId: 'test'
@@ -251,7 +253,7 @@ describe('EudrRetrievalClient - Integration Tests', function () {
 
     it('should handle network connectivity issues gracefully', async function () {
       const invalidService = new EudrRetrievalClient({
-        wsdlUrl: 'https://invalid-endpoint.com/wsdl',
+        endpoint: 'https://invalid-endpoint.com/',
         username: 'test',
         password: 'test',
         webServiceClientId: 'test',
@@ -269,18 +271,18 @@ describe('EudrRetrievalClient - Integration Tests', function () {
         expect(error.message).to.be.a('string');
         expect(error.message).to.not.be.empty;
         expect(error.details).to.be.an('object');
-        
+
         // The error should indicate some form of network/connection failure
         const errorMessage = error.message.toLowerCase();
-        const isNetworkError = errorMessage.includes('network') || 
-                              errorMessage.includes('connection') || 
-                              errorMessage.includes('timeout') ||
-                              errorMessage.includes('invalid') ||
-                              errorMessage.includes('unreachable') ||
-                              errorMessage.includes('failed') ||
-                              errorMessage.includes('enotfound') ||
-                              errorMessage.includes('econnrefused');
-        
+        const isNetworkError = errorMessage.includes('network') ||
+          errorMessage.includes('connection') ||
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('invalid') ||
+          errorMessage.includes('unreachable') ||
+          errorMessage.includes('failed') ||
+          errorMessage.includes('enotfound') ||
+          errorMessage.includes('econnrefused');
+
         expect(isNetworkError).to.be.true;
       }
     });
@@ -329,7 +331,7 @@ describe('EudrRetrievalClient - Integration Tests', function () {
         expect(error.message).to.be.a('string');
         expect(error.message).to.not.be.empty;
         expect(error.details).to.be.an('object');
-        
+
         // The error should indicate validation failure
         expect(error.message).to.include('Internal reference number must be provided');
       }

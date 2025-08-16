@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v2="http://ec.europa.eu/tracesnt/certificate/eudr/submission/v2" xmlns:v21="http://ec.europa.eu/tracesnt/certificate/eudr/model/v2" xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4">
+    <soapenv:Header>    
+       <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
+                           xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsu:Timestamp wsu:Id="TS-FC74784C4EFD20748F17171497363004">
+                <wsu:Created>{{wsse_created}}</wsu:Created>
+                <wsu:Expires>{{wsse_expires}}</wsu:Expires>
+            </wsu:Timestamp>
+            <wsse:UsernameToken wsu:Id="UsernameToken-FC74784C4EFD20748F17171497363003">
+                <wsse:Username>{{wsse_username}}</wsse:Username>
+                <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">{{wsse_passwordDigest}}</wsse:Password>
+                <wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">{{wsse_nonce}}</wsse:Nonce>
+                <wsu:Created>{{wsse_created}}</wsu:Created>
+            </wsse:UsernameToken>
+        </wsse:Security>
+        <v4:WebServiceClientId>eudr-test</v4:WebServiceClientId>
+    </soapenv:Header>
+    <soapenv:Body>
+        <v2:SubmitStatementRequest>
+            <v2:operatorType>REPRESENTATIVE_OPERATOR</v2:operatorType>
+            <v2:statement>
+				<v21:internalReferenceNumber>FR-000005</v21:internalReferenceNumber>
+				<v21:activityType>IMPORT</v21:activityType>
+				<v21:operator>
+					<v21:referenceNumber>
+						<v21:identifierType>eori</v21:identifierType>
+						<v21:identifierValue>FR09876356</v21:identifierValue>
+					</v21:referenceNumber>
+                    <v21:operatorAddress>
+                        <v21:name>Operator API1</v21:name>
+                        <v21:country>FR</v21:country>
+                        <v21:street>48 rue Mozart</v21:street>
+                        <v21:postalCode>59000</v21:postalCode>
+                        <v21:city>Lille</v21:city>
+                        <!--Optional:-->
+                        <v21:fullAddress>48 rue Mozart,59000 Lille</v21:fullAddress>
+                    </v21:operatorAddress>
+					<v21:email>test@operator.fr</v21:email>
+					<v21:phone>0312345678</v21:phone>
+				</v21:operator>
+				<v21:countryOfActivity>FR</v21:countryOfActivity>
+				<v21:borderCrossCountry>FR</v21:borderCrossCountry>                
+				<v21:comment>Some comments for the CA</v21:comment>
+				<v21:commodities>
+					<v21:descriptors>
+						<v21:descriptionOfGoods>here is the description of goods</v21:descriptionOfGoods>
+						<v21:goodsMeasure>
+							<v21:volume>20</v21:volume>
+							<v21:netWeight>40</v21:netWeight>
+							<v21:supplementaryUnit>10</v21:supplementaryUnit>
+							<v21:supplementaryUnitQualifier>MTQ</v21:supplementaryUnitQualifier>
+						</v21:goodsMeasure>
+					</v21:descriptors>
+					<v21:hsHeading>1801</v21:hsHeading>
+					<v21:speciesInfo>
+						<v21:scientificName>Test</v21:scientificName>
+						<v21:commonName>Test</v21:commonName>
+					</v21:speciesInfo>				
+					<v21:producers>
+						<v21:country>FR</v21:country>
+						<v21:name>Producer 1</v21:name>
+						<v21:geometryGeojson>eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJwcm9wZXJ0aWVzIjp7IlByb2R1Y3Rpb25QbGFjZSI6IkZhcm0gMSJ9LCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1szLjUzNzU5OCw0NC44NDAyOTFdLFs0Ljg1NTk1Nyw0Ni4zNzcyNTRdLFs1LjQyNzI0Niw0NC45NjQ3OThdLFszLjUzNzU5OCw0NC44NDAyOTFdXV19fV19</v21:geometryGeojson>
+					</v21:producers>
+				</v21:commodities>
+				<v21:geoLocationConfidential>false</v21:geoLocationConfidential>
+            </v2:statement>
+        </v2:SubmitStatementRequest>    
+	</soapenv:Body>
+</soapenv:Envelope>

@@ -1,0 +1,15 @@
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+   <S:Header>
+      <ns0:Security xmlns:ns1="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" xmlns:ns0="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <ns1:Timestamp>
+            <ns1:Created>2024-07-04T11:32:06.873+02:00</ns1:Created>
+            <ns1:Expires>2024-07-04T11:32:11.875+02:00</ns1:Expires>
+         </ns1:Timestamp>
+      </ns0:Security>
+   </S:Header>
+   <S:Body>
+      <ns6:RetractStatementResponse xmlns="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:21" xmlns:ns2="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:ns3="http://ec.europa.eu/tracesnt/certificate/eudr/model/v1" xmlns:ns4="http://ec.europa.eu/tracesnt/eudr/eudr4authorities/v1" xmlns:ns5="http://ec.europa.eu/sanco/tracesnt/error/v01" xmlns:ns6="http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1" xmlns:ns7="urn:un:unece:uncefact:codelist:standard:ISO:ISO2AlphaLanguageCode:2006-10-27">
+         <ns6:status>SC_200_OK</ns6:status>
+      </ns6:RetractStatementResponse>
+   </S:Body>
+</S:Envelope>

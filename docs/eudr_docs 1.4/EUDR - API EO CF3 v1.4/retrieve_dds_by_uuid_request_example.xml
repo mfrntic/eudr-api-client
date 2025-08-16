@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v1="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v1" xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4">
+    <soapenv:Header>
+        <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" soapenv:mustUnderstand="1">
+        <wsu:Timestamp wsu:Id="TS-541F39C6FDB97C7A1B171509174833690">
+            <wsu:Created>2024-05-07T14:22:28Z</wsu:Created>
+            <wsu:Expires>2024-05-07T14:30:48Z</wsu:Expires>
+        </wsu:Timestamp>
+        <wsse:UsernameToken wsu:Id="UsernameToken-541F39C6FDB97C7A1B171509174833689">
+            <wsse:Username>username</wsse:Username>
+            <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest"/>
+            <wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">SopPl78SvYY6Xd+BxQDw2Q==</wsse:Nonce>
+            <wsu:Created>2024-05-07T14:22:28.336Z</wsu:Created>
+            </wsse:UsernameToken></wsse:Security>
+            <v4:WebServiceClientId>eudr-repository</v4:WebServiceClientId>
+    </soapenv:Header>
+    <soapenv:Body>
+        <v1:GetStatementInfoRequest>
+            
+            <v1:identifier>3f09ab3f-4c97-4663-8463-89d58f1d646b</v1:identifier>
+        </v1:GetStatementInfoRequest>
+    </soapenv:Body>
+</soapenv:Envelope>

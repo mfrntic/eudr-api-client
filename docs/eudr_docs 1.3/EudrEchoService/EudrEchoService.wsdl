@@ -1,0 +1,103 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (http://jax-ws.java.net). RI's version is JAX-WS RI 2.3.2-wls141100-b230825.0707 git-revision#5f81cab. --><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:base="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:body="http://ec.europa.eu/tracesnt/body/v3" xmlns:echo="http://ec.europa.eu/tracesnt/eudr/echo" targetNamespace="http://ec.europa.eu/tracesnt/eudr/echo">
+
+
+    <wsdl:import location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EudrEchoService?wsdl=1" namespace="http://ec.europa.eu/sanco/tracesnt/base/v4"/>
+	<wsdl:import location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EudrEchoService?wsdl=2" namespace="http://ec.europa.eu/tracesnt/body/v3"/>
+	
+	<wsdl:types>
+		<xs:schema>
+			<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EudrEchoService?xsd=3" namespace="http://ec.europa.eu/tracesnt/eudr/echo"/>
+		</xs:schema>
+	</wsdl:types>
+
+
+	<wsdl:message name="EudrEchoRequest">
+		<wsdl:part name="input" element="echo:EudrEchoRequest"/>
+	</wsdl:message>
+	<wsdl:message name="EudrEchoResponse">
+		<wsdl:part name="outcome" element="echo:EudrEchoResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="EudrEchoServiceFault">
+		<wsdl:part name="fault" element="echo:EudrEchoServiceFault"/>
+	</wsdl:message>
+
+	<wsdl:portType name="EudrEchoServicePort">
+		<wsdl:operation name="testEcho">
+			<wsdl:input message="echo:EudrEchoRequest" name="EudrEchoRequest">
+				<wsdl:documentation>
+					<ul>
+						<li>Test parameter</li>
+					</ul>
+				</wsdl:documentation>
+			</wsdl:input>
+			<wsdl:output message="echo:EudrEchoResponse" name="EudrEchoResponse"/>
+			<wsdl:fault message="echo:EudrEchoServiceFault" name="EudrEchoServiceFault">
+				<wsdl:documentation>
+					If the operation is not executed correctly
+				</wsdl:documentation>
+			</wsdl:fault>
+		</wsdl:operation>
+
+	</wsdl:portType>
+
+	<wsdl:binding name="EudrEchoServiceSoapBinding" type="echo:EudrEchoServicePort">
+
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+
+		<wsdl:operation name="testEcho">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/eudr/echo"/>
+			<wsdl:input>
+				<soap:body use="literal"/>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+			<wsdl:fault name="EudrEchoServiceFault">
+				<soap:fault name="EudrEchoServiceFault" use="literal"/>
+			</wsdl:fault>
+		</wsdl:operation>
+
+	</wsdl:binding>
+	
+	<wsdl:service name="EudrEchoService">
+		<wsdl:port name="EudrEchoServiceEndpoint" binding="echo:EudrEchoServiceSoapBinding">
+			<soap:address location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EudrEchoService"/>
+		</wsdl:port>
+	</wsdl:service>
+
+    <wsp:Policy xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+		<sp:TransportBinding>
+			<wsp:Policy>
+				<sp:TransportToken>
+					<wsp:Policy>
+						<sp:HttpsToken/>
+					</wsp:Policy>
+				</sp:TransportToken>
+				<sp:AlgorithmSuite>
+					<wsp:Policy>
+						<sp:Basic256/>
+					</wsp:Policy>
+				</sp:AlgorithmSuite>
+				<sp:Layout>
+					<wsp:Policy>
+						<sp:Lax/>
+					</wsp:Policy>
+				</sp:Layout>
+				<sp:IncludeTimestamp/>
+			</wsp:Policy>
+		</sp:TransportBinding>
+		<sp:SupportingTokens>
+			<wsp:Policy>
+				<sp:UsernameToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+					<wsp:Policy>
+						<sp:HashPassword/>
+						<sp:WssUsernameToken10/>
+					</wsp:Policy>
+				</sp:UsernameToken>
+			</wsp:Policy>
+		</sp:SupportingTokens>
+	</wsp:Policy>        
+
+</wsdl:definitions>

@@ -1,0 +1,24 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:v1="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v1">
+  <soapenv:Header>
+        <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
+                           xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+            <wsu:Timestamp wsu:Id="TS-FC74784C4EFD20748F17171497363004">
+                <wsu:Created>{{wsse_created}}</wsu:Created>
+                <wsu:Expires>{{wsse_expires}}</wsu:Expires>
+            </wsu:Timestamp>
+            <wsse:UsernameToken wsu:Id="UsernameToken-FC74784C4EFD20748F17171497363003">
+                <wsse:Username>{{wsse_username}}</wsse:Username>
+                <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">{{wsse_passwordDigest}}</wsse:Password>
+                <wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">{{wsse_nonce}}</wsse:Nonce>
+                <wsu:Created>{{wsse_created}}</wsu:Created>
+            </wsse:UsernameToken>
+        </wsse:Security>
+        <v4:WebServiceClientId>eudr-repository</v4:WebServiceClientId>
+    </soapenv:Header>
+   <soapenv:Body>
+      <v1:GetStatementByIdentifiersRequest>
+         <v1:referenceNumber>24FRIOBORU2228</v1:referenceNumber>
+         <v1:verificationNumber>LWKAOH97</v1:verificationNumber>
+      </v1:GetStatementByIdentifiersRequest>
+   </soapenv:Body>
+</soapenv:Envelope>

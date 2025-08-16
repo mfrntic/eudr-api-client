@@ -1,0 +1,54 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:v1="http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1" xmlns:v11="http://ec.europa.eu/tracesnt/certificate/eudr/model/v1">
+   <soapenv:Header>
+      <v4:WebServiceClientId>eudr-repository</v4:WebServiceClientId>
+   </soapenv:Header>
+   <soapenv:Body>
+      <v1:AmendStatementRequest>
+         <v1:ddsIdentifier>972b2dcf-f27e-4867-89cd-9d02ee753a8c</v1:ddsIdentifier>
+         <v1:statement>
+            <v11:internalReferenceNumber>API-Amend001</v11:internalReferenceNumber>
+            <v11:activityType>IMPORT</v11:activityType>
+            <v11:operator>
+               <v11:referenceNumber>
+                  <v11:identifierType>eori</v11:identifierType>
+                  <v11:identifierValue>BE456789</v11:identifierValue>
+               </v11:referenceNumber>
+               <v11:nameAndAddress>
+                  <v4:name>Bla operator</v4:name>
+                  <v4:country>DK</v4:country>
+                  <v4:address>Rue de Jardin</v4:address>
+               </v11:nameAndAddress>
+               <v11:email>blaoperator@gmail.com</v11:email>
+               <v11:phone>0467237789</v11:phone>
+            </v11:operator>
+            <v11:countryOfActivity>DK</v11:countryOfActivity>
+            <v11:countryOfEntry>DE</v11:countryOfEntry>
+            <v11:comment>Test Coffee species</v11:comment>
+            <v11:commodities>
+               <v11:descriptors>
+                  <v11:descriptionOfGoods>Test Spicies</v11:descriptionOfGoods>
+                  <v11:goodsMeasure>
+                     <v11:netWeight>100000</v11:netWeight>
+                     <v11:numberOfUnits>1000</v11:numberOfUnits>
+                  </v11:goodsMeasure>
+               </v11:descriptors>
+               <v11:hsHeading>0901</v11:hsHeading>
+               <v11:speciesInfo>
+                  <v11:scientificName>Coffea Arabusta hybrids</v11:scientificName>
+                  <v11:commonName>coffee</v11:commonName>
+               </v11:speciesInfo>
+               <v11:producers>
+                  <v11:country>BE</v11:country>
+                  <v11:name>Coffee pvt ltd</v11:name>
+                  <v11:geometryGeojson>eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJwcm9wZXJ0aWVzIjp7IlByb2R1Y3Rpb25QbGFjZSI6InRleHQgcG9pbnQiLCJBcmVhIjo0Mzk0LjM1fSwiZ2VvbWV0cnkiOnsidHlwZSI6IlBvbHlnb24iLCJjb29yZGluYXRlcyI6W1tbLTguMDM3NzcxLDQwLjA0MzEyM10sWy04LjAzNzc3MSw0MC4wODMwNjNdLFstNy45MjE3NjIsNDAuMDgzMDYzXSxbLTcuOTIxNzYyLDQwLjA0MzEyM10sWy04LjAzNzc3MSw0MC4wNDMxMjNdXV19fV19</v11:geometryGeojson>
+               </v11:producers>
+            </v11:commodities>
+            <v11:geoLocationConfidential>false</v11:geoLocationConfidential>
+            <v11:associatedStatements>
+               <v11:referenceNumber>24PTFNKRIEDOZ7</v11:referenceNumber>
+               <v11:verificationNumber>QHTPGCES</v11:verificationNumber>
+            </v11:associatedStatements>
+         </v1:statement>
+      </v1:AmendStatementRequest>
+   </soapenv:Body>
+</soapenv:Envelope>
