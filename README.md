@@ -30,7 +30,7 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
 - [API Services](#api-services)
 - [Configuration](#configuration)
 - [Advanced Usage](#advanced-usage)
-- [Testing](#testing)
+- [Testing](tests/README.md)
 - [Troubleshooting](#troubleshooting)
 - [API Reference](#api-reference)
 - [Contributing](#contributing)
@@ -724,12 +724,26 @@ const client = new EudrSubmissionClient({
 
 ## API Reference
 
-### 📝 EudrSubmissionClient
+### 🧪 EudrEchoClient
+Service for testing connectivity and authentication.
 
+#### Methods
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `echo(params)` | Test service connectivity | `message` (String) | Promise with echo response |
+
+#### Detailed Method Reference
+**`echo(params)`**
+```javascript
+const response = await echoClient.echo('Hello EUDR');
+
+// Returns: { message: 'Hello EUDR' }
+```
+---
+### 📝 EudrSubmissionClient
 The main client for submitting, amending, and retracting DDS statements (V1 API).
 
 #### Methods
-
 | Method | Description | Parameters | Returns |
 |--------|-------------|------------|---------|
 | `submitDds(request, options)` | Submit a new Due Diligence Statement | `request` (Object), `options` (Object) | Promise with DDS identifier |
@@ -737,7 +751,6 @@ The main client for submitting, amending, and retracting DDS statements (V1 API)
 | `retractDds(ddsIdentifier, options)` | Retract a submitted DDS | `ddsIdentifier` (String), `options` (Object) | Promise with success status |
 
 #### Detailed Method Reference
-
 **`submitDds(request, options)`**
 ```javascript
 const result = await client.submitDds({
@@ -783,15 +796,11 @@ const result = await client.retractDds(
 
 // Returns: { httpStatus: 200, success: true, status: 'SC_200_OK', message: 'DDS retracted successfully' }
 ```
-
 ---
-
 ### 🚀 EudrSubmissionClientV2
-
 The V2 client for submitting, amending, and retracting DDS statements with enhanced validation and structure.
 
 #### Methods
-
 | Method | Description | Parameters | Returns |
 |--------|-------------|------------|---------|
 | `submitDds(request, options)` | Submit a new DDS (V2) | `request` (Object), `options` (Object) | Promise with DDS identifier |
@@ -799,7 +808,6 @@ The V2 client for submitting, amending, and retracting DDS statements with enhan
 | `retractDds(ddsIdentifier, options)` | Retract DDS (V2) | `ddsIdentifier` (String), `options` (Object) | Promise with success status |
 
 #### Detailed Method Reference
-
 **`submitDds(request, options)`**
 ```javascript
 const result = await clientV2.submitDds({
@@ -878,15 +886,11 @@ const result = await clientV2.retractDds(
 
 // Returns: { httpStatus: 200, success: true, status: 'SC_200_OK', message: 'DDS retracted successfully' }
 ```
-
 ---
-
 ### 🔍 EudrRetrievalClient
-
 Service for retrieving DDS information and supply chain data.
 
 #### Methods
-
 | Method | Description | Parameters | Returns |
 |--------|-------------|------------|---------|
 | `getDdsInfo(uuids)` | Get DDS by UUID | `uuids` (String or Array) | Promise with DDS details |
@@ -895,7 +899,6 @@ Service for retrieving DDS information and supply chain data.
 | `getReferencedDDS(referenceNumber, verificationNumber)` | Get referenced DDS for supply chain traversal | `referenceNumber` (String), `verificationNumber` (String) | Promise with DDS |
 
 #### Detailed Method Reference
-
 **`getDdsInfo(uuids)`**
 ```javascript
 const dds = await retrievalClient.getDdsInfo('some-uuid-string');
@@ -925,34 +928,10 @@ const referencedDds = await retrievalClient.getReferencedDDS('25NLWPAZWQ8865', '
 
 // Returns: Referenced DDS object
 ```
-
 ---
-
-### 🧪 EudrEchoClient
-
-Service for testing connectivity and authentication.
-
-#### Methods
-
-| Method | Description | Parameters | Returns |
-|--------|-------------|------------|---------|
-| `echo(params)` | Test service connectivity | `message` (String) | Promise with echo response |
-
-#### Detailed Method Reference
-
-**`echo(params)`**
-```javascript
-const response = await echoClient.echo('Hello EUDR');
-
-// Returns: { message: 'Hello EUDR' }
-```
-
----
-
 ### 📊 Data Types
 
 #### DDS Statement Structure (V1)
-
 ```javascript
 {
   operatorType: 'TRADER' | 'OPERATOR',
@@ -1000,7 +979,6 @@ const response = await echoClient.echo('Hello EUDR');
 ```
 
 #### DDS Statement Structure (V2)
-
 ```javascript
 {
   operatorType: 'OPERATOR' | 'TRADER',
@@ -1065,4 +1043,34 @@ const response = await echoClient.echo('Hello EUDR');
 ```
 
 **Successful Submission Response (V2):**
+```javascript
+{
+  httpStatus: 200,
+  ddsIdentifier: 'uuid-string',
+  raw: 'raw-xml-response',
+  parsed: { /* parsed XML object */ }
+}
 ```
+
+## Contributing
+
+We welcome contributions from the community! If you'd like to contribute, please follow these steps:
+1.  **Fork the repository** on GitHub.
+2.  **Create a new branch** for your feature or bug fix.
+3.  **Make your changes** and commit them with a clear message.
+4.  **Push your branch** and open a pull request.
+
+Please check our [GitHub Issues](https://github.com/eudr-api-client/eudr-api-client/issues) for bug reports and feature requests.
+
+## License
+
+This project is dual-licensed. See the [LICENCE.md](LICENCE.md) file for details.
+
+- **Open Source (AGPL v3)**: You can use, modify, and distribute this software under the terms of the GNU AGPL v3. This requires you to release the source code of any derivative works.
+- **Commercial License**: For use in proprietary applications without the source code disclosure requirements of the AGPL, a commercial license is available. Please contact us at [support@eudr-api.eu](mailto:support@eudr-api.eu) for more information.
+
+## Support
+
+For community support, please open an issue on our [GitHub repository](https://github.com/eudr-api-client/eudr-api-client/issues).
+
+For commercial support and licensing inquiries, please contact us at [support@eudr-api.eu](mailto:support@eudr-api.eu).

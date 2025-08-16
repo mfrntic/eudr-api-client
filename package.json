@@ -79,7 +79,6 @@
   },
   "dependencies": {
     "axios": "^1.6.0",
-    "crypto": "^1.0.1",
     "pino": "^8.21.0",
     "pino-pretty": "^13.1.1",
     "uuid": "^9.0.0",
@@ -98,8 +97,7 @@
     "services/",
     "utils/",
     "README.md",
-    "LICENSE-AGPL.md",
-    "LICENSE-COMMERCIAL.md"
+    "LICENSE.md"
   ],
   "directories": {
     "lib": "services"

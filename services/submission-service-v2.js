@@ -15,7 +15,7 @@
 
 // Required dependencies
 const axios = require('axios');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const { v4: uuidv4 } = require('uuid');
 const { parseString } = require('xml2js');
 const EudrErrorHandler = require('../utils/error-handler');
