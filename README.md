@@ -8,6 +8,24 @@
 > **Enterprise-grade Node.js library for EU Deforestation Regulation (EUDR) compliance**  
 > Complete integration with EUDR TRACES system for Due Diligence Statements (DDS) management
 
+## EUDR Systems
+
+The EUDR system operates on two environments:
+
+- **🟢 Production (LIVE)**: [https://eudr.webcloud.ec.europa.eu/tracesnt/](https://eudr.webcloud.ec.europa.eu/tracesnt/)
+  - **Purpose**: Real submissions with legal value
+  - **Submission Endpoint**: `https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1`
+  - **Web Service Client ID**: `eudr`
+  - **Use**: Only for products to be placed on the market or exported after entry into application
+  - **Note**: Submissions have legal value and can be subject to checks by Competent Authorities
+
+- **🟡 Acceptance (Training)**: [https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/](https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/)
+  - **Purpose**: Training and familiarization platform
+  - **Submission Endpoint**: `https://webgate.acceptance.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1`
+  - **Web Service Client ID**: `eudr-test`
+  - **Use**: Testing and getting familiar with the system
+  - **Note**: Submissions have no legal value
+
 ## Why EUDR API Client?
 
 The EU Deforestation Regulation (EUDR) requires operators and traders to submit Due Diligence Statements for commodities like wood, cocoa, coffee, and more. This library provides:
@@ -53,10 +71,11 @@ const { EudrSubmissionClient } = require('eudr-api-client');
 
 // Initialize the client
 const client = new EudrSubmissionClient({
-  endpoint: 'https://webgate.acceptance.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1',
+  endpoint: 'https://webgate.acceptance.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1', //acceptance
+  //endpoint: https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1 //production
   username: 'your-username',
   password: 'your-password',
-  webServiceClientId: 'your-client-id'
+  webServiceClientId: 'eudr-test' //eudr-test = acceptance server, eudr = production server
 });
 
 // Submit your first DDS
@@ -430,10 +449,10 @@ EUDR_LOG_LEVEL=info  # trace, debug, info, warn, error, fatal
 ```javascript
 const config = {
   // Required
-  endpoint: 'https://your-endpoint.com/tracesnt/ws/EUDRSubmissionServiceV1',
+  endpoint: 'https://webgate.acceptance.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1',
   username: 'your-username',
   password: 'your-password',
-  webServiceClientId: 'your-client-id',
+  webServiceClientId: 'eudr-test,
   
   // Optional
   soapAction: 'http://ec.europa.eu/tracesnt/eudr/submission',

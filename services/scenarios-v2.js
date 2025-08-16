@@ -113,7 +113,7 @@ const representativeScenario = {
 };
 
 /**
- * Domestic production scenario - CORRECT STRUCTURE (uses supplementaryUnit)
+ * Domestic production scenario 
  * This is the working example that 100% works for V2 submission domestic
  */
 const domesticSubmissionV2 = {
