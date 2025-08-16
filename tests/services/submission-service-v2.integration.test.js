@@ -33,11 +33,6 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
     }
     
     console.log("------------------------------------------------------------------------------------------------");
-    console.log('✅ Environment variables loaded successfully');
-    console.log(`🌐 Using EUDR API: ${process.env.EUDR_TRACES_BASE_URL}`);
-    console.log(`👤 Username: ${process.env.EUDR_TRACES_USERNAME}`);
-    console.log(`🔑 Web Service Client ID: ${process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'}`);
-    console.log("------------------------------------------------------------------------------------------------");
 
     // Initialize V2 client with test configuration
     client = new EudrSubmissionClientV2({
@@ -270,7 +265,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
   });
 
 
-  describe('❌ Error Handling', function () {
+  describe('⚠️ Error Handling', function () {
     it('should handle invalid submission data structure', async function () {
       try {
         await client.submitDds({

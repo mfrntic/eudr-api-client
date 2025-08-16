@@ -31,11 +31,6 @@ describe('EudrRetrievalService - Integration Tests', function () {
     }
 
     console.log("------------------------------------------------------------------------------------------------");
-    console.log('✅ Environment variables loaded successfully');
-    console.log(`🌐 Using EUDR API: ${process.env.EUDR_TRACES_BASE_URL}`);
-    console.log(`👤 Username: ${process.env.EUDR_TRACES_USERNAME}`);
-    console.log(`🔑 Web Service Client ID: ${process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'}`);
-    console.log("------------------------------------------------------------------------------------------------");
     // Initialize retrieval service with test configuration
     retrievalService = new EudrRetrievalService({
       wsdlUrl: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRRetrievalServiceV1?wsdl`,
@@ -232,7 +227,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
     });
   });
 
-  describe('❌ Error Handling', function () {
+  describe('⚠️ Error Handling', function () {
     it('should handle invalid credentials gracefully', async function () {
       const invalidService = new EudrRetrievalService({
         wsdlUrl: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRRetrievalServiceV1?wsdl`,

@@ -1,17 +1,43 @@
-# EUDR API Client
+# 🌲 EUDR API Client
 
-Comprehensive Node.js library for EU Deforestation Regulation (EUDR) system integration. Supports Due Diligence Statements (DDS) submission, retrieval, amendment, and retraction with V1 and V2 API versions.
+[![npm version](https://img.shields.io/npm/v/eudr-api-client.svg)](https://www.npmjs.com/package/eudr-api-client)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Node.js Version](https://img.shields.io/node/v/eudr-api-client.svg)](https://nodejs.org)
+[![Test Status](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/eudr-api-client/eudr-api-client)
 
-## 🔧 Features
+> **Enterprise-grade Node.js library for EU Deforestation Regulation (EUDR) compliance**  
+> Complete integration with EUDR TRACES system for Due Diligence Statements (DDS) management
 
-- **Complete EUDR API Coverage**: V1 and V2 API versions
-- **Robust Logging System**: Configurable logging with Pino integration and console fallback
-- **SOAP Web Services**: Full WSSE security implementation
-- **Error Handling**: Comprehensive error handling and validation
-- **Testing**: Full test suite with real API integration
-- **Documentation**: Detailed API documentation and examples
+## Why EUDR API Client?
 
-## 🚀 Quick Start
+The EU Deforestation Regulation (EUDR) requires operators and traders to submit Due Diligence Statements for commodities like wood, cocoa, coffee, and more. This library provides:
+
+- ✅ **100% API Coverage** - Both V1 and V2 EUDR APIs fully implemented
+- ✅ **Production-Ready** - Battle-tested with real EUDR systems
+- ✅ **Well-Documented** - Comprehensive documentation with real examples
+- ✅ **Enterprise Features** - Robust error handling, retry logic, and logging
+- ✅ **Easy Integration** - Simple API with real-world examples
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Installation](#installation)
+- [Real-World Examples](#real-world-examples)
+  - [Trade Operations](#trade-operations)
+  - [Import Operations](#import-operations)
+  - [Domestic Production](#domestic-production)
+  - [Authorized Representatives](#authorized-representatives)
+- [API Services](#api-services)
+- [Configuration](#configuration)
+- [Advanced Usage](#advanced-usage)
+- [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
+- [API Reference](#api-reference)
+- [Contributing](#contributing)
+- [License](#license)
+- [Support](#support)
+
+## Quick Start
 
 ### Installation
 
@@ -19,172 +45,1024 @@ Comprehensive Node.js library for EU Deforestation Regulation (EUDR) system inte
 npm install eudr-api-client
 ```
 
-### Basic Usage
+### Basic Setup
 
 ```javascript
 const { EudrSubmissionClient } = require('eudr-api-client');
 
+// Initialize the client
 const client = new EudrSubmissionClient({
-  endpoint: 'https://your-eudr-endpoint.com/tracesnt/ws/EUDRSubmissionServiceV1',
+  endpoint: 'https://webgate.acceptance.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1',
   username: 'your-username',
   password: 'your-password',
   webServiceClientId: 'your-client-id'
 });
 
-// Submit a DDS
+// Submit your first DDS
 const result = await client.submitDds({
   operatorType: 'TRADER',
   statement: {
     internalReferenceNumber: 'REF-001',
     activityType: 'TRADE',
     countryOfActivity: 'HR',
-    // ... more data
+    borderCrossCountry: 'HR',
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: 'Traded wood products',
+        goodsMeasure: { netWeight: 20, volume: 15 }
+      },
+      hsHeading: '4401',
+      speciesInfo: {
+        scientificName: 'Fagus silvatica',
+        commonName: 'European Beech'
+      }
+    }],
+    operator: {
+      nameAndAddress: {
+        name: 'Your Company Ltd.',
+        country: 'HR',
+        address: 'Your Address 123, 10000 Zagreb'
+      },
+      email: 'info@yourcompany.com',
+      phone: '+385 1 234 5678'
+    },
+    geoLocationConfidential: false,
+    associatedStatements: [{
+      referenceNumber: '25NLSN6LX69730',
+      verificationNumber: 'K7R8LA90'
+    }]
   }
 });
+
+console.log('✅ DDS Submitted. Identifier:', result.ddsIdentifier);
 ```
 
-## 📝 Logging System
+## Real-World Examples
 
-The EUDR API Client includes a robust logging system that provides:
+### Trade Operations
 
-- **Pino Integration**: High-performance structured logging when available
-- **Console Fallback**: Lightweight console logging when Pino is not available
-- **Configurable Levels**: Set log levels via `EUDR_LOG_LEVEL` environment variable
-- **Child Loggers**: Contextual logging with additional bindings
-- **Conflict-Free**: Designed to work alongside parent application loggers
-
-### Logging Configuration
-
-```bash
-# Set log level via environment variable
-export EUDR_LOG_LEVEL=debug
-
-# Or inline
-EUDR_LOG_LEVEL=info npm test
-```
-
-### Logging Usage
+**Scenario**: Trading wood products with references to existing DDS statements
 
 ```javascript
-const { logger, createLogger, createChildLogger } = require('eudr-api-client/utils/logger');
+const { EudrSubmissionClient } = require('eudr-api-client');
 
-// Use default logger
-logger.info('Application started');
+const client = new EudrSubmissionClient({
+  endpoint: process.env.EUDR_ENDPOINT,
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: process.env.EUDR_CLIENT_ID
+});
 
-// Create custom logger
-const customLogger = createLogger({ level: 'debug' });
+// Trade submission with multiple associated statements
+const tradeResult = await client.submitDds({
+  operatorType: "TRADER",
+  statement: {
+    internalReferenceNumber: "DLE20/358",
+    activityType: "TRADE",
+    countryOfActivity: "HR",
+    borderCrossCountry: "HR",
+    comment: "Trade submission with multiple associated statements",
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: "Traded wood products from main warehouse",
+        goodsMeasure: {
+          netWeight: 20,
+          volume: 15
+        }
+      },
+      hsHeading: "4401",
+      speciesInfo: {
+        scientificName: "Fagus silvatica",
+        commonName: "BUKVA OBIČNA"
+      }
+    }],
+    operator: {
+      nameAndAddress: {
+        name: "GreenWood Solutions Ltd.",
+        country: "HR",
+        address: "Trg Republike 15, 10000 Zagreb"
+      },
+      email: "info@greenwood-solutions.hr",
+      phone: "+385 (001) 480-4111"
+    },
+    geoLocationConfidential: false,
+    associatedStatements: [
+      {
+        referenceNumber: "25NLSN6LX69730",
+        verificationNumber: "K7R8LA90"
+      },
+      {
+        referenceNumber: "25NLWPAZWQ8865",
+        verificationNumber: "GLE9SMMM"
+      }
+    ]
+  }
+});
 
-// Create child logger with context
-const requestLogger = createChildLogger({ requestId: 'req-123' });
+console.log(`✅ Trade DDS submitted. Identifier: ${tradeResult.ddsIdentifier}`);
 ```
 
-For detailed logging documentation, see [tests/LOGGER_README.md](tests/LOGGER_README.md).
+### Import Operations
 
-## 🧪 Testing
+**Scenario**: Importing wood products with geolocation data
 
-### Test Structure
+```javascript
+// Import submission with producer geolocations
+const importResult = await client.submitDds({
+  operatorType: "OPERATOR",
+  statement: {
+    internalReferenceNumber: "DLE20/359",
+    activityType: "IMPORT",
+    countryOfActivity: "HR",
+    borderCrossCountry: "HR",
+    comment: "Import with geolocations",
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: "Imported wood products from France",
+        goodsMeasure: {
+          netWeight: 30,
+          volume: 15
+        }
+      },
+      hsHeading: "4401",
+      speciesInfo: {
+        scientificName: "Fagus silvatica",
+        commonName: "BUKVA OBIČNA"
+      },
+      producers: [{
+        country: "FR",
+        name: "French Wood Producer",
+        // Base64 encoded GeoJSON polygon
+        geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE4Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+      }]
+    }],
+    operator: {
+      nameAndAddress: {
+        name: "GreenWood Solutions Ltd.",
+        country: "HR",
+        address: "Trg Republike 15, 10000 Zagreb"
+      },
+      email: "info@greenwood-solutions.hr",
+      phone: "+385 (001) 480-4111"
+    },
+    geoLocationConfidential: false
+  }
+});
 
-The test suite is organized to ensure proper testing order:
+console.log(`✅ Import DDS submitted. Identifier: ${importResult.ddsIdentifier}`);
+```
 
-1. **Logger Tests** (`tests/logger.test.js`) - Run FIRST to validate logging infrastructure
-2. **Integration Tests** - Real API calls to EUDR system
-3. **Service Tests** - Individual service functionality
+### Domestic Production
 
-### Running Tests
+**Scenario**: Domestic wood production with multiple species
+
+```javascript
+// Domestic production with multiple commodities
+const domesticResult = await client.submitDds({
+  operatorType: "OPERATOR",
+  statement: {
+    internalReferenceNumber: "DLE20/357",
+    activityType: "DOMESTIC",
+    countryOfActivity: "HR",
+    borderCrossCountry: "HR",
+    comment: "",
+    commodities: [
+      {
+        descriptors: {
+          descriptionOfGoods: "Otprema prostornog drva s glavnog stovarišta (popratnica DLE20/357) - BUKVA OBIČNA",
+          goodsMeasure: {
+            volume: 20,
+            netWeight: 16
+          }
+        },
+        hsHeading: "4401",
+        speciesInfo: {
+          scientificName: "Fagus silvatica",
+          commonName: "BUKVA OBIČNA"
+        },
+        producers: [{
+          country: "HR",
+          name: "GreenWood Solutions Ltd.",
+          geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE4Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+        }]
+      },
+      {
+        descriptors: {
+          descriptionOfGoods: "Otprema prostornog drva s glavnog stovarišta (popratnica DLE20/357) - BUKVA OSTALE",
+          goodsMeasure: {
+            volume: 15,
+            netWeight: 12
+          }
+        },
+        hsHeading: "4401",
+        speciesInfo: {
+          scientificName: "Fagus sp.",
+          commonName: "BUKVA OSTALE"
+        },
+        producers: [{
+          country: "HR",
+          name: "GreenWood Solutions Ltd.",
+          geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE4Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+        }]
+      }
+    ],
+    operator: {
+      nameAndAddress: {
+        name: "GreenWood Solutions Ltd.",
+        country: "HR",
+        address: "Trg Republike 15, 10000 Zagreb"
+      },
+      email: "info@greenwood-solutions.hr",
+      phone: "+385 (001) 480-4111"
+    },
+    geoLocationConfidential: false
+  }
+});
+
+console.log(`✅ Domestic DDS submitted. Identifier: ${domesticResult.ddsIdentifier}`);
+```
+
+### Authorized Representatives
+
+**Scenario**: Submitting on behalf of another operator
+
+```javascript
+// Authorized representative submission
+const representativeResult = await client.submitDds({
+  operatorType: "OPERATOR",
+  statement: {
+    internalReferenceNumber: "DLE20/360",
+    activityType: "IMPORT",
+    operator: {
+      // Reference to the actual operator
+      referenceNumber: {
+        identifierType: "eori",
+        identifierValue: "HR123456789"
+      },
+      nameAndAddress: {
+        name: "Croatian Import Company",
+        country: "HR",
+        address: "Ulica Kneza Branimira 2, 10000 Zagreb"
+      },
+      email: "contact@croatianimport.hr",
+      phone: "+385 (001) 480-4111"
+    },
+    countryOfActivity: "HR",
+    borderCrossCountry: "HR",
+    comment: "Import by authorized representative",
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: "Wood products imported by representative",
+        goodsMeasure: {
+          netWeight: 25,
+          volume: 12
+        }
+      },
+      hsHeading: "4401",
+      speciesInfo: {
+        scientificName: "Fagus silvatica",
+        commonName: "BUKVA OBIČNA"
+      },
+      producers: [{
+        country: "GH",
+        name: "Ghana Wood Board",
+        geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1stMS4xODY0LDYuNTI0NF0sWy0xLjE4NzQsNi41MjQ0XSxbLTEuMTg3NCw2LjUzNDRdLFstMS4xODY0LDYuNTM0NF0sWy0xLjE4NjQsNi41MjQ0XV1dfSwicHJvcGVydGllcyI6eyJuYW1lIjoiR2hhbmEgV29vZCBCb2FyZCJ9fV19"
+      }]
+    }],
+    geoLocationConfidential: false
+  }
+});
+
+console.log(`✅ Representative DDS submitted. Identifier: ${representativeResult.ddsIdentifier}`);
+```
+
+## API Services
+
+### 1. Submission Service
+
+Submit, amend, and retract DDS statements.
+
+**V1 Client (`EudrSubmissionClient`)**
+```javascript
+const { EudrSubmissionClient } = require('eudr-api-client');
+const submissionClient = new EudrSubmissionClient(config);
+
+// Submit DDS
+const submitResult = await submissionClient.submitDds(requestObject, { rawResponse: false });
+
+// Amend existing DDS
+const amendResult = await submissionClient.amendDds(submitResult.ddsIdentifier, updatedStatement);
+
+// Retract DDS
+const retractResult = await submissionClient.retractDds(submitResult.ddsIdentifier);
+```
+
+**V2 Client (`EudrSubmissionClientV2`)**
+```javascript
+const { EudrSubmissionClientV2 } = require('eudr-api-client');
+const submissionClientV2 = new EudrSubmissionClientV2(configV2);
+
+// Submit DDS
+const submitResultV2 = await submissionClientV2.submitDds(requestObjectV2);
+
+// Amend existing DDS
+const amendResultV2 = await submissionClientV2.amendDds(submitResultV2.ddsIdentifier, updatedStatementV2);
+
+// Retract DDS
+const retractResultV2 = await submissionClientV2.retractDds(submitResultV2.ddsIdentifier);
+```
+
+### 2. Retrieval Service
+
+Retrieve DDS information and supply chain data.
+
+```javascript
+const { EudrRetrievalService } = require('eudr-api-client');
+const retrievalService = new EudrRetrievalService(config);
+
+// Get DDS info by UUID
+const ddsInfo = await retrievalService.getDdsInfo('some-uuid-string');
+
+// Get DDS info by internal reference
+const ddsList = await retrievalService.getDdsInfoByInternalReferenceNumber('DLE20/357');
+
+// Get full DDS statement by reference and verification number
+const fullDds = await retrievalService.getStatementByIdentifiers('25NLSN6LX69730', 'K7R8LA90');
+
+// Get referenced DDS for supply chain traversal
+const referencedDds = await retrievalService.getReferencedDDS('25NLWPAZWQ8865', 'GLE9SMMM');
+```
+
+### 3. Echo Service
+
+Test connectivity and authentication.
+
+```javascript
+const { EudrEchoService } = require('eudr-api-client');
+const echoService = new EudrEchoService(config);
+
+// Test connection
+const response = await echoService.echo('Hello EUDR');
+
+console.log('Echo response:', response.status);
+```
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file in your project root:
 
 ```bash
-# Run all tests (logger first, then integration)
-npm test
+# EUDR API Credentials
+EUDR_TRACES_USERNAME=your-username
+EUDR_TRACES_PASSWORD=your-password
+EUDR_TRACES_BASE_URL=https://webgate.acceptance.ec.europa.eu
+EUDR_WEB_SERVICE_CLIENT_ID=your-client-id
 
-# Run only logger tests
-npm run test:logger
-
-# Run specific service tests
-npm run test:echo
-npm run test:retrieval
-npm run test:submission
-npm run test:submission:v2
-
-# Use test runner for more control
-npm run test:runner
+# Optional: Logging
+EUDR_LOG_LEVEL=info  # trace, debug, info, warn, error, fatal
 ```
 
-### Test Categories
-
-- **Logger System**: 34 tests covering logging infrastructure
-- **Echo Service**: 11 tests (connection, auth, functionality, performance, errors, security)
-- **Retrieval Service**: 16 tests (DDS retrieval, supply chain, all methods tested)
-- **Submission Service V1**: Multiple tests (DDS submission, amendment, retraction)
-- **Submission Service V2**: Multiple tests (V2 structure, activity-specific rules)
-
-## 📚 API Documentation
-
-### Services
-
-- **EudrSubmissionClient**: Submit and manage DDS statements
-- **EudrRetrievalService**: Retrieve DDS information and supply chain data
-- **EudrEchoService**: Test connectivity and authentication
-
-### Configuration
+### Configuration Options
 
 ```javascript
 const config = {
+  // Required
   endpoint: 'https://your-endpoint.com/tracesnt/ws/EUDRSubmissionServiceV1',
   username: 'your-username',
   password: 'your-password',
   webServiceClientId: 'your-client-id',
-  timestampValidity: 60,        // seconds
-  timeout: 30000               // milliseconds
+  
+  // Optional
+  soapAction: 'http://ec.europa.eu/tracesnt/eudr/submission',
+  timestampValidity: 60,        // seconds (default: 60)
+  timeout: 30000              // milliseconds (default: 30000)
 };
 ```
 
-## 🔐 Security
+## Advanced Usage
 
-- **WSSE Implementation**: Full WS-Security support
-- **Timestamp Validation**: Configurable timestamp validity
-- **Credential Management**: Secure credential handling
-- **Network Security**: HTTPS/TLS support
+### Using V2 API
 
-## 🌍 Environment Variables
+The V2 API has stricter validation and different field requirements:
 
-Create a `.env` file based on `env.example`:
+```javascript
+const { EudrSubmissionClientV2 } = require('eudr-api-client');
 
-```bash
-EUDR_TRACES_USERNAME=your-username
-EUDR_TRACES_PASSWORD=your-password
-EUDR_TRACES_BASE_URL=https://your-eudr-endpoint.com
-EUDR_WEB_SERVICE_CLIENT_ID=your-client-id
-EUDR_LOG_LEVEL=warn  # Optional: trace, debug, info, warn, error, fatal
+const clientV2 = new EudrSubmissionClientV2({
+  endpoint: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRSubmissionServiceV2`,
+  username: process.env.EUDR_TRACES_USERNAME,
+  password: process.env.EUDR_TRACES_PASSWORD,
+  webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID
+});
+
+// V2 requires specific fields based on activity type
+const v2Result = await clientV2.submitDds({
+  operatorType: "OPERATOR",
+  statement: {
+    internalReferenceNumber: "DLE20/357",
+    activityType: "DOMESTIC",
+    operator: {
+      operatorAddress: {  // V2 uses operatorAddress instead of nameAndAddress
+        name: "GreenWood Solutions Ltd.",
+        country: "HR",
+        street: "Trg Republike 15",
+        postalCode: "10000",
+        city: "Zagreb",
+        fullAddress: "Trg Republike 15, 10000 Zagreb"
+      },
+      email: "info@greenwood-solutions.hr",
+      phone: "+385 (001) 480-4111"
+    },
+    countryOfActivity: "HR",
+    borderCrossCountry: "HR",
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: "Wood products",
+        goodsMeasure: {
+          supplementaryUnit: 20,  // V2 uses supplementaryUnit for DOMESTIC
+          supplementaryUnitQualifier: "MTQ"  // Cubic meters
+        }
+      },
+      hsHeading: "4401",
+      speciesInfo: {
+        scientificName: "Fagus silvatica",
+        commonName: "BUKVA OBIČNA"
+      },
+      producers: [{
+        country: "HR",
+        name: "GreenWood Solutions Ltd.",
+        geometryGeojson: "base64-encoded-geojson"
+      }]
+    }],
+    geoLocationConfidential: false
+  }
+});
 ```
 
-## 📦 Dependencies
+### Error Handling
 
-### Required
-- Node.js >= 14.0.0
-- axios, crypto, uuid, xml2js
+The library provides comprehensive error handling:
 
-### Optional
-- pino (for enhanced logging performance)
+```javascript
+try {
+  const result = await client.submitDds(ddsData);
+  console.log('Success:', result);
+} catch (error) {
+  if (error.code === 'EUDR_VALIDATION_ERROR') {
+    console.error('Validation failed:', error.details);
+  } else if (error.code === 'EUDR_AUTH_ERROR') {
+    console.error('Authentication failed:', error.message);
+  } else if (error.code === 'EUDR_NETWORK_ERROR') {
+    console.error('Network error:', error.message);
+  } else {
+    console.error('Unexpected error:', error);
+  }
+}
+```
 
-## 🤝 Contributing
+### Custom Logging
 
-1. **Run logger tests first**: `npm run test:logger`
-2. **Ensure all tests pass**: `npm test`
-3. **Follow coding standards**: Use descriptive names, early returns, handle errors
-4. **Update documentation**: Keep README and test documentation current
+The library uses a flexible logging system based on Pino. You can control the log level using the `EUDR_LOG_LEVEL` environment variable.
 
-## 📄 License
+```javascript
+// logger.js
+const { logger, createLogger } = require('eudr-api-client/utils/logger');
 
-MIT License - see [LICENSE](LICENSE) file for details.
+// The default logger is exported and used throughout the library
+logger.info('Starting EUDR submission');
 
-## 🔗 Links
+// You can create a separate logger if needed, but the library clients
+// will still use the default one.
+const customLogger = createLogger({ 
+  level: 'debug',
+  name: 'my-app'
+});
 
-- [EUDR Official Documentation](https://ec.europa.eu/environment/forests/eu-regulation-deforestation-free-products_en)
-- [GitHub Repository](https://github.com/eudr-api-client/eudr-api-client)
-- [Issue Tracker](https://github.com/eudr-api-client/eudr-api-client/issues)
+customLogger.debug('This is a debug message from a custom logger.');
+```
 
-## 📞 Support
+To see detailed logs from the library, set the environment variable:
+```bash
+# Set log level for the current session
+export EUDR_LOG_LEVEL=debug
 
-- **Email**: support@eudr-api.eu
-- **GitHub Issues**: [Create an issue](https://github.com/eudr-api-client/eudr-api-client/issues)
-- **Documentation**: [tests/LOGGER_README.md](tests/LOGGER_README.md) for logging details
+# Run your application
+node your-app.js
+```
+
+### Batch Operations
+
+Process multiple DDS submissions efficiently:
+
+```javascript
+const submissions = [
+  { /* DDS data 1 */ },
+  { /* DDS data 2 */ },
+  { /* DDS data 3 */ }
+];
+
+const results = await Promise.all(
+  submissions.map(async (dds) => {
+    try {
+      return await client.submitDds(dds);
+    } catch (error) {
+      return { error: error.message, dds };
+    }
+  })
+);
+
+// Process results
+results.forEach((result, index) => {
+  if (result.error) {
+    console.error(`❌ Submission ${index + 1} failed:`, result.error);
+  } else {
+    console.log(`✅ Submission ${index + 1} success:`, result.referenceNumber);
+  }
+});
+```
+
+### Writing Tests
+
+```javascript
+const { expect } = require('chai');
+const { EudrSubmissionClient } = require('eudr-api-client');
+
+describe('My EUDR Tests', function() {
+  let client;
+  
+  before(function() {
+    client = new EudrSubmissionClient(config);
+  });
+  
+  it('should submit DDS successfully', async function() {
+    const result = await client.submitDds(testData);
+    expect(result).to.have.property('ddsIdentifier');
+    expect(result.ddsIdentifier).to.be.a('string');
+  });
+});
+```
+
+## Troubleshooting
+
+### Common Issues
+
+#### 1. Authentication Errors
+
+```
+Error: Authentication failed: Invalid credentials
+```
+
+**Solution**: Verify your username, password, and webServiceClientId are correct.
+
+#### 2. Network Timeouts
+
+```
+Error: Request timeout of 30000ms exceeded
+```
+
+**Solution**: Increase the timeout in configuration:
+
+```javascript
+const client = new EudrSubmissionClient({
+  ...config,
+  timeout: 60000  // 60 seconds
+});
+```
+
+#### 3. Validation Errors
+
+```
+Error: Validation failed: Missing required field 'borderCrossCountry'
+```
+
+**Solution**: Check the API version requirements. V1 and V2 have different field requirements.
+
+#### 4. GeoJSON Encoding
+
+```
+Error: Invalid geometryGeojson format
+```
+
+**Solution**: Ensure GeoJSON is properly Base64 encoded:
+
+```javascript
+const geojson = {
+  type: "FeatureCollection",
+  features: [/* your features */]
+};
+
+const encoded = Buffer.from(JSON.stringify(geojson)).toString('base64');
+```
+
+### Debug Mode
+
+Enable detailed logging for troubleshooting:
+
+```bash
+# Set environment variable
+export EUDR_LOG_LEVEL=trace
+
+# Or in your code
+process.env.EUDR_LOG_LEVEL = 'trace';
+```
+
+### Getting Help
+
+1. Check the [FAQ](#frequently-asked-questions)
+2. Review [test examples](./tests/services/)
+3. Open an [issue on GitHub](https://github.com/eudr-api-client/eudr-api-client/issues)
+4. Contact support: support@eudr-api.eu
+
+## Frequently Asked Questions
+
+### Q: What's the difference between V1 and V2 APIs?
+
+**A**: V2 has stricter validation and different field requirements:
+- V2 requires `operatorAddress` with structured address fields
+- V2 uses `supplementaryUnit` for DOMESTIC activities
+- V2 requires `percentageEstimationOrDeviation` when using `netWeight`
+
+### Q: How do I encode GeoJSON data?
+
+**A**: Use Base64 encoding:
+
+```javascript
+const geojson = { /* your GeoJSON */ };
+const encoded = Buffer.from(JSON.stringify(geojson)).toString('base64');
+```
+
+### Q: Can I use this library in production?
+
+**A**: Yes! The library is production-ready and tested against real EUDR systems.
+
+### Q: How do I handle rate limiting?
+
+**A**: The library includes automatic retry logic. You can customize it:
+
+```javascript
+const client = new EudrSubmissionClient({
+  ...config,
+  retryConfig: {
+    retries: 5,
+    retryDelay: 2000
+  }
+});
+```
+
+### Q: What HS codes are supported?
+
+**A**: The EUDR system supports specific HS codes for regulated commodities:
+- Wood: 4401, 4403, 4406, 4407, 4408, 4409, 4410, 4411, 4412, 4413, 4414, 4415, 4416, 4418, 9403, 9406
+- Cocoa: 1801, 1802, 1803, 1804, 1805, 1806
+- Coffee: 0901
+- Palm oil: 1511, 1513
+- Rubber: 4001, 4005, 4006, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4015, 4016, 4017
+- Soya: 1201, 1208, 1507
+- Cattle: 0102, 0201, 0202, 0206, 4101, 4104, 4107
+
+## API Reference
+
+### 📝 EudrSubmissionClient
+
+The main client for submitting, amending, and retracting DDS statements (V1 API).
+
+#### Methods
+
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `submitDds(request, options)` | Submit a new Due Diligence Statement | `request` (Object), `options` (Object) | Promise with DDS identifier |
+| `amendDds(ddsIdentifier, statement, options)` | Amend an existing DDS | `ddsIdentifier` (String), `statement` (Object), `options` (Object) | Promise with success status |
+| `retractDds(ddsIdentifier, options)` | Retract a submitted DDS | `ddsIdentifier` (String), `options` (Object) | Promise with success status |
+
+#### Detailed Method Reference
+
+**`submitDds(request, options)`**
+```javascript
+const result = await client.submitDds({
+  operatorType: 'TRADER',  // 'OPERATOR' or 'TRADER'
+  statement: {
+    internalReferenceNumber: 'REF-001',
+    activityType: 'TRADE',
+    // ... other statement data
+  }
+}, {
+  rawResponse: false  // Set to true to get raw XML response
+});
+
+// Returns: { httpStatus: 200, ddsIdentifier: 'uuid-string', raw: 'xml...', parsed: {...} }
+```
+
+**`amendDds(ddsIdentifier, statement, options)`**
+```javascript
+const result = await client.amendDds(
+  'existing-dds-uuid',  // DDS identifier from previous submission
+  {
+    // Updated statement data
+    internalReferenceNumber: 'REF-001-UPDATED',
+    // ... other updated fields
+  },
+  {
+    rawResponse: false
+  }
+);
+
+// Returns: { httpStatus: 200, success: true, message: 'DDS amended successfully' }
+```
+
+**`retractDds(ddsIdentifier, options)`**
+```javascript
+const result = await client.retractDds(
+  'dds-uuid-to-retract',
+  {
+    debug: true,        // Enable debug logging
+    rawResponse: false  // Set to true to get raw XML response
+  }
+);
+
+// Returns: { httpStatus: 200, success: true, status: 'SC_200_OK', message: 'DDS retracted successfully' }
+```
+
+---
+
+### 🚀 EudrSubmissionClientV2
+
+The V2 client for submitting, amending, and retracting DDS statements with enhanced validation and structure.
+
+#### Methods
+
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `submitDds(request, options)` | Submit a new DDS (V2) | `request` (Object), `options` (Object) | Promise with DDS identifier |
+| `amendDds(ddsIdentifier, statement, options)` | Amend existing DDS (V2) | `ddsIdentifier` (String), `statement` (Object), `options` (Object) | Promise with success status |
+| `retractDds(ddsIdentifier, options)` | Retract DDS (V2) | `ddsIdentifier` (String), `options` (Object) | Promise with success status |
+
+#### Detailed Method Reference
+
+**`submitDds(request, options)`**
+```javascript
+const result = await clientV2.submitDds({
+  operatorType: 'OPERATOR',
+  statement: {
+    internalReferenceNumber: 'DLE20/357',
+    activityType: 'DOMESTIC',
+    operator: {
+      operatorAddress: {  // V2 uses operatorAddress instead of nameAndAddress
+        name: 'GreenWood Solutions Ltd.',
+        country: 'HR',
+        street: 'Trg Republike 15',
+        postalCode: '10000',
+        city: 'Zagreb',
+        fullAddress: 'Trg Republike 15, 10000 Zagreb'
+      },
+      email: 'info@greenwood-solutions.hr',
+      phone: '+385 (001) 480-4111'
+    },
+    countryOfActivity: 'HR',
+    borderCrossCountry: 'HR',
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: 'Wood products',
+        goodsMeasure: {
+          supplementaryUnit: 20,  // V2 uses supplementaryUnit for DOMESTIC
+          supplementaryUnitQualifier: 'MTQ'  // Cubic meters
+        }
+      },
+      hsHeading: '4401',
+      speciesInfo: {
+        scientificName: 'Fagus silvatica',
+        commonName: 'BUKVA OBIČNA'
+      },
+      producers: [{
+        country: 'HR',
+        name: 'GreenWood Solutions Ltd.',
+        geometryGeojson: 'base64-encoded-geojson'
+      }]
+    }],
+    geoLocationConfidential: false
+  }
+}, {
+  rawResponse: false  // Set to true to get raw XML response
+});
+
+// Returns: { httpStatus: 200, ddsIdentifier: 'uuid-string', raw: 'xml...', parsed: {...} }
+```
+
+**`amendDds(ddsIdentifier, statement, options)`**
+```javascript
+const result = await clientV2.amendDds(
+  'existing-dds-uuid',  // DDS identifier from previous submission
+  {
+    // Updated statement data
+    internalReferenceNumber: 'DLE20/357-UPDATED',
+    // ... other updated fields
+  },
+  {
+    rawResponse: false
+  }
+);
+
+// Returns: { httpStatus: 200, success: true, message: 'DDS amended successfully' }
+```
+
+**`retractDds(ddsIdentifier, options)`**
+```javascript
+const result = await clientV2.retractDds(
+  'dds-uuid-to-retract',
+  {
+    debug: true,        // Enable debug logging
+    rawResponse: false  // Set to true to get raw XML response
+  }
+);
+
+// Returns: { httpStatus: 200, success: true, status: 'SC_200_OK', message: 'DDS retracted successfully' }
+```
+
+---
+
+### 🔍 EudrRetrievalService
+
+Service for retrieving DDS information and supply chain data.
+
+#### Methods
+
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `getDdsInfo(uuids)` | Get DDS by UUID | `uuids` (String or Array) | Promise with DDS details |
+| `getDdsInfoByInternalReferenceNumber(internalReferenceNumber)` | Get DDS by internal reference | `internalReferenceNumber` (String) | Promise with DDS |
+| `getStatementByIdentifiers(referenceNumber, verificationNumber)` | Get full DDS statement by reference and verification number | `referenceNumber` (String), `verificationNumber` (String) | Promise with DDS |
+| `getReferencedDDS(referenceNumber, verificationNumber)` | Get referenced DDS for supply chain traversal | `referenceNumber` (String), `verificationNumber` (String) | Promise with DDS |
+
+#### Detailed Method Reference
+
+**`getDdsInfo(uuids)`**
+```javascript
+const dds = await retrievalService.getDdsInfo('some-uuid-string');
+// or for multiple:
+const ddsList = await retrievalService.getDdsInfo(['uuid-1', 'uuid-2']);
+
+// Returns: Array of DDS info objects
+```
+
+**`getDdsInfoByInternalReferenceNumber(internalReferenceNumber)`**
+```javascript
+const ddsList = await retrievalService.getDdsInfoByInternalReferenceNumber('DLE20/357');
+
+// Returns: Array of matching DDS statements
+```
+
+**`getStatementByIdentifiers(referenceNumber, verificationNumber)`**
+```javascript
+const fullDds = await retrievalService.getStatementByIdentifiers('25NLSN6LX69730', 'K7R8LA90');
+
+// Returns: Complete DDS object with all details
+```
+
+**`getReferencedDDS(referenceNumber, verificationNumber)`**
+```javascript
+const referencedDds = await retrievalService.getReferencedDDS('25NLWPAZWQ8865', 'GLE9SMMM');
+
+// Returns: Referenced DDS object
+```
+
+---
+
+### 🧪 EudrEchoService
+
+Service for testing connectivity and authentication.
+
+#### Methods
+
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `echo(params)` | Test service connectivity | `message` (String) | Promise with echo response |
+
+#### Detailed Method Reference
+
+**`echo(params)`**
+```javascript
+const response = await echoService.echo('Hello EUDR');
+
+// Returns: { message: 'Hello EUDR' }
+```
+
+---
+
+### 📊 Data Types
+
+#### DDS Statement Structure (V1)
+
+```javascript
+{
+  operatorType: 'TRADER' | 'OPERATOR',
+  statement: {
+    internalReferenceNumber: String,
+    activityType: 'TRADE' | 'IMPORT' | 'EXPORT' | 'DOMESTIC',
+    countryOfActivity: String,        // ISO country code (e.g., 'HR', 'FR')
+    borderCrossCountry: String,       // ISO country code
+    comment: String,
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: String,
+        goodsMeasure: {
+          netWeight?: Number,         // in kg
+          volume?: Number,            // in m³
+        }
+      },
+      hsHeading: String,             // HS code (e.g., '4401')
+      speciesInfo: {
+        scientificName: String,
+        commonName: String
+      },
+      producers: [{
+        country: String,
+        name: String,
+        geometryGeojson: String      // Base64 encoded GeoJSON
+      }]
+    }],
+    operator: {
+      nameAndAddress: {              // V1 API
+        name: String,
+        country: String,
+        address: String
+      },
+      email: String,
+      phone: String
+    },
+    geoLocationConfidential: Boolean,
+    associatedStatements: [{         // For TRADE activities
+      referenceNumber: String,
+      verificationNumber: String
+    }]
+  }
+}
+```
+
+#### DDS Statement Structure (V2)
+
+```javascript
+{
+  operatorType: 'OPERATOR' | 'TRADER',
+  statement: {
+    internalReferenceNumber: String,
+    activityType: 'TRADE' | 'IMPORT' | 'EXPORT' | 'DOMESTIC',
+    operator: {
+      operatorAddress: {              // V2 API - structured address
+        name: String,
+        country: String,
+        street: String,
+        postalCode: String,
+        city: String,
+        fullAddress: String
+      },
+      email: String,
+      phone: String
+    },
+    countryOfActivity: String,
+    borderCrossCountry: String,
+    comment: String,
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: String,
+        goodsMeasure: {
+          supplementaryUnit?: Number, // V2 API - required for DOMESTIC
+          supplementaryUnitQualifier?: String, // V2 API - e.g., 'MTQ'
+          netWeight?: Number,         // V2 API - requires percentageEstimationOrDeviation
+          percentageEstimationOrDeviation?: Number // V2 API - required with netWeight
+        }
+      },
+      hsHeading: String,
+      speciesInfo: {
+        scientificName: String,
+        commonName: String
+      },
+      producers: [{
+        country: String,
+        name: String,
+        geometryGeojson: String
+      }]
+    }],
+    geoLocationConfidential: Boolean,
+    associatedStatements: [{         // For TRADE activities
+      referenceNumber: String,
+      verificationNumber: String
+    }]
+  }
+}
+```
+
+#### Response Types
+
+**Successful Submission Response (V1):**
+```javascript
+{
+  httpStatus: 200,
+  ddsIdentifier: 'uuid-string',
+  raw: 'raw-xml-response',
+  parsed: { /* parsed XML object */ }
+}
+```
+
+**Successful Submission Response (V2):**
+```

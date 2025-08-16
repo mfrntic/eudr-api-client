@@ -79,7 +79,7 @@ function validateEnvironment() {
   const missing = required.filter(key => !process.env[key]);
   
   if (missing.length > 0) {
-    console.error('❌ Missing required environment variables:');
+    console.error('⚠️ Missing required environment variables:');
     missing.forEach(key => console.error(`   - ${key}`));
     console.error('');
     console.error('📝 Please create a .env file based on env.example and fill in your credentials');

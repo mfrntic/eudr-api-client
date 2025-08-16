@@ -16,11 +16,7 @@ describe('EudrEchoService - Integration Tests', function () {
   before(function () {
     // Validate environment before running tests
     validateEnvironment();
-    console.log('✅ Environment variables loaded successfully');
-    console.log(`🌐 Using EUDR API: ${process.env.EUDR_TRACES_BASE_URL}`);
-    console.log(`👤 Username: ${process.env.EUDR_TRACES_USERNAME}`);
-    console.log(`🔑 Web Service Client ID: ${process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'}`);
-    console.log("------------------------------------------------------------------------------------------------");
+    console.log("------------------------------------------------------------------------------------------------");    
 
     // Disable client logging during tests to avoid noise
     const { logger } = require('../../utils/logger');
@@ -219,7 +215,7 @@ describe('EudrEchoService - Integration Tests', function () {
   // ERROR HANDLING TESTS
   // ============================================================================
 
-  describe('❌ Error Handling', function () {
+  describe('⚠️ Error Handling', function () {
     it('should reject invalid credentials and provide structured error responses', async function () {
       const invalidClient = new EudrEchoService({
         endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1',
