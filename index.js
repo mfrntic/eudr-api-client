@@ -1,11 +1,11 @@
-const { EudrEchoService, EudrRetrievalService, EudrSubmissionService, EudrSubmissionServiceV2 } = require('./services');
+const { EudrEchoClient, EudrRetrievalClient, EudrSubmissionClient, EudrSubmissionClientV2 } = require('./services');
 const { EudrErrorHandler, logger, createLogger, createChildLogger } = require('./utils');
 
 module.exports = {
-  EudrEchoService,
-  EudrRetrievalService,
-  EudrSubmissionService,
-  EudrSubmissionServiceV2,
+  EudrEchoClient,
+  EudrRetrievalClient,
+  EudrSubmissionClient,
+  EudrSubmissionClientV2,
   EudrErrorHandler,
   logger,
   createLogger,

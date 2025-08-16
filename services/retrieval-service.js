@@ -17,7 +17,7 @@ const { parseString, processors } = require('xml2js');
 /**
  * EUDR Retrieval Service Client class
  */
-class EudrRetrievalService {
+class EudrRetrievalClient {
   /**
    * Create a new EUDR Retrieval Service client
    * @param {Object} config - Configuration object
@@ -712,4 +712,4 @@ class EudrRetrievalService {
   }
 }
 
-module.exports = EudrRetrievalService;
+module.exports = EudrRetrievalClient;

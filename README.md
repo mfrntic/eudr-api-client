@@ -377,20 +377,20 @@ const retractResultV2 = await submissionClientV2.retractDds(submitResultV2.ddsId
 Retrieve DDS information and supply chain data.
 
 ```javascript
-const { EudrRetrievalService } = require('eudr-api-client');
-const retrievalService = new EudrRetrievalService(config);
+const { EudrRetrievalClient } = require('eudr-api-client');
+const retrievalClient = new EudrRetrievalClient(config);
 
 // Get DDS info by UUID
-const ddsInfo = await retrievalService.getDdsInfo('some-uuid-string');
+const ddsInfo = await retrievalClient.getDdsInfo('some-uuid-string');
 
 // Get DDS info by internal reference
-const ddsList = await retrievalService.getDdsInfoByInternalReferenceNumber('DLE20/357');
+const ddsList = await retrievalClient.getDdsInfoByInternalReferenceNumber('DLE20/357');
 
 // Get full DDS statement by reference and verification number
-const fullDds = await retrievalService.getStatementByIdentifiers('25NLSN6LX69730', 'K7R8LA90');
+const fullDds = await retrievalClient.getStatementByIdentifiers('25NLSN6LX69730', 'K7R8LA90');
 
 // Get referenced DDS for supply chain traversal
-const referencedDds = await retrievalService.getReferencedDDS('25NLWPAZWQ8865', 'GLE9SMMM');
+const referencedDds = await retrievalClient.getReferencedDDS('25NLWPAZWQ8865', 'GLE9SMMM');
 ```
 
 ### 3. Echo Service
@@ -398,11 +398,11 @@ const referencedDds = await retrievalService.getReferencedDDS('25NLWPAZWQ8865', 
 Test connectivity and authentication.
 
 ```javascript
-const { EudrEchoService } = require('eudr-api-client');
-const echoService = new EudrEchoService(config);
+const { EudrEchoClient } = require('eudr-api-client');
+const echoClient = new EudrEchoClient(config);
 
 // Test connection
-const response = await echoService.echo('Hello EUDR');
+const response = await echoClient.echo('Hello EUDR');
 
 console.log('Echo response:', response.status);
 ```
@@ -881,7 +881,7 @@ const result = await clientV2.retractDds(
 
 ---
 
-### 🔍 EudrRetrievalService
+### 🔍 EudrRetrievalClient
 
 Service for retrieving DDS information and supply chain data.
 
@@ -898,37 +898,37 @@ Service for retrieving DDS information and supply chain data.
 
 **`getDdsInfo(uuids)`**
 ```javascript
-const dds = await retrievalService.getDdsInfo('some-uuid-string');
+const dds = await retrievalClient.getDdsInfo('some-uuid-string');
 // or for multiple:
-const ddsList = await retrievalService.getDdsInfo(['uuid-1', 'uuid-2']);
+const ddsList = await retrievalClient.getDdsInfo(['uuid-1', 'uuid-2']);
 
 // Returns: Array of DDS info objects
 ```
 
 **`getDdsInfoByInternalReferenceNumber(internalReferenceNumber)`**
 ```javascript
-const ddsList = await retrievalService.getDdsInfoByInternalReferenceNumber('DLE20/357');
+const ddsList = await retrievalClient.getDdsInfoByInternalReferenceNumber('DLE20/357');
 
 // Returns: Array of matching DDS statements
 ```
 
 **`getStatementByIdentifiers(referenceNumber, verificationNumber)`**
 ```javascript
-const fullDds = await retrievalService.getStatementByIdentifiers('25NLSN6LX69730', 'K7R8LA90');
+const fullDds = await retrievalClient.getStatementByIdentifiers('25NLSN6LX69730', 'K7R8LA90');
 
 // Returns: Complete DDS object with all details
 ```
 
 **`getReferencedDDS(referenceNumber, verificationNumber)`**
 ```javascript
-const referencedDds = await retrievalService.getReferencedDDS('25NLWPAZWQ8865', 'GLE9SMMM');
+const referencedDds = await retrievalClient.getReferencedDDS('25NLWPAZWQ8865', 'GLE9SMMM');
 
 // Returns: Referenced DDS object
 ```
 
 ---
 
-### 🧪 EudrEchoService
+### 🧪 EudrEchoClient
 
 Service for testing connectivity and authentication.
 
@@ -942,7 +942,7 @@ Service for testing connectivity and authentication.
 
 **`echo(params)`**
 ```javascript
-const response = await echoService.echo('Hello EUDR');
+const response = await echoClient.echo('Hello EUDR');
 
 // Returns: { message: 'Hello EUDR' }
 ```

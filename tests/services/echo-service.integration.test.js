@@ -4,9 +4,9 @@ const {
   retryApiCall,
   cleanupTestData
 } = require('../test-setup');
-const EudrEchoService = require('../../services/echo-service');
+const { EudrEchoClient } = require('../../services');
 
-describe('EudrEchoService - Integration Tests', function () {
+describe('EudrEchoClient - Integration Tests', function () {
   let echoClient;
   let testReferences = [];
 
@@ -26,7 +26,7 @@ describe('EudrEchoService - Integration Tests', function () {
   });
 
   beforeEach(function () {
-    echoClient = new EudrEchoService({
+    echoClient = new EudrEchoClient({
       endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1',
       soapAction: 'http://ec.europa.eu/tracesnt/eudr/echo',
       username: testConfig.username,
@@ -52,7 +52,7 @@ describe('EudrEchoService - Integration Tests', function () {
   describe('🔧 Configuration & Validation', function () {
     it('should throw error when endpoint is missing', function () {
       expect(() => {
-        new EudrEchoService({
+        new EudrEchoClient({
           username: testConfig.username,
           password: testConfig.password
         });
@@ -61,7 +61,7 @@ describe('EudrEchoService - Integration Tests', function () {
 
     it('should throw error when username is missing', function () {
       expect(() => {
-        new EudrEchoService({
+        new EudrEchoClient({
           endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1',
           password: testConfig.password
         });
@@ -70,7 +70,7 @@ describe('EudrEchoService - Integration Tests', function () {
 
     it('should throw error when password is missing', function () {
       expect(() => {
-        new EudrEchoService({
+        new EudrEchoClient({
           endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1',
           username: testConfig.username
         });
@@ -217,7 +217,7 @@ describe('EudrEchoService - Integration Tests', function () {
 
   describe('⚠️ Error Handling', function () {
     it('should reject invalid credentials and provide structured error responses', async function () {
-      const invalidClient = new EudrEchoService({
+      const invalidClient = new EudrEchoClient({
         endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1',
         soapAction: 'http://ec.europa.eu/tracesnt/eudr/echo',
         username: 'invalid_username',
@@ -243,7 +243,7 @@ describe('EudrEchoService - Integration Tests', function () {
     });
 
     it('should handle network connectivity issues and provide structured error responses', async function () {
-      const invalidEndpointClient = new EudrEchoService({
+      const invalidEndpointClient = new EudrEchoClient({
         endpoint: 'https://invalid-endpoint.com/soap',
         soapAction: 'http://ec.europa.eu/tracesnt/eudr/echo',
         username: testConfig.username,
@@ -291,7 +291,7 @@ describe('EudrEchoService - Integration Tests', function () {
     });
 
     it('should respect custom timestamp validity settings in WSSE headers', async function () {
-      const customTimestampClient = new EudrEchoService({
+      const customTimestampClient = new EudrEchoClient({
         endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1',
         soapAction: 'http://ec.europa.eu/tracesnt/eudr/echo',
         username: testConfig.username,

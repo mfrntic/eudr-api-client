@@ -13,7 +13,7 @@ const { parseString } = require('xml2js');
 /**
  * EUDR Echo Service Client class
  */
-class EudrEchoService {
+class EudrEchoClient {
   /**
    * Create a new EUDR Echo Service client
    * @param {Object} config - Configuration object
@@ -273,4 +273,4 @@ class EudrEchoService {
   }
 }
 
-module.exports = EudrEchoService; 
+module.exports = EudrEchoClient; 

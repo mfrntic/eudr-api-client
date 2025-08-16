@@ -1,8 +1,8 @@
 const { expect } = require('chai');
-const EudrRetrievalService = require('../../services/retrieval-service');
+const { EudrRetrievalClient } = require('../../services');
 
-describe('EudrRetrievalService - Integration Tests', function () {
-  let retrievalService;
+describe('EudrRetrievalClient - Integration Tests', function () {
+  let retrievalClient;
   let testDdsIdentifiers = [];
 
   // Increase timeout for integration tests
@@ -32,7 +32,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
 
     console.log("------------------------------------------------------------------------------------------------");
     // Initialize retrieval service with test configuration
-    retrievalService = new EudrRetrievalService({
+    retrievalClient = new EudrRetrievalClient({
       wsdlUrl: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRRetrievalServiceV1?wsdl`,
       username: process.env.EUDR_TRACES_USERNAME,
       password: process.env.EUDR_TRACES_PASSWORD,
@@ -61,7 +61,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
 
   describe('🔧 Configuration & Validation', function () {
     it('should throw error when wsdlUrl is missing', function () {
-      expect(() => new EudrRetrievalService({
+      expect(() => new EudrRetrievalClient({
         username: 'test',
         password: 'test',
         webServiceClientId: 'test'
@@ -69,7 +69,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
     });
 
     it('should throw error when username is missing', function () {
-      expect(() => new EudrRetrievalService({
+      expect(() => new EudrRetrievalClient({
         wsdlUrl: 'http://test.com?wsdl',
         password: 'test',
         webServiceClientId: 'test'
@@ -77,7 +77,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
     });
 
     it('should throw error when password is missing', function () {
-      expect(() => new EudrRetrievalService({
+      expect(() => new EudrRetrievalClient({
         wsdlUrl: 'http://test.com?wsdl',
         username: 'test',
         webServiceClientId: 'test'
@@ -88,7 +88,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
   describe('🌐 Connection & Authentication', function () {
     it('should successfully connect to EUDR Retrieval API', async function () {
       try {
-        const result = await retrievalService.getDdsInfo(testDdsIdentifiers[0]);
+        const result = await retrievalClient.getDdsInfo(testDdsIdentifiers[0]);
         expect(result).to.be.an('object');
       } catch (error) {
         // If it's an API error (not connection error), that's still a successful connection
@@ -105,7 +105,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
     describe('getDdsInfoByInternalReferenceNumber', function () {
       it('should retrieve DDS by internal reference number', async function () {
         try {
-          const result = await retrievalService.getDdsInfoByInternalReferenceNumber('TEST-REF-001');
+          const result = await retrievalClient.getDdsInfoByInternalReferenceNumber('TEST-REF-001');
           expect(result).to.be.an('object');
         } catch (error) {
           if (error.details && error.details.status === 500) {
@@ -118,7 +118,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
 
       it('should reject invalid reference numbers with proper error response', async function () {
         try {
-          const result = await retrievalService.getDdsInfoByInternalReferenceNumber('INVALID-REF');
+          const result = await retrievalClient.getDdsInfoByInternalReferenceNumber('INVALID-REF');
           expect(result).to.be.an('object');
         } catch (error) {
           if (error.details && error.details.status === 500) {
@@ -133,7 +133,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
     describe('getDdsInfo', function () {
       it('should retrieve DDS by UUID', async function () {
         try {
-          const result = await retrievalService.getDdsInfo(testDdsIdentifiers[0]);
+          const result = await retrievalClient.getDdsInfo(testDdsIdentifiers[0]);
           expect(result).to.be.an('object');
         } catch (error) {
           if (error.details && error.details.status === 500) {
@@ -146,7 +146,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
 
       it('should retrieve multiple DDS by UUIDs', async function () {
         try {
-          const result = await retrievalService.getDdsInfo(testDdsIdentifiers.slice(0, 2));
+          const result = await retrievalClient.getDdsInfo(testDdsIdentifiers.slice(0, 2));
           expect(result).to.be.an('object');
         } catch (error) {
           if (error.details && error.details.status === 500) {
@@ -159,7 +159,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
 
       it('should reject invalid UUIDs with proper error response', async function () {
         try {
-          const result = await retrievalService.getDdsInfo('invalid-uuid-format');
+          const result = await retrievalClient.getDdsInfo('invalid-uuid-format');
           expect(result).to.be.an('object');
         } catch (error) {
           if (error.details && error.details.status === 500) {
@@ -174,7 +174,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
     describe('getStatementByIdentifiers', function () {
       it('should retrieve statement by verification and reference numbers', async function () {
         try {
-          const result = await retrievalService.getStatementByIdentifiers(
+          const result = await retrievalClient.getStatementByIdentifiers(
             this.realReferenceNumber,
             this.realVerificationNumber
           );
@@ -191,7 +191,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
 
       it('should reject invalid verification numbers with proper error response', async function () {
         try {
-          const result = await retrievalService.getStatementByIdentifiers(
+          const result = await retrievalClient.getStatementByIdentifiers(
             'INVALID-REF',
             'INVALID-VER'
           );
@@ -210,7 +210,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
     describe('getReferencedDDS', function () {
       it('should retrieve referenced DDS by reference number', async function () {
         try {
-          const result = await retrievalService.getReferencedDDS(
+          const result = await retrievalClient.getReferencedDDS(
             this.realReferenceNumber,
             'SEC123' // Security number is required
           );
@@ -229,7 +229,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
 
   describe('⚠️ Error Handling', function () {
     it('should handle invalid credentials gracefully', async function () {
-      const invalidService = new EudrRetrievalService({
+      const invalidService = new EudrRetrievalClient({
         wsdlUrl: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRRetrievalServiceV1?wsdl`,
         username: 'invalid_username',
         password: 'invalid_password',
@@ -250,7 +250,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
     });
 
     it('should handle network connectivity issues gracefully', async function () {
-      const invalidService = new EudrRetrievalService({
+      const invalidService = new EudrRetrievalClient({
         wsdlUrl: 'https://invalid-endpoint.com/wsdl',
         username: 'test',
         password: 'test',
@@ -289,7 +289,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
   describe('🔒 Security & WSSE', function () {
     it('should include proper WSSE headers in requests', async function () {
       try {
-        const result = await retrievalService.getDdsInfo(testDdsIdentifiers[0]);
+        const result = await retrievalClient.getDdsInfo(testDdsIdentifiers[0]);
 
         expect(result).to.be.an('object');
       } catch (error) {
@@ -305,7 +305,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
   describe('📊 Data Validation', function () {
     it('should validate UUID formats', async function () {
       try {
-        const result = await retrievalService.getDdsInfo('not-a-valid-uuid');
+        const result = await retrievalClient.getDdsInfo('not-a-valid-uuid');
 
         expect(result).to.be.an('object');
       } catch (error) {
@@ -319,7 +319,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
 
     it('should reject empty reference numbers with proper error response', async function () {
       try {
-        await retrievalService.getDdsInfoByInternalReferenceNumber('');
+        await retrievalClient.getDdsInfoByInternalReferenceNumber('');
         // If we reach here, the test should fail because we expect an error
         throw new Error('Expected validation error but got successful response');
       } catch (error) {
@@ -342,7 +342,7 @@ describe('EudrRetrievalService - Integration Tests', function () {
       const startTime = Date.now();
 
       for (let i = 0; i < 3; i++) {
-        requests.push(retrievalService.getDdsInfo(testDdsIdentifiers[i % testDdsIdentifiers.length]));
+        requests.push(retrievalClient.getDdsInfo(testDdsIdentifiers[i % testDdsIdentifiers.length]));
       }
 
       try {
