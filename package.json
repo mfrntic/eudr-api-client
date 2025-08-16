@@ -1,6 +1,6 @@
 {
   "name": "eudr-api-client",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Enterprise-grade Node.js library for the EU Deforestation Regulation (EUDR) TRACES system. It provides seamless integration for submitting, amending, retrieving, and managing Due Diligence Statements (DDS) with support for both V1 and V2 APIs.",
   "main": "index.js",
   "scripts": {
