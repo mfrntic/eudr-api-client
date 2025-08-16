@@ -1,0 +1,147 @@
+{
+  "name": "eudr-api-client",
+  "version": "1.0.0",
+  "description": "Comprehensive Node.js library for EU Deforestation Regulation (EUDR) system integration. Supports Due Diligence Statements (DDS) submission, retrieval, amendment, and retraction with V1 and V2 API versions.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha \"tests/logger.test.js\" \"tests/**/*.integration.test.js\" --timeout 120000 | pino-pretty",
+    "test:runner": "node tests/run-tests.js",
+    "test:logger": "mocha tests/logger.test.js --grep \"Logger System Tests\" --timeout 30000 | pino-pretty",
+    "test:integration": "mocha \"tests/**/*.integration.test.js\" --timeout 120000 | pino-pretty",
+    "test:integration:all": "mocha tests/integration.test.js --timeout 300000 | pino-pretty",
+    "test:unit": "mocha \"tests/**/*.test.js\" --grep \"Integration Tests\" --invert",
+    "test:echo": "mocha --grep \"EudrEchoService - Integration Tests\" --timeout 60000 | pino-pretty",
+    "test:retrieval": "mocha --grep \"EudrRetrievalService - Integration Tests\" --timeout 60000 | pino-pretty",
+    "test:submission": "mocha --grep \"EudrSubmissionClient - Integration Tests\" --timeout 120000 | pino-pretty",
+    "test:submission:v2": "mocha --grep \"EudrSubmissionClientV2 - Integration Tests\" --timeout 120000 | pino-pretty",
+    "test:watch": "mocha \"tests/logger.test.js\" \"tests/**/*.integration.test.js\" --watch",
+    "test:coverage": "mocha \"tests/logger.test.js\" \"tests/**/*.integration.test.js\" --reporter spec",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "eudr",
+    "eu-deforestation-regulation",
+    "due-diligence",
+    "dds",
+    "soap",
+    "ws-security",
+    "xml",
+    "api-client",
+    "nodejs",
+    "javascript",
+    "typescript",
+    "supply-chain",
+    "commodities",
+    "geolocation",
+    "wood-products",
+    "cocoa",
+    "timber",
+    "forestry",
+    "compliance",
+    "regulatory"
+  ],
+  "author": {
+    "name": "EUDR API Client Team",
+    "email": "support@eudr-api.eu",
+    "url": "https://github.com/eudr-api-client"
+  },
+  "license": "AGPL-3.0-only",
+  "licenses": [
+    {
+      "type": "AGPL-3.0-only",
+      "url": "https://github.com/eudr-api-client/eudr-api-client/blob/main/LICENSE-AGPL.md"
+    },
+    {
+      "type": "Commercial",
+      "url": "https://eudr-api.eu/commercial-license"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eudr-api-client/eudr-api-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eudr-api-client/eudr-api-client/issues"
+  },
+  "homepage": "https://github.com/eudr-api-client/eudr-api-client#readme",
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://github.com/sponsors/eudr-api-client"
+    },
+    {
+      "type": "commercial-license",
+      "url": "https://eudr-api.eu/commercial-license"
+    }
+  ],
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "crypto": "^1.0.1",
+    "pino": "^8.21.0",
+    "pino-pretty": "^13.1.1",
+    "uuid": "^9.0.0",
+    "xml2js": "^0.6.2"
+  },
+  "devDependencies": {
+    "chai": "^4.3.7",
+    "dotenv": "^16.3.1",
+    "mocha": "^10.2.0"
+  },
+  "peerDependencies": {
+    "node": ">=14.0.0"
+  },
+
+  "files": [
+    "index.js",
+    "services/",
+    "utils/",
+    "README.md",
+    "LICENSE-AGPL.md",
+    "LICENSE-COMMERCIAL.md"
+  ],
+  "directories": {
+    "lib": "services"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./services": "./services/index.js",
+    "./utils": "./utils/index.js",
+    "./scenarios": "./services/scenarios.js",
+    "./scenarios-v2": "./services/scenarios-v2.js"
+  },
+  "type": "commonjs",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "contributors": [
+    {
+      "name": "EUDR Development Team",
+      "email": "dev@eudr-api-client.com"
+    }
+  ],
+  "maintainers": [
+    {
+      "name": "EUDR API Client Team",
+      "email": "maintainers@eudr-api-client.com"
+    }
+  ],
+  "os": [
+    "linux",
+    "darwin",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "config": {
+    "unsafe-perm": false
+  },
+  "preferGlobal": false,
+  "private": false
+}
