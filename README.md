@@ -21,7 +21,8 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
-- [Installation](#installation)
+  - [Installation](#installation)
+  - [Basic Setup](#basic-setup)
 - [Real-World Examples](#real-world-examples)
   - [Trade Operations](#trade-operations)
   - [Import Operations](#import-operations)
