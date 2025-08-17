@@ -50,13 +50,13 @@ describe('EudrEchoClient - Integration Tests', function () {
   // ============================================================================
 
   describe('🔧 Configuration & Validation', function () {
-    it('should throw error when endpoint is missing', function () {
+    it('should throw error when endpoint is missing and no webServiceClientId', function () {
       expect(() => {
         new EudrEchoClient({
           username: testConfig.username,
           password: testConfig.password
         });
-      }).to.throw('Missing required configuration: endpoint');
+      }).to.throw('webServiceClientId is required when endpoint is not provided');
     });
 
     it('should throw error when username is missing', function () {
@@ -75,6 +75,16 @@ describe('EudrEchoClient - Integration Tests', function () {
           username: testConfig.username
         });
       }).to.throw('Missing required configuration: password');
+    });
+
+    it('should throw error when custom webServiceClientId without endpoint', function () {
+      expect(() => {
+        new EudrEchoClient({
+          username: testConfig.username,
+          password: testConfig.password,
+          webServiceClientId: 'custom-client'
+        });
+      }).to.throw('webServiceClientId "custom-client" does not support automatic endpoint generation');
     });
   });
 

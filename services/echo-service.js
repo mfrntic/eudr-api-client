@@ -3,12 +3,18 @@
  * 
  * This module provides a reusable class for connecting to the EUDR Echo Service
  * with proper WSSE security headers using direct XML and HTTP requests.
+ * 
+ * Automatic endpoint generation:
+ * - For webServiceClientId 'eudr': production environment
+ * - For webServiceClientId 'eudr-test': acceptance environment
+ * - For custom webServiceClientId: endpoint must be provided manually
  */
 
 const axios = require('axios');
 const crypto = require('node:crypto');
 const { v4: uuidv4 } = require('uuid');
 const { parseString } = require('xml2js');
+const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
 
 /**
  * EUDR Echo Service Client class
@@ -17,25 +23,40 @@ class EudrEchoClient {
   /**
    * Create a new EUDR Echo Service client
    * @param {Object} config - Configuration object
-   * @param {string} config.endpoint - Service endpoint URL
-   * @param {string} config.soapAction - SOAP action URI
+   * @param {string} [config.endpoint] - Service endpoint URL (optional for standard webServiceClientId: 'eudr', 'eudr-test')
+   * @param {string} [config.soapAction] - SOAP action URI (auto-generated for standard webServiceClientId)
    * @param {string} config.username - Authentication username
    * @param {string} config.password - Authentication password
-   * @param {string} config.webServiceClientId - Client ID
-   * @param {number} config.timestampValidity - Timestamp validity in seconds (default: 60)
-   * @param {number} config.timeout - Request timeout in milliseconds (default: 10000)
+   * @param {string} config.webServiceClientId - Client ID ('eudr', 'eudr-test', or custom)
+   * @param {number} [config.timestampValidity=60] - Timestamp validity in seconds
+   * @param {number} [config.timeout=10000] - Request timeout in milliseconds
+   * 
+   * @example
+   * // Automatic endpoint generation for standard client IDs
+   * const client = new EudrEchoClient({
+   *   username: 'user',
+   *   password: 'pass',
+   *   webServiceClientId: 'eudr-test'
+   * });
+   * 
+   * @example
+   * // Manual endpoint override
+   * const client = new EudrEchoClient({
+   *   endpoint: 'https://custom-endpoint.com/ws/service',
+   *   username: 'user',
+   *   password: 'pass',
+   *   webServiceClientId: 'custom-client'
+   * });
    */
   constructor(config) {
+    // Validate and potentially generate endpoint and SOAP action
+    const validatedConfig = validateAndGenerateEndpoint(config, 'echo', 'v1');
+    
     this.config = {
       // Default configuration
-      endpoint: '',
-      soapAction: 'http://ec.europa.eu/tracesnt/eudr/echo',
-      username: '',
-      password: '',
-      webServiceClientId: 'eudr-test',
       timestampValidity: 60, // 1 minute as per requirements
       timeout: 10000, // 10 seconds timeout
-      ...config // Override with provided config
+      ...validatedConfig // Override with validated config (includes endpoint and soapAction)
     };
     
     // Validate required configuration
