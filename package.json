@@ -40,37 +40,33 @@
     "regulatory"
   ],
   "author": {
-    "name": "EUDR API Client Team",
-    "email": "support@eudr-api.eu",
-    "url": "https://github.com/eudr-api-client"
+    "name": "Marko Frntić",
+    "email": "mfrntic@gmail.com",
+    "url": "https://github.com/mfrntic/eudr-api-client"
   },
-  "license": "AGPL-3.0-only",
+  "license": "AGPL-3.0",
   "licenses": [
     {
-      "type": "AGPL-3.0-only",
-      "url": "https://github.com/eudr-api-client/eudr-api-client/blob/main/LICENSE-AGPL.md"
+      "type": "AGPL-3.0",
+      "url": "https://github.com/mfrntic/eudr-api-client/blob/master/LICENCE.md"
     },
     {
-      "type": "Commercial",
+      "type": "commercial-license",
       "url": "https://eudr-api.eu/commercial-license"
     }
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/eudr-api-client/eudr-api-client.git"
+    "url": "https://github.com/mfrntic/eudr-api-client.git"
   },
   "bugs": {
-    "url": "https://github.com/eudr-api-client/eudr-api-client/issues"
+    "url": "https://github.com/mfrntic/eudr-api-client/issues"
   },
-  "homepage": "https://github.com/eudr-api-client/eudr-api-client#readme",
+  "homepage": "https://github.com/mfrntic/eudr-api-client#readme",
   "funding": [
     {
       "type": "individual",
-      "url": "https://github.com/sponsors/eudr-api-client"
-    },
-    {
-      "type": "commercial-license",
-      "url": "https://eudr-api.eu/commercial-license"
+      "url": "https://github.com/sponsors/mfrntic"
     }
   ],
   "engines": {
@@ -116,14 +112,18 @@
   },
   "contributors": [
     {
-      "name": "EUDR Development Team",
-      "email": "dev@eudr-api-client.com"
+      "name": "Marko Frntić",
+      "email": "mfrntic@gmail.com"
     }
   ],
   "maintainers": [
     {
-      "name": "EUDR API Client Team",
-      "email": "maintainers@eudr-api-client.com"
+      "name": "EUDR API Team",
+      "email": "support@eudr-api.eu"
+    },
+    {
+      "name": "Marko Frntić",
+      "email": "mfrntic@gmail.com"
     }
   ],
   "os": [

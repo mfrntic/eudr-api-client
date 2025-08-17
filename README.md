@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/eudr-api-client.svg)](https://www.npmjs.com/package/eudr-api-client)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Node.js Version](https://img.shields.io/node/v/eudr-api-client.svg)](https://nodejs.org)
-[![Test Status](https://img.shields.io/badge/tests-passing-brightgreen.svg)](https://github.com/eudr-api-client/eudr-api-client)
+[![Test Status](https://img.shields.io/badge/tests-passing-brightgreen.svg)](./tests/README.md)
 
 > **Enterprise-grade Node.js library for EU Deforestation Regulation (EUDR) compliance**  
 > Complete integration with EUDR TRACES system for Due Diligence Statements (DDS) management
