@@ -7,12 +7,18 @@
  * Supports both CF3 and CF7 specifications:
  * - CF3 v1.4: getDdsInfo, getDdsInfoByInternalReferenceNumber (with rejection reason & CA communication)
  * - CF7 v1.4: getStatementByIdentifiers, getReferencedDDS (supply chain traversal)
+ * 
+ * Automatic endpoint generation:
+ * - For webServiceClientId 'eudr': production environment
+ * - For webServiceClientId 'eudr-test': acceptance environment
+ * - For custom webServiceClientId: endpoint must be provided manually
  */
 
 const axios = require('axios');
 const crypto = require('node:crypto');
 const { v4: uuidv4 } = require('uuid');
 const { parseString, processors } = require('xml2js');
+const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
 
 /**
  * EUDR Retrieval Service Client class
@@ -21,23 +27,39 @@ class EudrRetrievalClient {
   /**
    * Create a new EUDR Retrieval Service client
    * @param {Object} config - Configuration object
-   * @param {string} config.endpoint - Service endpoint URL (required)
+   * @param {string} [config.endpoint] - Service endpoint URL (optional for standard webServiceClientId: 'eudr', 'eudr-test')
    * @param {string} config.username - Authentication username (required)
    * @param {string} config.password - Authentication password (required)
-   * @param {string} config.webServiceClientId - Client ID (required)
-   * @param {number} config.timestampValidity - Timestamp validity in seconds (default: 60)
-   * @param {number} config.timeout - Request timeout in milliseconds (default: 10000)
+   * @param {string} config.webServiceClientId - Client ID ('eudr', 'eudr-test', or custom)
+   * @param {number} [config.timestampValidity=60] - Timestamp validity in seconds
+   * @param {number} [config.timeout=10000] - Request timeout in milliseconds
+   * 
+   * @example
+   * // Automatic endpoint generation for standard client IDs
+   * const client = new EudrRetrievalClient({
+   *   username: 'user',
+   *   password: 'pass',
+   *   webServiceClientId: 'eudr-test'
+   * });
+   * 
+   * @example
+   * // Manual endpoint override
+   * const client = new EudrRetrievalClient({
+   *   endpoint: 'https://custom-endpoint.com/ws/service',
+   *   username: 'user',
+   *   password: 'pass',
+   *   webServiceClientId: 'custom-client'
+   * });
    */
   constructor(config) {
+    // Validate and potentially generate endpoint and SOAP action
+    const validatedConfig = validateAndGenerateEndpoint(config, 'retrieval', 'v1');
+    
     this.config = {
       // Default configuration (only for non-required fields)
-      endpoint: '',
-      username: '',
-      password: '',
-      webServiceClientId: 'eudr-test',
       timestampValidity: 60, // 1 minute as per requirements
       timeout: 10000, // 10 seconds timeout
-      ...config // Override with provided config
+      ...validatedConfig // Override with validated config (includes endpoint)
     };
 
     // Validate required configuration first

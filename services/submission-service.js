@@ -6,6 +6,11 @@
  * This implementation uses axios for HTTP requests and builds the SOAP
  * envelope manually, which might be useful if the SOAP libraries don't
  * work as expected.
+ * 
+ * Automatic endpoint generation:
+ * - For webServiceClientId 'eudr': production environment
+ * - For webServiceClientId 'eudr-test': acceptance environment
+ * - For custom webServiceClientId: endpoint must be provided manually
  */
 
 // Required dependencies
@@ -15,6 +20,7 @@ const { v4: uuidv4 } = require('uuid');
 const { parseString } = require('xml2js');
 const EudrErrorHandler = require('../utils/error-handler');
 const { logger } = require('../utils/logger');
+const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
 
 /**
  * EUDR Submission Service Client class
@@ -23,25 +29,39 @@ class EudrSubmissionClient {
   /**
    * Create a new EUDR Submission Service client
    * @param {Object} config - Configuration object
-   * @param {string} config.endpoint - Service endpoint URL
-   * @param {string} config.soapAction - SOAP action URI
+   * @param {string} [config.endpoint] - Service endpoint URL (optional for standard webServiceClientId: 'eudr', 'eudr-test')
    * @param {string} config.username - Authentication username
    * @param {string} config.password - Authentication password
-   * @param {string} config.webServiceClientId - Client ID
-   * @param {number} config.timestampValidity - Timestamp validity in seconds (default: 60)
-   * @param {number} config.timeout - Request timeout in milliseconds (default: 10000)
+   * @param {string} config.webServiceClientId - Client ID ('eudr', 'eudr-test', or custom)
+   * @param {number} [config.timestampValidity=60] - Timestamp validity in seconds
+   * @param {number} [config.timeout=10000] - Request timeout in milliseconds
+   * 
+   * @example
+   * // Automatic endpoint generation for standard client IDs
+   * const client = new EudrSubmissionClient({
+   *   username: 'user',
+   *   password: 'pass',
+   *   webServiceClientId: 'eudr-test'
+   * });
+   * 
+   * @example
+   * // Manual endpoint override
+   * const client = new EudrSubmissionClient({
+   *   endpoint: 'https://custom-endpoint.com/ws/service',
+   *   username: 'user',
+   *   password: 'pass',
+   *   webServiceClientId: 'custom-client'
+   * });
    */
   constructor(config) {
+    // Validate and potentially generate endpoint
+    const validatedConfig = validateAndGenerateEndpoint(config, 'submission', 'v1');
+    
     this.config = {
       // Default configuration
-      endpoint: '',
-      soapAction: 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1',
-      username: '',
-      password: '',
-      webServiceClientId: 'eudr-test',
       timestampValidity: 60, // 1 minute as per requirements
       timeout: 10000, // 10 seconds timeout
-      ...config // Override with provided config
+      ...validatedConfig // Override with validated config (includes endpoint)
     };
 
     // Validate required configuration
@@ -54,7 +74,7 @@ class EudrSubmissionClient {
    * @throws {Error} If required configuration is missing
    */
   validateConfig() {
-    const requiredFields = ['endpoint', 'soapAction', 'username', 'password', 'webServiceClientId'];
+    const requiredFields = ['endpoint', 'username', 'password', 'webServiceClientId'];
     for (const field of requiredFields) {
       if (!this.config[field]) {
         throw new Error(`Missing required configuration: ${field}`);
@@ -462,7 +482,6 @@ class EudrSubmissionClient {
 
       // Send the request
       logger.debug('DEBUG: Sending request to:', this.config.endpoint);
-      logger.debug('DEBUG: SOAPAction:', this.config.soapAction);
       logger.debug('DEBUG: Timeout:', this.config.timeout);
       logger.debug('DEBUG: SOAP envelope preview (first 200 chars):', soapEnvelope.substring(0, 200));
       
@@ -471,7 +490,7 @@ class EudrSubmissionClient {
         url: this.config.endpoint,
         headers: {
           'Content-Type': 'text/xml;charset=UTF-8',
-          'SOAPAction': this.config.soapAction
+          'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1'
         },
         data: soapEnvelope,
         timeout: this.config.timeout
@@ -573,7 +592,7 @@ class EudrSubmissionClient {
         url: this.config.endpoint,
         headers: {
           'Content-Type': 'text/xml;charset=UTF-8',
-          'SOAPAction': `${this.config.soapAction}#amendDds`
+          'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1#amendDds'
         },
         data: soapEnvelope,
         timeout: this.config.timeout
@@ -774,7 +793,7 @@ class EudrSubmissionClient {
         url: this.config.endpoint,
         headers: {
           'Content-Type': 'text/xml;charset=UTF-8',
-          'SOAPAction': `${this.config.soapAction}#retractDds`
+          'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1#retractDds'
         },
         data: soapEnvelope,
         timeout: this.config.timeout

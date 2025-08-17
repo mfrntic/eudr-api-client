@@ -1,38 +1,38 @@
 /**
- * Tests for Echo Service endpoint logic
+ * Tests for Submission Service V2 endpoint logic
  */
 
 const { expect } = require('chai');
-const EudrEchoClient = require('../../services/echo-service');
+const EudrSubmissionClientV2 = require('../../services/submission-service-v2');
 
-describe('Echo Client Endpoint Logic', function() {
+describe('Submission Service V2 Endpoint Logic', function() {
   describe('Automatic endpoint generation', function() {
     it('should generate endpoint for eudr-test webServiceClientId', function() {
-      const client = new EudrEchoClient({
+      const client = new EudrSubmissionClientV2({
         username: 'testuser',
         password: 'testpass',
         webServiceClientId: 'eudr-test'
       });
 
-      expect(client.config.endpoint).to.equal('https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EudrEchoService');
+      expect(client.config.endpoint).to.equal('https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV2');
       expect(client.config.webServiceClientId).to.equal('eudr-test');
     });
 
     it('should generate endpoint for eudr webServiceClientId', function() {
-      const client = new EudrEchoClient({
+      const client = new EudrSubmissionClientV2({
         username: 'testuser',
         password: 'testpass',
         webServiceClientId: 'eudr'
       });
 
-      expect(client.config.endpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EudrEchoService');
-        expect(client.config.webServiceClientId).to.equal('eudr');
+      expect(client.config.endpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV2');
+      expect(client.config.webServiceClientId).to.equal('eudr');
     });
   });
 
   describe('Manual endpoint override', function() {
     it('should use provided endpoint when available', function() {
-      const client = new EudrEchoClient({
+      const client = new EudrSubmissionClientV2({
         endpoint: 'https://custom-endpoint.com/ws/service',
         username: 'testuser',
         password: 'testpass',
@@ -44,14 +44,14 @@ describe('Echo Client Endpoint Logic', function() {
     });
 
     it('should override auto-generated endpoint when provided', function() {
-      const client = new EudrEchoClient({
+      const client = new EudrSubmissionClientV2({
         endpoint: 'https://override-endpoint.com/ws/service',
         username: 'testuser',
         password: 'testpass',
         webServiceClientId: 'eudr-test'
       });
 
-      expect(client.config.endpoint).to.equal('https://override-endpoint.com/ws/service');
+      expect(client.config.endpoint).to.equal('https://override-endpoint.com/ws/service');  
       expect(client.config.webServiceClientId).to.equal('eudr-test');
     });
   });
@@ -59,7 +59,7 @@ describe('Echo Client Endpoint Logic', function() {
   describe('Error handling', function() {
     it('should throw error when no endpoint and no webServiceClientId', function() {
       expect(() => {
-        new EudrEchoClient({
+        new EudrSubmissionClientV2({
           username: 'testuser',
           password: 'testpass'
         });
@@ -68,7 +68,7 @@ describe('Echo Client Endpoint Logic', function() {
 
     it('should throw error when no endpoint and non-standard webServiceClientId', function() {
       expect(() => {
-        new EudrEchoClient({
+        new EudrSubmissionClientV2({
           username: 'testuser',
           password: 'testpass',
           webServiceClientId: 'custom-client'
@@ -78,7 +78,7 @@ describe('Echo Client Endpoint Logic', function() {
 
     it('should throw error when username is missing', function() {
       expect(() => {
-        new EudrEchoClient({
+        new EudrSubmissionClientV2({
           password: 'testpass',
           webServiceClientId: 'eudr-test'
         });
@@ -87,7 +87,7 @@ describe('Echo Client Endpoint Logic', function() {
 
     it('should throw error when password is missing', function() {
       expect(() => {
-        new EudrEchoClient({
+        new EudrSubmissionClientV2({
           username: 'testuser',
           webServiceClientId: 'eudr-test'
         });
@@ -97,7 +97,7 @@ describe('Echo Client Endpoint Logic', function() {
 
   describe('Configuration validation', function() {
     it('should set default values for optional parameters', function() {
-      const client = new EudrEchoClient({
+      const client = new EudrSubmissionClientV2({
         username: 'testuser',
         password: 'testpass',
         webServiceClientId: 'eudr-test'
@@ -108,7 +108,7 @@ describe('Echo Client Endpoint Logic', function() {
     });
 
     it('should override default values when provided', function() {
-      const client = new EudrEchoClient({
+      const client = new EudrSubmissionClientV2({
         username: 'testuser',
         password: 'testpass',
         webServiceClientId: 'eudr-test',

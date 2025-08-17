@@ -60,24 +60,7 @@ describe('Endpoint Utils', function() {
       );
     });
   });
-
-  describe('getSoapAction', function() {
-    it('should return correct SOAP actions for echo service', function() {
-      expect(endpointUtils.getSoapAction('echo', 'v1')).to.equal('http://ec.europa.eu/tracesnt/eudr/echo');
-      expect(endpointUtils.getSoapAction('echo', 'v2')).to.equal('http://ec.europa.eu/tracesnt/eudr/echo');
-    });
-
-    it('should return correct SOAP actions for retrieval service', function() {
-      expect(endpointUtils.getSoapAction('retrieval', 'v1')).to.equal('http://ec.europa.eu/tracesnt/eudr/retrieval/v1');
-      expect(endpointUtils.getSoapAction('retrieval', 'v2')).to.equal('http://ec.europa.eu/tracesnt/eudr/retrieval/v1');
-    });
-
-    it('should return correct SOAP actions for submission service', function() {
-      expect(endpointUtils.getSoapAction('submission', 'v1')).to.equal('http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1');
-      expect(endpointUtils.getSoapAction('submission', 'v2')).to.equal('http://ec.europa.eu/tracesnt/certificate/eudr/submission/v2');
-    });
-  });
-
+ 
   describe('generateEndpoint', function() {
     it('should generate correct endpoints for echo service', function() {
       expect(endpointUtils.generateEndpoint('echo', 'v1', 'eudr')).to.equal(
@@ -109,8 +92,7 @@ describe('Endpoint Utils', function() {
 
       const result = endpointUtils.validateAndGenerateEndpoint(config, 'echo', 'v1');
       
-      expect(result.endpoint).to.equal('https://custom-endpoint.com/ws/service');
-      expect(result.soapAction).to.equal('http://ec.europa.eu/tracesnt/eudr/echo');
+      expect(result.endpoint).to.equal('https://custom-endpoint.com/ws/service'); 
     });
 
     it('should generate endpoint for standard client ID when no endpoint provided', function() {
@@ -123,7 +105,7 @@ describe('Endpoint Utils', function() {
       const result = endpointUtils.validateAndGenerateEndpoint(config, 'submission', 'v2');
       
       expect(result.endpoint).to.equal('https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV2');
-      expect(result.soapAction).to.equal('http://ec.europa.eu/tracesnt/certificate/eudr/submission/v2');
+ 
     });
 
     it('should throw error when no endpoint and no webServiceClientId', function() {

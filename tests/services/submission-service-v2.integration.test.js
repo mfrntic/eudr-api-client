@@ -36,13 +36,9 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
 
     // Initialize V2 client with test configuration
     client = new EudrSubmissionClientV2({
-      endpoint: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRSubmissionServiceV2`,
-      soapAction: 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v2',
       username: process.env.EUDR_TRACES_USERNAME,
       password: process.env.EUDR_TRACES_PASSWORD,
-      webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test',
-      timestampValidity: 60,
-      timeout: 30000
+      webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
     });
   });
 
@@ -54,12 +50,19 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
   });
 
   describe('🔧 Configuration & Validation', function () {
-    it('should throw error when endpoint is missing', function () {
+    it('should throw error when endpoint is missing and no webServiceClientId', function () {
+      expect(() => new EudrSubmissionClientV2({
+        username: process.env.EUDR_TRACES_USERNAME,
+        password: process.env.EUDR_TRACES_PASSWORD
+      })).to.throw('webServiceClientId is required when endpoint is not provided');
+    });
+
+    it('should throw error when custom webServiceClientId without endpoint', function () {
       expect(() => new EudrSubmissionClientV2({
         username: process.env.EUDR_TRACES_USERNAME,
         password: process.env.EUDR_TRACES_PASSWORD,
-        webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
-      })).to.throw('Missing required configuration: endpoint');
+        webServiceClientId: 'custom-client'
+      })).to.throw('webServiceClientId "custom-client" does not support automatic endpoint generation');
     });
 
     it('should throw error when username is missing', function () {
@@ -285,8 +288,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
 
     it('should handle network connectivity issues', async function () {
       const invalidClient = new EudrSubmissionClientV2({
-        endpoint: 'https://invalid-endpoint.com/soap',
-        soapAction: 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v2',
+        endpoint: 'https://invalid-endpoint.com/soap', 
         username: process.env.EUDR_TRACES_USERNAME,
         password: process.env.EUDR_TRACES_PASSWORD,
         webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test',

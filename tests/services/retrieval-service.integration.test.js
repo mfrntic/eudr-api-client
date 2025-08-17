@@ -32,13 +32,10 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
 
     console.log("------------------------------------------------------------------------------------------------");
     // Initialize retrieval service with test configuration
-    retrievalClient = new EudrRetrievalClient({
-      endpoint: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRRetrievalServiceV1`,
-      username: process.env.EUDR_TRACES_USERNAME,
-      password: process.env.EUDR_TRACES_PASSWORD,
-      webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test',
-      timestampValidity: 60,
-      timeout: 30000
+      retrievalClient = new EudrRetrievalClient({
+        username: process.env.EUDR_TRACES_USERNAME,
+        password: process.env.EUDR_TRACES_PASSWORD,
+        webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
     });
 
     // For testing, we'll use some sample DDS identifiers

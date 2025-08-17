@@ -35,13 +35,9 @@ describe('EudrSubmissionClient - Integration Tests', function () {
 
     // Initialize client with test configuration
     client = new EudrSubmissionClient({
-      endpoint: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRSubmissionServiceV1`,
-      soapAction: 'http://ec.europa.eu/tracesnt/eudr/submission',
       username: process.env.EUDR_TRACES_USERNAME,
       password: process.env.EUDR_TRACES_PASSWORD,
-      webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test',
-      timestampValidity: 60,
-      timeout: 30000
+      webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
     });
   });
 
@@ -53,12 +49,19 @@ describe('EudrSubmissionClient - Integration Tests', function () {
   });
 
   describe('🔧 Configuration & Validation', function () {
-    it('should throw error when endpoint is missing', function () {
+    it('should throw error when endpoint is missing and no webServiceClientId', function () {
+      expect(() => new EudrSubmissionClient({
+        username: 'test',
+        password: 'test'
+      })).to.throw('webServiceClientId is required when endpoint is not provided');
+    });
+
+    it('should throw error when custom webServiceClientId without endpoint', function () {
       expect(() => new EudrSubmissionClient({
         username: 'test',
         password: 'test',
-        webServiceClientId: 'test'
-      })).to.throw('Missing required configuration: endpoint');
+        webServiceClientId: 'custom-client'
+      })).to.throw('webServiceClientId "custom-client" does not support automatic endpoint generation');
     });
 
     it('should throw error when username is missing', function () {
@@ -79,7 +82,7 @@ describe('EudrSubmissionClient - Integration Tests', function () {
   });
 
   describe('🌐 Connection & Authentication', function () {
-    it('should successfully connect to EUDR Submission API', async function () {
+    it('should successfully connect to EUDR Submission V1 API', async function () {
       try {
         // Test with minimal valid data
         const testData = {
@@ -275,8 +278,7 @@ describe('EudrSubmissionClient - Integration Tests', function () {
 
     it('should handle network connectivity issues', async function () {
       const invalidClient = new EudrSubmissionClient({
-        endpoint: 'https://invalid-endpoint.com/soap',
-        soapAction: 'http://ec.europa.eu/tracesnt/eudr/submission',
+        endpoint: 'https://invalid-endpoint.com/soap', 
         username: 'test',
         password: 'test',
         webServiceClientId: 'test',

@@ -24,7 +24,6 @@ class EudrEchoClient {
    * Create a new EUDR Echo Service client
    * @param {Object} config - Configuration object
    * @param {string} [config.endpoint] - Service endpoint URL (optional for standard webServiceClientId: 'eudr', 'eudr-test')
-   * @param {string} [config.soapAction] - SOAP action URI (auto-generated for standard webServiceClientId)
    * @param {string} config.username - Authentication username
    * @param {string} config.password - Authentication password
    * @param {string} config.webServiceClientId - Client ID ('eudr', 'eudr-test', or custom)
@@ -49,14 +48,14 @@ class EudrEchoClient {
    * });
    */
   constructor(config) {
-    // Validate and potentially generate endpoint and SOAP action
+    // Validate and potentially generate endpoint
     const validatedConfig = validateAndGenerateEndpoint(config, 'echo', 'v1');
 
     this.config = {
       // Default configuration
       timestampValidity: 60, // 1 minute as per requirements
       timeout: 10000, // 10 seconds timeout
-      ...validatedConfig // Override with validated config (includes endpoint and soapAction)
+      ...validatedConfig // Override with validated config (includes endpoint)
     };
 
     // Validate required configuration
@@ -69,7 +68,7 @@ class EudrEchoClient {
    * @throws {Error} If required configuration is missing
    */
   validateConfig() {
-    const requiredFields = ['endpoint', 'soapAction', 'username', 'password', 'webServiceClientId'];
+    const requiredFields = ['endpoint', 'username', 'password', 'webServiceClientId'];
     for (const field of requiredFields) {
       if (!this.config[field]) {
         throw new Error(`Missing required configuration: ${field}`);
@@ -245,7 +244,7 @@ class EudrEchoClient {
         url: this.config.endpoint,
         headers: {
           'Content-Type': 'text/xml;charset=UTF-8',
-          'SOAPAction': this.config.soapAction
+          'SOAPAction': 'http://ec.europa.eu/tracesnt/eudr/echo'
         },
         data: soapEnvelope,
         timeout: this.config.timeout

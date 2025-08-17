@@ -46,7 +46,7 @@ const SOAP_ACTIONS = {
   },
   'retrieval': {
     'v1': 'http://ec.europa.eu/tracesnt/eudr/retrieval/v1',
-    'v2': 'http://ec.europa.eu/tracesnt/eudr/retrieval/v1'
+    'v2': 'http://ec.europa.eu/tracesnt/eudr/retrieval/v2'
   },
   'submission': {
     'v1': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1',
@@ -102,28 +102,7 @@ function getServicePath(service, version) {
   
   return path;
 }
-
-/**
- * Get the SOAP Action URI for the given service and version
- * @param {string} service - The service name (echo, retrieval, submission)
- * @param {string} version - The API version (v1, v2)
- * @returns {string} The SOAP Action URI
- * @throws {Error} If service or version is not supported
- */
-function getSoapAction(service, version) {
-  const actions = SOAP_ACTIONS[service];
-  if (!actions) {
-    throw new Error(`Unknown service: ${service}. Supported services: ${Object.keys(SOAP_ACTIONS).join(', ')}`);
-  }
-  
-  const action = actions[version];
-  if (!action) {
-    throw new Error(`Version ${version} not supported for service ${service}. Supported versions: ${Object.keys(actions).join(', ')}`);
-  }
-  
-  return action;
-}
-
+ 
 /**
  * Generate the complete endpoint URL for the given service, version, and webServiceClientId
  * @param {string} service - The service name (echo, retrieval, submission)
@@ -153,8 +132,7 @@ function validateAndGenerateEndpoint(config, service, version) {
   // If endpoint is provided, use it (manual override)
   if (endpoint) {
     return {
-      ...config,
-      soapAction: getSoapAction(service, version)
+      ...config 
     };
   }
   
@@ -172,12 +150,11 @@ function validateAndGenerateEndpoint(config, service, version) {
   
   // Generate endpoint and SOAP action
   const generatedEndpoint = generateEndpoint(service, version, webServiceClientId);
-  const soapAction = getSoapAction(service, version);
+ 
   
   return {
     ...config,
-    endpoint: generatedEndpoint,
-    soapAction: soapAction
+    endpoint: generatedEndpoint 
   };
 }
 
@@ -210,8 +187,7 @@ function getSupportedVersions(service) {
 module.exports = {
   isStandardClientId,
   getBaseUrl,
-  getServicePath,
-  getSoapAction,
+  getServicePath, 
   generateEndpoint,
   validateAndGenerateEndpoint,
   getSupportedClientIds,

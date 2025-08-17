@@ -250,8 +250,7 @@ describe('EudrEchoClient - Integration Tests', function () {
 
     it('should handle network connectivity issues', async function () {
       const invalidEndpointClient = new EudrEchoClient({
-        endpoint: 'https://invalid-endpoint.com/soap',
-        soapAction: 'http://ec.europa.eu/tracesnt/eudr/echo',
+        endpoint: 'https://invalid-endpoint.com/soap', 
         username: testConfig.username,
         password: testConfig.password,
         webServiceClientId: testConfig.webServiceClientId
@@ -292,8 +291,7 @@ describe('EudrEchoClient - Integration Tests', function () {
 
     it('should respect custom timestamp validity settings in WSSE headers', async function () {
       const customTimestampClient = new EudrEchoClient({
-        endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1',
-        soapAction: 'http://ec.europa.eu/tracesnt/eudr/echo',
+        endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1', 
         username: testConfig.username,
         password: testConfig.password,
         webServiceClientId: testConfig.webServiceClientId,

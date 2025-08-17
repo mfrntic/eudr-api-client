@@ -203,44 +203,7 @@ const client = new EudrSubmissionClient({
 **Vrijeme**: 2-3 sata
 
 ---
-
-### Task 8: Dodati testove za endpoint logiku
-**Opis**: Kreirati comprehensive testove za endpoint logiku u svim servisima.
-
-**Detalji**:
-- Testirati endpoint generiranje u svim servisima
-- Testirati sve kombinacije webServiceClientId
-- Testirati error handling
-- Testirati backward kompatibilnost
-
-**Acceptance Criteria**:
-- [ ] Svi testovi prolaze
-- [ ] Pokrivenost je >90%
-- [ ] Error scenariji su testirani
-- [ ] Backward kompatibilnost je testirana
-
-**Vrijeme**: 2-3 sata
-
----
-
-### Task 9: Integracijski testovi
-**Opis**: Testirati da svi servisi pravilno koriste nove endpoint factory funkcije.
-
-**Detalji**:
-- Ažurirati postojeće integracijske testove
-- Dodati testove za automatsko generiranje endpointova
-- Testirati custom endpoint override funkcionalnost
-
-**Acceptance Criteria**:
-- [ ] Svi integracijski testovi prolaze
-- [ ] Automatsko generiranje endpointova je testirano
-- [ ] Custom endpoint override je testiran
-- [ ] Backward kompatibilnost je testirana
-
-**Vrijeme**: 2-3 sata
-
----
-
+  
 ## Ukupno vrijeme
 **Procijenjeno vrijeme**: 13-22 sata
 
