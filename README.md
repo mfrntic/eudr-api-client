@@ -14,14 +14,12 @@ The EUDR system operates on two environments:
 
 - **🟢 Production (LIVE)**: [https://eudr.webcloud.ec.europa.eu/tracesnt/](https://eudr.webcloud.ec.europa.eu/tracesnt/)
   - **Purpose**: Real submissions with legal value
-  - **Submission Endpoint**: `https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1`
   - **Web Service Client ID**: `eudr`
   - **Use**: Only for products to be placed on the market or exported after entry into application
   - **Note**: Submissions have legal value and can be subject to checks by Competent Authorities
 
 - **🟡 Acceptance (Training)**: [https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/](https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/)
   - **Purpose**: Training and familiarization platform
-  - **Submission Endpoint**: `https://webgate.acceptance.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1`
   - **Web Service Client ID**: `eudr-test`
   - **Use**: Testing and getting familiar with the system
   - **Note**: Submissions have no legal value
@@ -35,6 +33,8 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
 - ✅ **Well-Documented** - Comprehensive documentation with real examples
 - ✅ **Enterprise Features** - Robust error handling, logging, and comprehensive validation
 - ✅ **Easy Integration** - Simple API with real-world examples
+- ✅ **Smart Endpoint Management** - Automatic endpoint generation for standard environments
+- ✅ **Flexible Configuration** - Manual endpoint override when needed
 
 ## Table of Contents
 
@@ -54,6 +54,7 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
   - [Retrieval Service](#retrieval-service)
   - [Data Types](#data-types)
   - [Advanced Usage](#advanced-usage)
+
 - [Testing](#testing)
 - [Troubleshooting](#troubleshooting)
   - [Common Issues](#common-issues)
@@ -72,20 +73,22 @@ npm install eudr-api-client
 ```
 
 ### Basic Setup
-
+ 
 ```javascript
 const { EudrSubmissionClient } = require('eudr-api-client');
 
-// Initialize the client
+// Initialize the client with automatic endpoint generation
 const client = new EudrSubmissionClient({
-  endpoint: 'https://webgate.acceptance.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1', //acceptance
-  //endpoint: https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1 //production
   username: 'your-username',
   password: 'your-password',
-  webServiceClientId: 'eudr-test' //eudr-test = acceptance server, eudr = production server
+     // Use "eudr-test" EUDR Traces acceptance environment, use "eudr" for production environment
+   webServiceClientId: 'eudr-test' // See [Configuration](#configuration) section for details
 });
+```
 
-// Submit your first DDS
+**Submit your first DDS:**
+
+```javascript
 const result = await client.submitDds({
   operatorType: 'TRADER',
   statement: {
@@ -134,7 +137,6 @@ Create a `.env` file in your project root:
 # EUDR API Credentials
 EUDR_TRACES_USERNAME=your-username
 EUDR_TRACES_PASSWORD=your-password
-EUDR_TRACES_BASE_URL=https://webgate.acceptance.ec.europa.eu
 EUDR_WEB_SERVICE_CLIENT_ID=eudr-test
 
 # Optional: Logging
@@ -143,14 +145,102 @@ EUDR_LOG_LEVEL=info  # trace, debug, info, warn, error, fatal
 
 ### Configuration Options
 
+**Automatic Endpoint Generation (Recommended):**
+
 ```javascript
 const config = {
   // Required
-  endpoint: 'https://webgate.acceptance.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1',
   username: 'your-username',
   password: 'your-password',
-  webServiceClientId: 'eudr-test', 
+  webServiceClientId: 'eudr-test', // Automatically generates acceptance endpoint
+  
+  // Optional
+  timestampValidity: 60, // seconds
+  timeout: 10000, // milliseconds
 };
+```
+
+**Manual Endpoint Override (Legacy/Advanced):**
+
+```javascript
+const config = {
+  // Required
+  endpoint: 'https://custom-endpoint.com/ws/service',
+  username: 'your-username',
+  password: 'your-password',
+  webServiceClientId: 'custom-client', // Custom ID requires manual endpoint
+  
+  // Optional
+  timestampValidity: 60,
+  timeout: 10000,
+};
+```
+
+### Configuration Priority
+
+**Priority Order for Endpoint Resolution:**
+
+1. **Manual `endpoint`** (if provided) → Uses specified endpoint
+2. **Standard `webServiceClientId`** → Automatically generates endpoint
+3. **Custom `webServiceClientId`** → Requires manual `endpoint` configuration
+
+**What happens automatically:**
+- **`webServiceClientId: 'eudr'`** → Uses production environment
+- **`webServiceClientId: 'eudr-test'`** → Uses acceptance environment  
+- **Custom `webServiceClientId`** → Requires manual `endpoint` configuration
+
+### Example Configuration Scenarios
+
+```javascript
+// Scenario 1: Automatic endpoint generation (Recommended)
+const autoClient = new EudrSubmissionClient({
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'eudr-test' // Automatically generates acceptance endpoint
+});
+
+// Scenario 2: Manual endpoint override
+const manualClient = new EudrSubmissionClient({
+  endpoint: 'https://custom-server.com/ws/service',
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'custom-id'
+});
+
+// Scenario 3: Production environment
+const productionClient = new EudrSubmissionClient({
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'eudr' // Automatically generates production endpoint
+});
+```
+
+### Accessing Configuration Information
+
+**You can access endpoint configuration information through the `config` export:**
+
+```javascript
+const { config } = require('eudr-api-client');
+
+// Get supported client IDs
+const supportedIds = config.getSupportedClientIds();
+console.log('Supported IDs:', supportedIds); // ['eudr', 'eudr-test']
+
+// Get supported services
+const supportedServices = config.getSupportedServices();
+console.log('Supported Services:', supportedServices); // ['echo', 'retrieval', 'submission']
+
+// Get supported versions for a service
+const echoVersions = config.getSupportedVersions('echo');
+console.log('Echo Service Versions:', echoVersions); // ['v1', 'v2']
+
+// Check if a client ID is standard
+const isStandard = config.isStandardClientId('eudr');
+console.log('Is eudr standard?', isStandard); // true
+
+// Generate endpoint manually (if needed)
+const endpoint = config.generateEndpoint('submission', 'v2', 'eudr-test');
+console.log('Generated endpoint:', endpoint);
 ```
 
 ## Real-World Examples
@@ -162,12 +252,14 @@ const config = {
 ```javascript
 const { EudrSubmissionClient } = require('eudr-api-client');
 
+// 🚀 NEW: Automatic endpoint generation - no need to specify endpoint!
 const client = new EudrSubmissionClient({
-  endpoint: process.env.EUDR_ENDPOINT,
   username: process.env.EUDR_USERNAME,
   password: process.env.EUDR_PASSWORD,
-  webServiceClientId: process.env.EUDR_CLIENT_ID
+  webServiceClientId: process.env.EUDR_CLIENT_ID // Automatically generates endpoint
 });
+
+// See [Configuration](#configuration) section for detailed options
 
 // Trade submission with multiple associated statements
 const tradeResult = await client.submitDds({
@@ -223,8 +315,17 @@ console.log(`✅ Trade DDS submitted. Identifier: ${tradeResult.ddsIdentifier}`)
 **Scenario**: Importing wood products with geolocation data
 
 ```javascript
+// 🚀 NEW: Automatic endpoint generation for import operations
+const importClient = new EudrSubmissionClient({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-test' // Automatically generates acceptance endpoint
+});
+
+// See [Configuration](#configuration) section for detailed options
+
 // Import submission with producer geolocations
-const importResult = await client.submitDds({
+const importResult = await importClient.submitDds({
   operatorType: "OPERATOR",
   statement: {
     internalReferenceNumber: "DLE20/359",
@@ -396,13 +497,48 @@ console.log(`✅ Representative DDS submitted. Identifier: ${representativeResul
 
 ### Services Overview
 
-The EUDR API Client provides three main services for interacting with the EUDR TRACES system:
+**🚀 NEW: All services now support automatic endpoint generation!**
 
-1. **Echo Service** - Test connectivity and authentication
-2. **Submission Service** - Submit, amend, and retract DDS statements (available in V1 and V2)
-3. **Retrieval Service** - Retrieve DDS information and supply chain data
+| Service | Class | Automatic Endpoint | Manual Override |
+|---------|-------|-------------------|-----------------|
+| **Echo Service** | `EudrEchoClient` | ✅ Yes | ✅ Yes |
+| **Submission Service V1** | `EudrSubmissionClient` | ✅ Yes | ✅ Yes |
+| **Submission Service V2** | `EudrSubmissionClientV2` | ✅ Yes | ✅ Yes |
+| **Retrieval Service** | `EudrRetrievalClient` | ✅ Yes | ✅ Yes |
 
-Each service is designed for specific operations within the EUDR compliance workflow.
+**Endpoint Generation Rules:**
+- **`webServiceClientId: 'eudr'`** → Production environment endpoints
+- **`webServiceClientId: 'eudr-test'`** → Acceptance environment endpoints
+- **Custom `webServiceClientId`** → Requires manual `endpoint` configuration
+
+**Example:**
+```javascript
+const { 
+  EudrEchoClient, 
+  EudrSubmissionClient, 
+  EudrSubmissionClientV2, 
+  EudrRetrievalClient 
+} = require('eudr-api-client');
+
+// All services automatically generate endpoints 
+const echoClient = new EudrEchoClient({
+  username: 'user', password: 'pass', webServiceClientId: 'eudr-test'
+});
+
+const submissionV1Client = new EudrSubmissionClient({
+  username: 'user', password: 'pass', webServiceClientId: 'eudr'
+});
+
+const submissionV2Client = new EudrSubmissionClientV2({
+  username: 'user', password: 'pass', webServiceClientId: 'eudr-test'
+});
+
+const retrievalClient = new EudrRetrievalClient({
+  username: 'user', password: 'pass', webServiceClientId: 'eudr'
+});
+```
+
+**For detailed endpoint configuration options, see the [Configuration](#configuration) section.**
 
 ### Echo Service
 
@@ -519,7 +655,7 @@ const result = await client.submitDds({
 const result = await client.amendDds(
   'existing-dds-uuid',  // DDS identifier from previous submission
   {
-    // Updated statement data
+    // dds statement data
     internalReferenceNumber: 'REF-001-UPDATED',
     // ... other updated fields
   },
@@ -1016,55 +1152,102 @@ process.env.EUDR_LOG_LEVEL = 'trace';
 
 #### Q: What's the difference between V1 and V2 APIs?
 
-**A**: V2 has stricter validation and different field requirements:
-- V2 requires `operatorAddress` with structured address fields
-- V2 uses `supplementaryUnit` for DOMESTIC activities
-- V2 requires `percentageEstimationOrDeviation` when using `netWeight`
+**A**: The V2 API introduces several improvements:
+- **Enhanced operator address structure** with separate fields for street, postal code, city
+- **Removed volume field** from goodsMeasure (replaced with supplementaryUnit)
+- **New fullAddress field** for complete address representation
+- **Updated namespaces** to reflect V2 specifications
+- **Improved validation** and error handling
 
 #### Q: How do I encode GeoJSON data?
 
-**A**: Use Base64 encoding:
+**A**: GeoJSON data must be base64-encoded before submission. Here's how:
 
 ```javascript
-const geojson = { /* your GeoJSON */ };
-const encoded = Buffer.from(JSON.stringify(geojson)).toString('base64');
+const geojson = {
+  type: "FeatureCollection",
+  features: [{
+    type: "Feature",
+    geometry: {
+      type: "Polygon",
+      coordinates: [[[14.970459832, 45.192398252], [14.969858275, 45.188344106]]]
+    },
+    properties: { name: "Forest Area" }
+  }]
+};
+
+// Encode to base64
+const encodedGeojson = Buffer.from(JSON.stringify(geojson)).toString('base64');
 ```
 
 #### Q: How do I handle rate limiting?
 
-**A**: The library provides comprehensive error handling. You can implement your own retry logic using try-catch blocks:
+**A**: The library includes built-in retry logic and timeout handling:
 
 ```javascript
-const maxRetries = 3;
-let attempt = 0;
+const client = new EudrSubmissionClient({
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'eudr-test',
+  timeout: 30000, // 30 seconds timeout
+  timestampValidity: 120 // 2 minutes timestamp validity
+});
 
-while (attempt < maxRetries) {
+// For batch operations, add delays between requests
+for (const submission of submissions) {
   try {
-    const result = await client.submitDds(ddsData);
-    console.log('Success:', result);
-    break;
+    const result = await client.submitDds(submission);
+    console.log('Success:', result.ddsIdentifier);
+    
+    // Add delay between requests to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
   } catch (error) {
-    attempt++;
-    if (attempt === maxRetries) {
-      console.error('Max retries reached:', error);
-      throw error;
-    }
-    console.log(`Attempt ${attempt} failed, retrying...`);
-    await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    console.error('Failed:', error.message);
   }
 }
 ```
 
 #### Q: What HS codes are supported?
 
-**A**: The EUDR system supports specific HS codes for regulated commodities:
-- Wood: 4401, 4403, 4406, 4407, 4408, 4409, 4410, 4411, 4412, 4413, 4414, 4415, 4416, 4418, 9403, 9406
-- Cocoa: 1801, 1802, 1803, 1804, 1805, 1806
-- Coffee: 0901
-- Palm oil: 1511, 1513
-- Rubber: 4001, 4005, 4006, 4007, 4008, 4009, 4010, 4011, 4012, 4013, 4015, 4016, 4017
-- Soya: 1201, 1208, 1507
-- Cattle: 0102, 0201, 0202, 0206, 4101, 4104, 4107
+**A**: The library supports all HS codes relevant to EUDR commodities:
+
+- **4401**: Fuel wood, in logs, in billets, in twigs, in faggots or in similar forms
+- **4402**: Wood charcoal (including shell or nut charcoal), whether or not agglomerated
+- **4403**: Wood in the rough, whether or not stripped of bark or sapwood, or roughly squared
+- **4404**: Hoopwood; split poles; piles, pickets and stakes of wood, pointed but not sawn lengthwise
+- **4405**: Wood wool; wood flour
+- **4406**: Railway or tramway sleepers (cross-ties) of wood
+- **4407**: Wood sawn or chipped lengthwise, sliced or peeled, whether or not planed, sanded or end-jointed
+- **4408**: Sheets for veneering (including those obtained by slicing laminated wood), for plywood or for other similar laminated wood and other wood, sawn lengthwise, sliced or peeled, whether or not planed, sanded, spliced or end-jointed, of a thickness exceeding 6 mm
+- **4409**: Wood (including strips and friezes for parquet flooring, not assembled) continuously shaped (tongued, grooved, rebated, chamfered, V-jointed, beaded, moulded, rounded or the like) along any of its edges or faces, whether or not planed, sanded or end-jointed
+- **4410**: Particle board, oriented strand board (OSB) and similar board (for example, waferboard) of wood or other ligneous materials, whether or not agglomerated with resins or other organic binding substances
+- **4411**: Fibreboard of wood or other ligneous materials, whether or not bonded with resins or other organic substances
+- **4412**: Plywood, veneered panels and similar laminated wood
+- **4413**: Densified wood, in blocks, plates, strips or profile shapes
+- **4414**: Wooden frames for paintings, photographs, mirrors or similar objects
+- **4415**: Packing cases, boxes, crates, drums and similar packings, of wood; cable-drums of wood; pallets, box pallets and other load boards, of wood; pallet collars of wood
+- **4416**: Casks, barrels, vats, tubs and other coopers' products and parts thereof, of wood, including staves
+- **4417**: Tools, tool bodies, tool handles, broom or brush bodies and handles, of wood; boot or shoe lasts and trees, of wood
+- **4418**: Builders' joinery and carpentry of wood, including cellular wood panels, assembled parquet panels, shingles and shakes
+- **4419**: Tableware and kitchenware, of wood
+- **4420**: Wood marquetry and inlaid wood; caskets and cases for jewellery or cutlery, and similar articles, of wood; statuettes and other ornaments, of wood; wooden articles of furniture not falling in Chapter 94
+- **4421**: Other articles of wood
+
+#### 🚀 NEW: Q: How does automatic endpoint generation work?
+
+**A**: See the [Configuration](#configuration) section for detailed information. The EUDR API Client automatically generates service endpoints based on your `webServiceClientId`:
+
+- **`webServiceClientId: 'eudr'`** → Automatically uses production environment endpoints
+- **`webServiceClientId: 'eudr-test'`** → Automatically uses acceptance environment endpoints
+- **Custom `webServiceClientId`** → Requires manual `endpoint` configuration
+
+#### 🚀 NEW: Q: Can I still use manual endpoint configuration?
+
+**A**: Yes! Manual endpoint configuration is fully supported and takes priority. See the [Configuration](#configuration) section for details.
+
+#### 🚀 NEW: Q: Which services support automatic endpoint generation?
+
+**A**: All EUDR services support automatic endpoint generation. See the [Configuration](#configuration) section for complete details.
 
 ## Contributing
 
