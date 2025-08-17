@@ -27,8 +27,6 @@ describe('EudrEchoClient - Integration Tests', function () {
 
   beforeEach(function () {
     echoClient = new EudrEchoClient({
-      endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1',
-      soapAction: 'http://ec.europa.eu/tracesnt/eudr/echo',
       username: testConfig.username,
       password: testConfig.password,
       webServiceClientId: testConfig.webServiceClientId,
@@ -62,7 +60,7 @@ describe('EudrEchoClient - Integration Tests', function () {
     it('should throw error when username is missing', function () {
       expect(() => {
         new EudrEchoClient({
-          endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1',
+          endpoint: testConfig.endpoint + '/EudrEchoService',
           password: testConfig.password
         });
       }).to.throw('Missing required configuration: username');
@@ -71,7 +69,7 @@ describe('EudrEchoClient - Integration Tests', function () {
     it('should throw error when password is missing', function () {
       expect(() => {
         new EudrEchoClient({
-          endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1',
+          endpoint: testConfig.endpoint + '/EudrEchoService',
           username: testConfig.username
         });
       }).to.throw('Missing required configuration: password');
@@ -138,13 +136,15 @@ describe('EudrEchoClient - Integration Tests', function () {
   // ============================================================================
 
   describe('📋 Core Functionality', function () {
-    it('should process valid echo messages and handle various response formats', async function () {
+    it('should process valid echo messages', async function () {
       const testMessage = 'Test echo message ' + Date.now();
 
       try {
         const response = await echoClient.echo(testMessage);
+   
         // If successful, response should be an object
-        expect(response).to.be.an('object');
+        expect(response.httpStatus).to.equal(200);
+        expect(response.status).to.contain('testMessage');
       } catch (error) {
         // Expected error for test message, but method should work
         if (error && error.error) {
@@ -159,11 +159,12 @@ describe('EudrEchoClient - Integration Tests', function () {
       testReferences.push(`echo-valid-${Date.now()}`);
     });
 
-    it('should process empty echo messages and handle various response formats', async function () {
+    it('should process empty echo messages', async function () {
       try {
         const response = await echoClient.echo('');
         // If successful, response should be an object
-        expect(response).to.be.an('object');
+        expect(response.httpStatus).to.equal(200);
+        expect(response.status).to.startWith('User');
       } catch (error) {
         // Expected error for empty message, but method should work
         if (error && error.error) {
@@ -178,13 +179,14 @@ describe('EudrEchoClient - Integration Tests', function () {
       testReferences.push(`echo-empty-${Date.now()}`);
     });
 
-    it('should process long echo messages and handle various response formats', async function () {
-      const longMessage = 'A'.repeat(1000) + ' - Long message test';
+    it('should process long echo messages', async function () {
+      const longMessage = 'A'.repeat(10000) + ' - Long message test';
 
       try {
         const response = await echoClient.echo(longMessage);
         // If successful, response should be an object
-        expect(response).to.be.an('object');
+        expect(response.httpStatus).to.equal(200);
+        expect(response.status).to.startWith('User');
       } catch (error) {
         // Expected error for long message, but method should work
         if (error && error.error) {
@@ -199,13 +201,14 @@ describe('EudrEchoClient - Integration Tests', function () {
       testReferences.push(`echo-long-${Date.now()}`);
     });
 
-    it('should process special characters in echo messages and handle various response formats', async function () {
+    it('should process special characters in echo messages', async function () {
       const specialMessage = 'Test message with special chars: !@#$%^&*()_+-=[]{}|;:,.<>?';
 
       try {
         const response = await echoClient.echo(specialMessage);
         // If successful, response should be an object
-        expect(response).to.be.an('object');
+        expect(response.httpStatus).to.equal(200);
+        expect(response.status).to.contain(specialMessage);
       } catch (error) {
         // Expected error for special chars, but method should work
         if (error && error.error) {
@@ -226,10 +229,8 @@ describe('EudrEchoClient - Integration Tests', function () {
   // ============================================================================
 
   describe('⚠️ Error Handling', function () {
-    it('should reject invalid credentials and provide structured error responses', async function () {
-      const invalidClient = new EudrEchoClient({
-        endpoint: testConfig.endpoint + '/EUDRSubmissionServiceV1',
-        soapAction: 'http://ec.europa.eu/tracesnt/eudr/echo',
+    it('should reject invalid credentials', async function () {
+      const invalidClient = new EudrEchoClient({ 
         username: 'invalid_username',
         password: 'invalid_password',
         webServiceClientId: testConfig.webServiceClientId
@@ -238,21 +239,16 @@ describe('EudrEchoClient - Integration Tests', function () {
       try {
         await invalidClient.echo('Test message');
         // If we get here, the API accepted invalid credentials
-        console.log('⚠️ API accepted invalid credentials (unexpected behavior)');
+        console.log('⚠️ API accepted invalid credent  ials (unexpected behavior)');
       } catch (error) {
-        // Error was thrown - check if it has the expected structure
-        if (error && error.error) {
-          expect(error).to.have.property('error', true);
-        } else if (error && error.code) {
-          expect(error.code).to.be.a('string');
-        } else {
-          // Any error indicates the API handled the invalid credentials
-          expect(error).to.be.instanceOf(Error);
-        }
+        expect(error).to.be.instanceOf(Error); 
+        expect(error.httpStatus).to.equal(401);
+        expect(error.details.statusText).to.equal('Invalid credentials');
+        expect(error.details.status).to.equal(401);
       }
     });
 
-    it('should handle network connectivity issues and provide structured error responses', async function () {
+    it('should handle network connectivity issues', async function () {
       const invalidEndpointClient = new EudrEchoClient({
         endpoint: 'https://invalid-endpoint.com/soap',
         soapAction: 'http://ec.europa.eu/tracesnt/eudr/echo',
@@ -265,14 +261,8 @@ describe('EudrEchoClient - Integration Tests', function () {
         await invalidEndpointClient.echo('Test message');
         expect.fail('Should have thrown a network error');
       } catch (error) {
-        // Network error should have specific structure
-        if (error && error.error) {
-          expect(error).to.have.property('error', true);
-        } else if (error && error.code) {
-          expect(error.code).to.be.a('string');
-        } else {
-          expect(error).to.be.instanceOf(Error);
-        }
+        expect(error).to.be.instanceOf(Error); 
+        expect(error.httpStatus).to.equal(500);
       }
     });
   });

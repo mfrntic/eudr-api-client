@@ -5,7 +5,7 @@
 const { expect } = require('chai');
 const EudrEchoClient = require('../../services/echo-service');
 
-describe('Echo Service Endpoint Logic', function() {
+describe('Echo Client Endpoint Logic', function() {
   describe('Automatic endpoint generation', function() {
     it('should generate endpoint for eudr-test webServiceClientId', function() {
       const client = new EudrEchoClient({

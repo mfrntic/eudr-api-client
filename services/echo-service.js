@@ -51,18 +51,18 @@ class EudrEchoClient {
   constructor(config) {
     // Validate and potentially generate endpoint and SOAP action
     const validatedConfig = validateAndGenerateEndpoint(config, 'echo', 'v1');
-    
+
     this.config = {
       // Default configuration
       timestampValidity: 60, // 1 minute as per requirements
       timeout: 10000, // 10 seconds timeout
       ...validatedConfig // Override with validated config (includes endpoint and soapAction)
     };
-    
+
     // Validate required configuration
     this.validateConfig();
   }
-  
+
   /**
    * Validate that required configuration is provided
    * @private
@@ -76,7 +76,7 @@ class EudrEchoClient {
       }
     }
   }
-  
+
   /**
    * Generate a random nonce
    * @private
@@ -85,16 +85,16 @@ class EudrEchoClient {
   generateNonce() {
     // Generate 16 random bytes
     const nonceBytes = crypto.randomBytes(16);
-    
+
     // Convert to base64
     const nonceBase64 = nonceBytes.toString('base64');
-    
+
     return {
       bytes: nonceBytes,
       base64: nonceBase64
     };
   }
-  
+
   /**
    * Get current timestamp in ISO format
    * @private
@@ -103,7 +103,7 @@ class EudrEchoClient {
   getCurrentTimestamp() {
     return new Date().toISOString();
   }
-  
+
   /**
    * Get expiration timestamp based on current time plus validity period
    * @private
@@ -115,7 +115,7 @@ class EudrEchoClient {
     expirationDate.setSeconds(expirationDate.getSeconds() + validityInSeconds);
     return expirationDate.toISOString();
   }
-  
+
   /**
    * Generate password digest according to WS-Security standard
    * @private
@@ -131,14 +131,14 @@ class EudrEchoClient {
       Buffer.from(created),
       Buffer.from(password)
     ]);
-    
+
     // Create SHA-1 hash
     const hash = crypto.createHash('sha1').update(concatenated).digest();
-    
+
     // Convert to base64
     return hash.toString('base64');
   }
-  
+
   /**
    * Create SOAP envelope for the testEcho operation
    * @private
@@ -151,11 +151,11 @@ class EudrEchoClient {
     const created = this.getCurrentTimestamp();
     const expires = this.getExpirationTimestamp(this.config.timestampValidity);
     const passwordDigest = this.generatePasswordDigest(nonce.bytes, created, this.config.password);
-    
+
     // Generate unique IDs for the security elements
     const timestampId = `TS-${uuidv4()}`;
     const usernameTokenId = `UsernameToken-${uuidv4()}`;
-    
+
     // Create the complete SOAP envelope
     return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope 
@@ -186,7 +186,7 @@ class EudrEchoClient {
   </soapenv:Body>
 </soapenv:Envelope>`;
   }
-  
+
   /**
    * Parse XML response to extract the echo status message
    * @private
@@ -200,13 +200,13 @@ class EudrEchoClient {
           reject(new Error(`Failed to parse XML response: ${err.message}`));
           return;
         }
-        
+
         try {
           // Extract the status message from the response
           const envelope = result['S:Envelope'];
           const body = envelope['S:Body'];
           const response = body['ns3:EudrEchoResponse'];
-          
+
           // Handle different response formats
           let status = 'No status message found';
           if (response && response.status) {
@@ -214,7 +214,7 @@ class EudrEchoClient {
           } else if (response && response['ns3:status']) {
             status = response['ns3:status'];
           }
-          
+
           resolve({
             raw: xmlResponse,
             parsed: result,
@@ -226,7 +226,7 @@ class EudrEchoClient {
       });
     });
   }
-  
+
   /**
    * Call the EUDR Echo Service
    * @param {string} message - Message to echo
@@ -238,7 +238,7 @@ class EudrEchoClient {
     try {
       // Create SOAP envelope
       const soapEnvelope = this.createSoapEnvelope(message);
-      
+
       // Send the request
       const response = await axios({
         method: 'post',
@@ -250,7 +250,8 @@ class EudrEchoClient {
         data: soapEnvelope,
         timeout: this.config.timeout
       });
-      
+
+
       // Return raw response if requested
       if (options.rawResponse) {
         return {
@@ -258,37 +259,48 @@ class EudrEchoClient {
           data: response.data
         };
       }
-      
+
       // Parse the XML response
       const parsedResponse = await this.parseResponse(response.data);
-            
+
       return {
         httpStatus: response.status,
         ...parsedResponse
       };
     } catch (error) {
+
+
       // Create a more structured error response
-      const errorResponse = {
-        error: true,
-        message: error.message,
-        details: {}
-      };
-      
+      const errorResponse = new Error(error.message);
+     
+        errorResponse.httpStatus = error.response?.status || 500;
+   
+      errorResponse.error = true;
+
+
       if (error.response) {
-        // The request was made and the server responded with a status code
-        // that falls out of the range of 2xx
+
         errorResponse.details = {
           status: error.response.status,
           statusText: error.response.statusText,
           data: error.response.data
         };
+
+        const errorData = error.response.data; 
+        if (errorData.includes('UnauthenticatedException')) {
+          errorResponse.httpStatus = 401;
+          errorResponse.details.statusText = 'Invalid credentials';
+          errorResponse.details.status = 401;
+        }
+
+   
       } else if (error.request) {
         // The request was made but no response was received
         errorResponse.details = {
           request: 'Request sent but no response received'
         };
       }
-      
+
       throw errorResponse;
     }
   }
