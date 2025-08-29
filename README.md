@@ -81,8 +81,9 @@ const { EudrSubmissionClient } = require('eudr-api-client');
 const client = new EudrSubmissionClient({
   username: 'your-username',
   password: 'your-password',
-     // Use "eudr-test" EUDR Traces acceptance environment, use "eudr" for production environment
-   webServiceClientId: 'eudr-test' // See [Configuration](#configuration) section for details
+  // Use "eudr-test" EUDR Traces acceptance environment, use "eudr" for production environment
+  webServiceClientId: 'eudr-test', // See [Configuration](#configuration) section for details
+  ssl: false // SSL configuration: true for secure (production), false for development
 });
 ```
 
@@ -139,6 +140,9 @@ EUDR_TRACES_USERNAME=your-username
 EUDR_TRACES_PASSWORD=your-password
 EUDR_WEB_SERVICE_CLIENT_ID=eudr-test
 
+# Optional: SSL Configuration
+EUDR_SSL_ENABLED=false  # true for production (secure), false for development
+
 # Optional: Logging
 EUDR_LOG_LEVEL=info  # trace, debug, info, warn, error, fatal
 ```
@@ -155,6 +159,7 @@ const config = {
   webServiceClientId: 'eudr-test', // Automatically generates acceptance endpoint
   
   // Optional
+  ssl: false, // true for production (secure), false for development
   timestampValidity: 60, // seconds
   timeout: 10000, // milliseconds
 };
@@ -171,6 +176,7 @@ const config = {
   webServiceClientId: 'custom-client', // Custom ID requires manual endpoint
   
   // Optional
+  ssl: true, // true for production (secure), false for development
   timestampValidity: 60,
   timeout: 10000,
 };
@@ -196,7 +202,8 @@ const config = {
 const autoClient = new EudrSubmissionClient({
   username: 'user',
   password: 'pass',
-  webServiceClientId: 'eudr-test' // Automatically generates acceptance endpoint
+  webServiceClientId: 'eudr-test', // Automatically generates acceptance endpoint
+  ssl: false // Development environment - allow self-signed certificates
 });
 
 // Scenario 2: Manual endpoint override
@@ -204,14 +211,16 @@ const manualClient = new EudrSubmissionClient({
   endpoint: 'https://custom-server.com/ws/service',
   username: 'user',
   password: 'pass',
-  webServiceClientId: 'custom-id'
+  webServiceClientId: 'custom-id',
+  ssl: false // Custom development server
 });
 
 // Scenario 3: Production environment
 const productionClient = new EudrSubmissionClient({
   username: 'user',
   password: 'pass',
-  webServiceClientId: 'eudr' // Automatically generates production endpoint
+  webServiceClientId: 'eudr', // Automatically generates production endpoint
+  ssl: true // Production environment - validate SSL certificates
 });
 ```
 
@@ -256,7 +265,8 @@ const { EudrSubmissionClient } = require('eudr-api-client');
 const client = new EudrSubmissionClient({
   username: process.env.EUDR_USERNAME,
   password: process.env.EUDR_PASSWORD,
-  webServiceClientId: process.env.EUDR_CLIENT_ID // Automatically generates endpoint
+  webServiceClientId: process.env.EUDR_CLIENT_ID, // Automatically generates endpoint
+  ssl: process.env.EUDR_SSL_ENABLED === 'true' // SSL configuration from environment
 });
 
 // See [Configuration](#configuration) section for detailed options
@@ -319,7 +329,8 @@ console.log(`✅ Trade DDS submitted. Identifier: ${tradeResult.ddsIdentifier}`)
 const importClient = new EudrSubmissionClient({
   username: process.env.EUDR_USERNAME,
   password: process.env.EUDR_PASSWORD,
-  webServiceClientId: 'eudr-test' // Automatically generates acceptance endpoint
+  webServiceClientId: 'eudr-test', // Automatically generates acceptance endpoint
+  ssl: false // Development environment - allow self-signed certificates
 });
 
 // See [Configuration](#configuration) section for detailed options
@@ -522,19 +533,19 @@ const {
 
 // All services automatically generate endpoints 
 const echoClient = new EudrEchoClient({
-  username: 'user', password: 'pass', webServiceClientId: 'eudr-test'
+  username: 'user', password: 'pass', webServiceClientId: 'eudr-test', ssl: false
 });
 
 const submissionV1Client = new EudrSubmissionClient({
-  username: 'user', password: 'pass', webServiceClientId: 'eudr'
+  username: 'user', password: 'pass', webServiceClientId: 'eudr', ssl: true
 });
 
 const submissionV2Client = new EudrSubmissionClientV2({
-  username: 'user', password: 'pass', webServiceClientId: 'eudr-test'
+  username: 'user', password: 'pass', webServiceClientId: 'eudr-test', ssl: false
 });
 
 const retrievalClient = new EudrRetrievalClient({
-  username: 'user', password: 'pass', webServiceClientId: 'eudr'
+  username: 'user', password: 'pass', webServiceClientId: 'eudr', ssl: true
 });
 ```
 
@@ -938,7 +949,8 @@ const clientV2 = new EudrSubmissionClientV2({
   endpoint: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRSubmissionServiceV2`,
   username: process.env.EUDR_TRACES_USERNAME,
   password: process.env.EUDR_TRACES_PASSWORD,
-  webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID
+  webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID,
+  ssl: process.env.EUDR_SSL_ENABLED === 'true' // SSL configuration from environment
 });
 
 // V2 requires specific fields based on activity type
@@ -1107,7 +1119,8 @@ Error: Request timeout of 30000ms exceeded
 ```javascript
 const client = new EudrSubmissionClient({
   ...config,
-  timeout: 60000  // 60 seconds
+  timeout: 60000,  // 60 seconds
+  ssl: true  // Enable SSL validation for production
 });
 ```
 
@@ -1134,6 +1147,29 @@ const geojson = {
 };
 
 const encoded = Buffer.from(JSON.stringify(geojson)).toString('base64');
+```
+
+#### 5. SSL Certificate Errors
+
+```
+Error: unable to verify the first certificate
+Error: certificate verify failed
+```
+
+**Solution**: Configure SSL settings based on your environment:
+
+```javascript
+// For production - always validate certificates
+const client = new EudrSubmissionClient({
+  ...config,
+  ssl: true  // Secure - validates SSL certificates
+});
+
+// For development with self-signed certificates
+const client = new EudrSubmissionClient({
+  ...config,
+  ssl: false  // Allow unauthorized certificates
+});
 ```
 
 ### Debug Mode
@@ -1189,6 +1225,7 @@ const client = new EudrSubmissionClient({
   username: 'user',
   password: 'pass',
   webServiceClientId: 'eudr-test',
+  ssl: false, // Development environment
   timeout: 30000, // 30 seconds timeout
   timestampValidity: 120 // 2 minutes timestamp validity
 });
@@ -1248,6 +1285,46 @@ for (const submission of submissions) {
 #### 🚀 NEW: Q: Which services support automatic endpoint generation?
 
 **A**: All EUDR services support automatic endpoint generation. See the [Configuration](#configuration) section for complete details.
+
+#### 🚀 NEW: Q: How do I configure SSL certificate validation?
+
+**A**: All EUDR services support SSL configuration through the `ssl` parameter:
+
+```javascript
+// Production environment - validate SSL certificates (secure)
+const productionClient = new EudrSubmissionClient({
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'eudr',
+  ssl: true  // Reject unauthorized certificates
+});
+
+// Development environment - allow self-signed certificates
+const devClient = new EudrSubmissionClient({
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'eudr-test',
+  ssl: false  // Allow unauthorized certificates
+});
+
+// Using environment variables
+const client = new EudrSubmissionClient({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: process.env.EUDR_CLIENT_ID,
+  ssl: process.env.EUDR_SSL_ENABLED === 'true'
+});
+```
+
+**SSL Configuration Options:**
+- **`ssl: true`** → Validates SSL certificates (recommended for production)
+- **`ssl: false`** → Allows unauthorized certificates (useful for development)
+- **Not specified** → Defaults to `false` (backward compatible)
+
+**Security Recommendations:**
+- Always use `ssl: true` in production environments
+- Use `ssl: false` only for development with self-signed certificates
+- Set `EUDR_SSL_ENABLED=true` in production environment variables
 
 ## Contributing
 

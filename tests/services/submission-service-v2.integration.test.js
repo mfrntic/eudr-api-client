@@ -116,6 +116,8 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
           }
         });
 
+ 
+
         expect(result).to.be.an('object');
         expect(result).to.have.property('ddsIdentifier');
         expect(result.ddsIdentifier).to.be.a('string');
@@ -127,6 +129,8 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
         logger.info('✅ Successfully connected to EUDR Submission V2 API');
         logger.info(`📋 DDS Identifier: ${result.ddsIdentifier}`);
       } catch (error) {
+
+        console.log("ERROR", error);
         // If it's a validation error from the API, that's still a successful connection
         if (error.response && error.response.status === 500) {
           logger.info('✅ Successfully connected to EUDR Submission V2 API (with validation error)');

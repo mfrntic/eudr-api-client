@@ -35,6 +35,7 @@ class EudrSubmissionClient {
    * @param {string} config.webServiceClientId - Client ID ('eudr', 'eudr-test', or custom)
    * @param {number} [config.timestampValidity=60] - Timestamp validity in seconds
    * @param {number} [config.timeout=10000] - Request timeout in milliseconds
+   * @param {boolean} [config.ssl=false] - SSL configuration: true for secure (default), false to allow unauthorized certificates
    * 
    * @example
    * // Automatic endpoint generation for standard client IDs
@@ -61,6 +62,7 @@ class EudrSubmissionClient {
       // Default configuration
       timestampValidity: 60, // 1 minute as per requirements
       timeout: 10000, // 10 seconds timeout
+      ssl: false, // Default to insecure for backward compatibility
       ...validatedConfig // Override with validated config (includes endpoint)
     };
 
@@ -493,7 +495,10 @@ class EudrSubmissionClient {
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1'
         },
         data: soapEnvelope,
-        timeout: this.config.timeout
+        timeout: this.config.timeout,
+        httpsAgent: new (require('https').Agent)({
+          rejectUnauthorized: this.config.ssl
+        })
       });
 
       // Return raw response if requested
@@ -595,7 +600,10 @@ class EudrSubmissionClient {
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1#amendDds'
         },
         data: soapEnvelope,
-        timeout: this.config.timeout
+        timeout: this.config.timeout,
+        httpsAgent: new (require('https').Agent)({
+          rejectUnauthorized: this.config.ssl
+        })
       });
 
       // Return raw response if requested
@@ -796,7 +804,10 @@ class EudrSubmissionClient {
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1#retractDds'
         },
         data: soapEnvelope,
-        timeout: this.config.timeout
+        timeout: this.config.timeout,
+        httpsAgent: new (require('https').Agent)({
+          rejectUnauthorized: this.config.ssl
+        })
       });
 
       // Log response for debugging if requested

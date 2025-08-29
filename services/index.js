@@ -17,13 +17,15 @@
  * const echoClient = new EudrEchoClient({
  *   username: 'user',
  *   password: 'pass',
- *   webServiceClientId: 'eudr-test'
+ *   webServiceClientId: 'eudr-test',
+ *   ssl: false // Allow unauthorized certificates
  * });
  * 
  * const submissionClient = new EudrSubmissionClient({
  *   username: 'user',
  *   password: 'pass',
- *   webServiceClientId: 'eudr'
+ *   webServiceClientId: 'eudr',
+ *   ssl: true // Use secure SSL/TLS
  * });
  * 
  * @example
@@ -32,7 +34,8 @@
  *   endpoint: 'https://custom-endpoint.com/ws/service',
  *   username: 'user',
  *   password: 'pass',
- *   webServiceClientId: 'custom-client'
+ *   webServiceClientId: 'custom-client',
+ *   ssl: false // Allow unauthorized certificates for development
  * });
  * 
  * @example
