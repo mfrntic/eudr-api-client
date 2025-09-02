@@ -154,8 +154,8 @@ class EudrErrorHandler {
       }
     }
 
-    // Parse all error details using regex to find all Error elements
-    const errorRegex = /<ns4:Error>[\s\S]*?<ns4:ID>(.*?)<\/ns4:ID>[\s\S]*?<ns4:Message[^>]*>(.*?)<\/ns4:Message>([\s\S]*?)<\/ns4:Error>/g;
+    // Parse all error details using regex to find all Error elements (flexible namespace)
+    const errorRegex = /<ns\d+:Error>[\s\S]*?<ns\d+:ID>(.*?)<\/ns\d+:ID>[\s\S]*?<ns\d+:Message[^>]*>(.*?)<\/ns\d+:Message>([\s\S]*?)<\/ns\d+:Error>/g;
     let errorMatch;
     let foundErrors = false;
 
@@ -166,8 +166,8 @@ class EudrErrorHandler {
         message: errorMatch[2]
       };
 
-      // Check for optional Field tag if present
-      const fieldMatch = errorMatch[3]?.match(/<ns4:Field[^>]*>(.*?)<\/ns4:Field>/);
+      // Check for optional Field tag if present (flexible namespace)
+      const fieldMatch = errorMatch[3]?.match(/<ns\d+:Field[^>]*>(.*?)<\/ns\d+:Field>/);
       if (fieldMatch) {
         errorDetail.field = fieldMatch[1];
       }

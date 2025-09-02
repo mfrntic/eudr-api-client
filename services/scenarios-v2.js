@@ -301,22 +301,7 @@ const representativeTraderScenario = {
   statement: {
     internalReferenceNumber: 'HRREP001',
     activityType: 'TRADE',
-    operator: {
-      referenceNumber: {
-        identifierType: 'vat',
-        identifierValue: 'HR12345678901'
-      },
-      operatorAddress: {
-        name: 'GreenWood Solutions Ltd.',
-        country: 'BE',
-        street: 'Import Street 1',
-        postalCode: '1000',
-        city: 'Brussels',
-        fullAddress: 'Import Street 1, 1000 Brussels'
-      },
-      email: 'info@greenwood-solutions.be',
-      phone: '+32 (001) 123-4567'
-    },
+   
     countryOfActivity: 'HR',
     comment: 'Trade operation on behalf of client',
     commodities: [
@@ -342,6 +327,18 @@ const representativeTraderScenario = {
         ]
       }
     ],
+    operator: {
+      operatorAddress: {
+        name: 'GreenWood Solutions Ltd.',
+        country: 'BE',
+        street: 'Import Street 1',
+        postalCode: '1000',
+        city: 'Brussels',
+        fullAddress: 'Import Street 1, 1000 Brussels'
+      },
+      email: 'info@greenwood-solutions.be',
+      phone: '+32 (001) 123-4567'
+    },
     geoLocationConfidential: false
   }
 };

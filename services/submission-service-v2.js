@@ -442,14 +442,22 @@ class EudrSubmissionClientV2 {
 
         try {
           // Extract the DDS identifier from the response
-          const envelope = result['S:Envelope'];
-          const body = envelope['S:Body'];
-          const response = body['ns5:SubmitStatementResponse'];
+          const envelope = result['S:Envelope'] || result['soapenv:Envelope'];
+          const body = envelope['S:Body'] || envelope['soapenv:Body'];
+          
+          // Find response with flexible namespace support
+          const responseKeys = Object.keys(body);
+          const submitResponseKey = responseKeys.find(key => key.endsWith(':SubmitStatementResponse'));
+          const response = body[submitResponseKey];
+          
+          // Find ddsIdentifier with flexible namespace support
+          const ddsIdentifierKey = response ? Object.keys(response).find(key => key.endsWith(':ddsIdentifier')) : null;
+          const ddsIdentifier = response && ddsIdentifierKey ? response[ddsIdentifierKey] : null;
 
           resolve({
             raw: xmlResponse,
             parsed: result,
-            ddsIdentifier: response?.['ns5:ddsIdentifier'] || null
+            ddsIdentifier: ddsIdentifier
           });
         } catch (error) {
           reject(new Error(`Failed to extract DDS identifier from response: ${error.message}`));

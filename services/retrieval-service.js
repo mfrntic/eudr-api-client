@@ -292,18 +292,27 @@ class EudrRetrievalClient {
           const body = envelope['S:Body'] || envelope['soapenv:Body'];
 
           // Check response type and extract appropriate data
+          // Support multiple namespace prefixes (ns4, ns5, etc.)
           let ddsInfoResponse;
-          if (body['ns5:GetStatementInfoResponse']) {
-            ddsInfoResponse = body['ns5:GetStatementInfoResponse'];
+          
+          // Find response by checking multiple possible namespace prefixes
+          const responseKeys = Object.keys(body);
+          const statementInfoResponse = responseKeys.find(key => key.endsWith(':GetStatementInfoResponse'));
+          const ddsInfoByRefResponse = responseKeys.find(key => key.endsWith(':GetDdsInfoByInternalReferenceNumberResponse'));
+          const statementByIdResponse = responseKeys.find(key => key.endsWith(':GetStatementByIdentifiersResponse'));
+          const referencedDdsResponse = responseKeys.find(key => key.endsWith(':GetReferencedDDSResponse') || key.endsWith(':GetReferencedDdsResponse'));
+          
+          if (statementInfoResponse) {
+            ddsInfoResponse = body[statementInfoResponse];
           }
-          else if (body['ns5:GetDdsInfoByInternalReferenceNumberResponse']) {
-            ddsInfoResponse = body['ns5:GetDdsInfoByInternalReferenceNumberResponse'];
+          else if (ddsInfoByRefResponse) {
+            ddsInfoResponse = body[ddsInfoByRefResponse];
           }
-          else if (body['ns5:GetStatementByIdentifiersResponse']) {
-            ddsInfoResponse = body['ns5:GetStatementByIdentifiersResponse'];
+          else if (statementByIdResponse) {
+            ddsInfoResponse = body[statementByIdResponse];
           }
-          else if (body['ns5:GetReferencedDDSResponse'] || body['ns5:GetReferencedDdsResponse']) {
-            ddsInfoResponse = body['ns5:GetReferencedDDSResponse'] || body['ns5:GetReferencedDdsResponse'];
+          else if (referencedDdsResponse) {
+            ddsInfoResponse = body[referencedDdsResponse];
           }
           else {
             // Check for fault
@@ -313,11 +322,18 @@ class EudrRetrievalClient {
               return;
             }
 
-            reject(new Error('Unknown response format'));
+            // Enhanced error message with debug information
+            const availableKeys = Object.keys(body).join(', ');
+            reject(new Error(`Unknown response format. Available keys: ${availableKeys}`));
             return;
           }
 
-          const ddsInfoItems = ddsInfoResponse['ns5:statementInfo'] || ddsInfoResponse['ns5:statement'];
+          // Extract statement info with flexible namespace support
+          const responseItemKeys = Object.keys(ddsInfoResponse || {});
+          const statementInfoKey = responseItemKeys.find(key => key.endsWith(':statementInfo'));
+          const statementKey = responseItemKeys.find(key => key.endsWith(':statement'));
+          
+          const ddsInfoItems = ddsInfoResponse[statementInfoKey] || ddsInfoResponse[statementKey];
           const ddsInfoArray = Array.isArray(ddsInfoItems) ? ddsInfoItems : (ddsInfoItems ? [ddsInfoItems] : []);
 
           const mappedDdsInfo = ddsInfoArray.map(item => {

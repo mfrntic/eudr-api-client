@@ -117,6 +117,8 @@ describe('EudrSubmissionClient - Integration Tests', function () {
 
         const result = await client.submitDds(testData);
 
+        console.log("Result", result);
+
         expect(result).to.be.an('object');
         expect(result).to.have.property('ddsIdentifier');
         expect(result.ddsIdentifier).to.be.a('string');
@@ -124,11 +126,9 @@ describe('EudrSubmissionClient - Integration Tests', function () {
 
         createdDdsIdentifiers.push(result.ddsIdentifier);
       } catch (error) {
-        if (error.response && error.response.status === 500) {
-          // API error is expected for test data
-        } else {
+        
           throw error;
-        }
+         
       }
     });
   });

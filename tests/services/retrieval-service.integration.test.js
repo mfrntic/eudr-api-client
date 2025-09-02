@@ -32,10 +32,10 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
 
     console.log("------------------------------------------------------------------------------------------------");
     // Initialize retrieval service with test configuration
-      retrievalClient = new EudrRetrievalClient({
-        username: process.env.EUDR_TRACES_USERNAME,
-        password: process.env.EUDR_TRACES_PASSWORD,
-        webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
+    retrievalClient = new EudrRetrievalClient({
+      username: process.env.EUDR_TRACES_USERNAME,
+      password: process.env.EUDR_TRACES_PASSWORD,
+      webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
     });
 
     // For testing, we'll use some sample DDS identifiers
@@ -43,8 +43,6 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
     testDdsIdentifiers = [
       '49c44a92-51be-4d6c-a57d-0b8cd825a7ca', // From trade submission test
       'bbcc3108-f2f8-4ad3-9c55-a9484c108bc6', // From simple trade submission test
-      'test-uuid-12345-67890-abcdef', // Test UUID for validation
-      'test-uuid-98765-43210-fedcba'  // Another test UUID
     ];
 
     // Note: CF7 operations (getStatementByIdentifiers, getReferencedDDS) are disabled
@@ -80,47 +78,47 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
   describe('🌐 Connection & Authentication', function () {
     it('should successfully connect to EUDR Retrieval API', async function () {
       try {
+
         const result = await retrievalClient.getDdsInfo(testDdsIdentifiers[0]);
         expect(result).to.be.an('object');
+        expect(result.httpStatus).to.be.equal(200);
       } catch (error) {
-        // If it's an API error (not connection error), that's still a successful connection
-        if (error.details && error.details.status) {
-          // Connection successful, API returned error response
-        } else {
-          throw error;
-        }
+
+        console.log("Error connecting to EUDR Retrieval API", error);
+        throw error;
+
       }
     });
   });
 
-  describe('📋 Core Functionality - CF3 Retrieval Methods', function () {
+  describe('get identifiers', function () {
     describe('getDdsInfoByInternalReferenceNumber', function () {
       it('should retrieve DDS by internal reference number', async function () {
         try {
           const result = await retrievalClient.getDdsInfoByInternalReferenceNumber('TEST-REF-001');
+          console.log("DDS by internal reference number", result);
           // console.log(result);
           expect(result).to.be.an('object');
           expect(result.httpStatus).to.be.equal(200);
           expect(result.ddsInfo).to.be.an('array');
         } catch (error) {
-          if (error.details && error.details.status === 500) {
-            // API returned error response as expected
-          } else {
-            throw error;
-          }
+
+          console.log(error);
+          throw error;
+
         }
       });
 
       it('should reject invalid reference numbers with proper error response', async function () {
         try {
-          const result = await retrievalClient.getDdsInfoByInternalReferenceNumber('INVALID-REF');
+          const result = await retrievalClient.getDdsInfoByInternalReferenceNumber('INVALID-REF', { rawResponse: true } );
+          console.log("Invalid reference number error", result);
           expect(result).to.be.an('object');
         } catch (error) {
-          if (error.details && error.details.status === 500) {
-            // API properly rejected invalid reference number
-          } else {
-            throw error;
-          }
+
+          console.log("Invalid reference number error", error);
+          throw error;
+
         }
       });
     });
@@ -129,39 +127,37 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
       it('should retrieve DDS by UUID', async function () {
         try {
           const result = await retrievalClient.getDdsInfo(testDdsIdentifiers[0]);
+          console.log("DDS by UUID", result);
           expect(result.httpStatus).to.be.equal(200);
           expect(result.ddsInfo[0].identifier).to.be.equal(testDdsIdentifiers[0]);
         } catch (error) {
-          if (error.details && error.details.status === 500) {
-            // API returned error response as expected
-          } else {
-            throw error;
-          }
+
+          console.log("Invalid UUID error", error);
+          throw error;
+
         }
       });
 
       it('should retrieve multiple DDS by UUIDs', async function () {
         try {
           const result = await retrievalClient.getDdsInfo(testDdsIdentifiers.slice(0, 2));
+          console.log("multiple DDS by UUIDs", result);
           expect(result.httpStatus).to.be.equal(200);
           expect(result.ddsInfo).to.be.an('array');
         } catch (error) {
-          if (error.details && error.details.status === 500) {
-            // API returned error response as expected
-          } else {
-            throw error;
-          }
+
+          console.log("Invalid UUIDs error", error);
+          throw error;
+
         }
       });
 
       it('should reject invalid UUIDs with proper error response', async function () {
         try {
-          const result = await retrievalClient.getDdsInfo('invalid-uuid-format');
-
+          const result = await retrievalClient.getDdsInfo('invalid-uuid-format'); 
         } catch (error) {
           expect(error.error).to.be.true;
           expect(error.details.status).to.be.equal(500);
-
 
 
         }
