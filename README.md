@@ -510,12 +510,13 @@ console.log(`✅ Representative DDS submitted. Identifier: ${representativeResul
 
 **🚀 NEW: All services now support automatic endpoint generation!**
 
-| Service | Class | Automatic Endpoint | Manual Override |
-|---------|-------|-------------------|-----------------|
-| **Echo Service** | `EudrEchoClient` | ✅ Yes | ✅ Yes |
-| **Submission Service V1** | `EudrSubmissionClient` | ✅ Yes | ✅ Yes |
-| **Submission Service V2** | `EudrSubmissionClientV2` | ✅ Yes | ✅ Yes |
-| **Retrieval Service** | `EudrRetrievalClient` | ✅ Yes | ✅ Yes |
+| Service | Class | Automatic Endpoint | Manual Override | CF Specification |
+|---------|-------|-------------------|-----------------|------------------|
+| **Echo Service** | `EudrEchoClient` | ✅ Yes | ✅ Yes | CF1 v1.4 |
+| **Submission Service V1** | `EudrSubmissionClient` | ✅ Yes | ✅ Yes | CF2 v1.4 |
+| **Submission Service V2** | `EudrSubmissionClientV2` | ✅ Yes | ✅ Yes | CF2 v1.4 |
+| **Retrieval Service V1** | `EudrRetrievalClient` | ✅ Yes | ✅ Yes | CF3 & CF7 v1.4 |
+| **Retrieval Service V2** | `EudrRetrievalClientV2` | ✅ Yes | ✅ Yes | CF3 & CF7 v1.4 |
 
 **Endpoint Generation Rules:**
 - **`webServiceClientId: 'eudr'`** → Production environment endpoints
@@ -528,7 +529,8 @@ const {
   EudrEchoClient, 
   EudrSubmissionClient, 
   EudrSubmissionClientV2, 
-  EudrRetrievalClient 
+  EudrRetrievalClient,
+  EudrRetrievalClientV2 
 } = require('eudr-api-client');
 
 // All services automatically generate endpoints 
@@ -546,6 +548,10 @@ const submissionV2Client = new EudrSubmissionClientV2({
 
 const retrievalClient = new EudrRetrievalClient({
   username: 'user', password: 'pass', webServiceClientId: 'eudr', ssl: true
+});
+
+const retrievalV2Client = new EudrRetrievalClientV2({
+  username: 'user', password: 'pass', webServiceClientId: 'eudr-test', ssl: false
 });
 ```
 
@@ -614,24 +620,42 @@ const retractResultV2 = await submissionClientV2.retractDds(submitResultV2.ddsId
 
 ### Retrieval Service
 
-Retrieve DDS information and supply chain data.
+Retrieve DDS information and supply chain data with automatic endpoint generation.
+
+#### V1 Client (`EudrRetrievalClient`)
 
 ```javascript
 const { EudrRetrievalClient } = require('eudr-api-client');
-const retrievalClient = new EudrRetrievalClient(config);
 
-// Get DDS info by UUID
+// 🚀 NEW: Automatic endpoint generation - no need to specify endpoint!
+const retrievalClient = new EudrRetrievalClient({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-test', // Automatically generates acceptance endpoint
+  ssl: false // Development environment - allow self-signed certificates
+});
+
+// Get DDS info by UUID (supports single UUID or array of UUIDs, max 100)
 const ddsInfo = await retrievalClient.getDdsInfo('some-uuid-string');
+const multipleDds = await retrievalClient.getDdsInfo(['uuid-1', 'uuid-2', 'uuid-3']);
 
-// Get DDS info by internal reference
+// Get DDS info by internal reference number (CF3 v1.4)
 const ddsList = await retrievalClient.getDdsInfoByInternalReferenceNumber('DLE20/357');
 
-// Get full DDS statement by reference and verification number
+// Get full DDS statement by reference and verification number (CF7 v1.4)
 const fullDds = await retrievalClient.getStatementByIdentifiers('25NLSN6LX69730', 'K7R8LA90');
 
-// Get referenced DDS for supply chain traversal
-const referencedDds = await retrievalClient.getReferencedDDS('25NLWPAZWQ8865', 'GLE9SMMM');
+// Note: getReferencedDDS is only available in V2 - use EudrRetrievalClientV2
 ```
+
+#### Key Features
+
+- ✅ **CF3 v1.4 Support**: `getDdsInfo`, `getDdsInfoByInternalReferenceNumber` with rejection reason & CA communication
+- ✅ **CF7 v1.4 Support**: `getStatementByIdentifiers` for complete DDS retrieval
+- ✅ **Automatic Endpoint Generation**: No manual endpoint configuration needed for standard client IDs
+- ✅ **Batch Retrieval**: Support for up to 100 UUIDs in a single `getDdsInfo` call
+- ✅ **Smart Error Handling**: Converts SOAP authentication faults to proper HTTP 401 status codes
+- ✅ **Flexible SSL Configuration**: Configurable SSL certificate validation
 
 ---
 ### 📝 EudrSubmissionClient
@@ -658,7 +682,7 @@ const result = await client.submitDds({
   rawResponse: false  // Set to true to get raw XML response
 });
 
-// Returns: { httpStatus: 200, ddsIdentifier: 'uuid-string', raw: 'xml...', parsed: {...} }
+// Returns: { httpStatus: 200, status: 200, ddsIdentifier: 'uuid-string', raw: 'xml...' }
 ```
 
 **`amendDds(ddsIdentifier, statement, options)`**
@@ -675,7 +699,7 @@ const result = await client.amendDds(
   }
 );
 
-// Returns: { httpStatus: 200, success: true, message: 'DDS amended successfully' }
+// Returns: { httpStatus: 200, status: 200, success: true, message: 'DDS amended successfully' }
 ```
 
 **`retractDds(ddsIdentifier, options)`**
@@ -748,7 +772,7 @@ const result = await clientV2.submitDds({
   rawResponse: false  // Set to true to get raw XML response
 });
 
-// Returns: { httpStatus: 200, ddsIdentifier: 'uuid-string', raw: 'xml...', parsed: {...} }
+// Returns: { httpStatus: 200, status: 200, ddsIdentifier: 'uuid-string', raw: 'xml...' }
 ```
 
 **`amendDds(ddsIdentifier, statement, options)`**
@@ -765,7 +789,7 @@ const result = await clientV2.amendDds(
   }
 );
 
-// Returns: { httpStatus: 200, success: true, message: 'DDS amended successfully' }
+// Returns: { httpStatus: 200, status: 200, success: true, message: 'DDS amended successfully' }
 ```
 
 **`retractDds(ddsIdentifier, options)`**
@@ -781,46 +805,406 @@ const result = await clientV2.retractDds(
 // Returns: { httpStatus: 200, success: true, status: 'SC_200_OK', message: 'DDS retracted successfully' }
 ```
 ---
-### 🔍 EudrRetrievalClient
-Service for retrieving DDS information and supply chain data.
+### 🔍 EudrRetrievalClient (V1)
+Service for retrieving DDS information and supply chain data with automatic endpoint generation and smart error handling.
 
 #### Methods
-| Method | Description | Parameters | Returns |
-|--------|-------------|------------|---------|
-| `getDdsInfo(uuids)` | Get DDS by UUID | `uuids` (String or Array) | Promise with DDS details |
-| `getDdsInfoByInternalReferenceNumber(internalReferenceNumber)` | Get DDS by internal reference | `internalReferenceNumber` (String) | Promise with DDS |
-| `getStatementByIdentifiers(referenceNumber, verificationNumber)` | Get full DDS statement by reference and verification number | `referenceNumber` (String), `verificationNumber` (String) | Promise with DDS |
-| `getReferencedDDS(referenceNumber, verificationNumber)` | Get referenced DDS for supply chain traversal | `referenceNumber` (String), `verificationNumber` (String) | Promise with DDS |
+| Method | Description | CF Spec | Parameters | Returns |
+|--------|-------------|---------|------------|---------|
+| `getDdsInfo(uuids, options)` | Retrieve DDS info by UUID(s) | CF3 v1.4 | `uuids` (String or Array), `options` (Object) | Promise with DDS details |
+| `getDdsInfoByInternalReferenceNumber(internalReferenceNumber, options)` | Retrieve DDS by internal reference | CF3 v1.4 | `internalReferenceNumber` (String, 3-50 chars), `options` (Object) | Promise with DDS array |
+| `getStatementByIdentifiers(referenceNumber, verificationNumber, options)` | Get full DDS statement | CF7 v1.4 | `referenceNumber` (String), `verificationNumber` (String), `options` (Object) | Promise with complete DDS |
+| ~~`getReferencedDDS()`~~ | ❌ Not available in V1 | N/A | Use `EudrRetrievalClientV2` instead | V2 only |
 
 #### Detailed Method Reference
-**`getDdsInfo(uuids)`**
-```javascript
-const dds = await retrievalClient.getDdsInfo('some-uuid-string');
-// or for multiple:
-const ddsList = await retrievalClient.getDdsInfo(['uuid-1', 'uuid-2']);
 
-// Returns: Array of DDS info objects
+**`getDdsInfo(uuids, options)` - CF3 v1.4**
+
+Retrieve DDS information by UUID with v1.4 enhancements including rejection reasons and CA communication.
+
+```javascript
+// Single UUID
+const ddsInfo = await retrievalClient.getDdsInfo('550e8400-e29b-41d4-a716-446655440000');
+
+// Multiple UUIDs (max 100 per call)
+const multipleDds = await retrievalClient.getDdsInfo([
+  '550e8400-e29b-41d4-a716-446655440000',
+  '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
+]);
+
+// With options
+const ddsWithRaw = await retrievalClient.getDdsInfo('some-uuid', {
+  rawResponse: true  // Get raw XML response
+});
+
+// Returns: 
+// {
+//   httpStatus: 200,
+//   status: 200,
+//   ddsInfo: [
+//     {
+//       identifier: 'uuid-string',
+//       status: 'Accepted' | 'Rejected' | 'Processing',
+//       referenceNumber: '25NLSN6LX69730',
+//       verificationNumber: 'K7R8LA90',
+//       rejectionReason: 'Reason if status is Rejected',  // v1.4 feature
+//       caCommunication: 'CA communication if provided',  // v1.4 feature
+//       // ... other DDS info
+//     }
+//   ],
+//   raw: 'xml-response',  // if rawResponse: true
+//   parsed: { /* parsed XML object */ }
+// }
 ```
 
-**`getDdsInfoByInternalReferenceNumber(internalReferenceNumber)`**
+**`getDdsInfoByInternalReferenceNumber(internalReferenceNumber, options)` - CF3 v1.4**
+
+Search for DDS by internal reference number with v1.4 enhancements.
+
 ```javascript
+// Search by internal reference (3-50 characters)
 const ddsList = await retrievalClient.getDdsInfoByInternalReferenceNumber('DLE20/357');
 
-// Returns: Array of matching DDS statements
+// Returns: Array of matching DDS statements with rejection reasons and CA communication
+// {
+//   httpStatus: 200,
+//   status: 200,
+//   ddsInfo: [
+//     {
+//       identifier: 'uuid-string',
+//       internalReferenceNumber: 'DLE20/357',
+//       status: 'Accepted',
+//       rejectionReason: null,      // v1.4 feature
+//       caCommunication: 'text',    // v1.4 feature
+//       // ... other DDS details
+//     }
+//   ]
+// }
 ```
 
-**`getStatementByIdentifiers(referenceNumber, verificationNumber)`**
+**`getStatementByIdentifiers(referenceNumber, verificationNumber, options)` - CF7 v1.4**
+
+Retrieve complete DDS statement content including geolocation and activity data.
+
 ```javascript
+// Get full DDS statement
+const fullDds = await retrievalClient.getStatementByIdentifiers(
+  '25NLSN6LX69730', 
+  'K7R8LA90'
+);
+
+// Returns: Complete DDS object with v1.4 fields
+// {
+//   httpStatus: 200,
+//   status: 200,
+//   ddsInfo: [
+//     {
+//       // Full DDS content including:
+//       geolocation: { /* geolocation data */ },
+//       activity: { /* activity details */ },
+//       commodities: [ /* complete commodity info */ ],
+//       referencedStatements: [
+//         {
+//           referenceNumber: '25NLWPAZWQ8865',
+//           securityNumber: 'GLE9SMMM'  // For supply chain traversal
+//         }
+//       ],
+//       availabilityDate: '2024-01-15',  // v1.4 feature
+//       // ... complete DDS data
+//     }
+//   ]
+// }
+```
+
+**Supply Chain Traversal (V2 Only)**
+
+⚠️ **Note**: The `getReferencedDDS()` method is not available in V1. For supply chain traversal, use `EudrRetrievalClientV2`:
+
+```javascript
+// V1 can get the referenced statement info from getStatementByIdentifiers
 const fullDds = await retrievalClient.getStatementByIdentifiers('25NLSN6LX69730', 'K7R8LA90');
+const referencedStatements = fullDds.ddsInfo[0].referencedStatements;
 
-// Returns: Complete DDS object with all details
+// For actual traversal, use V2:
+// const { EudrRetrievalClientV2 } = require('eudr-api-client');
+// const v2Client = new EudrRetrievalClientV2(config);
+// const referencedDds = await v2Client.getReferencedDds(ref.referenceNumber, ref.securityNumber);
 ```
 
-**`getReferencedDDS(referenceNumber, verificationNumber)`**
-```javascript
-const referencedDds = await retrievalClient.getReferencedDDS('25NLWPAZWQ8865', 'GLE9SMMM');
+#### Error Handling
 
-// Returns: Referenced DDS object
+The V1 Retrieval Client includes smart error handling that converts SOAP authentication faults to proper HTTP status codes:
+
+```javascript
+try {
+  const result = await retrievalClient.getDdsInfo('some-uuid');
+  console.log('Success:', result.ddsInfo);
+} catch (error) {
+  if (error.details.status === 401) {
+    console.error('Authentication failed:', error.message);
+    // Handle invalid credentials
+  } else if (error.details.status === 404) {
+    console.error('DDS not found:', error.message);
+    // Handle missing DDS
+  } else if (error.details.status === 500) {
+    console.error('Server error:', error.message);
+    // Handle server issues
+  } else {
+    console.error('Network error:', error.message);
+    // Handle network issues
+  }
+}
+```
+
+#### Configuration Examples
+
+```javascript
+// Production environment with SSL validation
+const productionClient = new EudrRetrievalClient({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr',  // Production environment
+  ssl: true,  // Validate SSL certificates
+  timeout: 30000  // 30 seconds timeout
+});
+
+// Development environment with relaxed SSL
+const devClient = new EudrRetrievalClient({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-test',  // Acceptance environment
+  ssl: false,  // Allow self-signed certificates
+  timeout: 10000  // 10 seconds timeout
+});
+
+// Manual endpoint override
+const customClient = new EudrRetrievalClient({
+  endpoint: 'https://custom-endpoint.com/ws/EUDRRetrievalServiceV1',
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'custom-client',
+  ssl: false
+});
+```
+
+---
+### 🚀 EudrRetrievalClientV2 (V2)
+Advanced service for retrieving DDS information and supply chain data with enhanced features including supply chain traversal.
+
+#### Methods
+| Method | Description | CF Spec | Parameters | Returns |
+|--------|-------------|---------|------------|---------|
+| `getDdsInfo(uuids, options)` | Retrieve DDS info by UUID(s) | CF3 v1.4 | `uuids` (String or Array), `options` (Object) | Promise with DDS details |
+| `getDdsInfoByInternalReferenceNumber(internalReferenceNumber, options)` | Retrieve DDS by internal reference | CF3 v1.4 | `internalReferenceNumber` (String, 3-50 chars), `options` (Object) | Promise with DDS array |
+| `getStatementByIdentifiers(referenceNumber, verificationNumber, options)` | Get full DDS statement | CF7 v1.4 | `referenceNumber` (String), `verificationNumber` (String), `options` (Object) | Promise with complete DDS |
+| `getReferencedDds(referenceNumber, securityNumber, options)` | 🚀 **V2 Only**: Supply chain traversal | CF7 v1.4 | `referenceNumber` (String), `securityNumber` (String), `options` (Object) | Promise with referenced DDS |
+
+#### Key Features
+
+- ✅ **All V1 Features**: CF3 v1.4 Support, CF7 v1.4 Support, Batch Retrieval, Smart Error Handling
+- ✅ **🚀 NEW: Supply Chain Traversal**: `getReferencedDds()` method for following DDS references
+- ✅ **Enhanced V2 Namespaces**: Updated SOAP namespaces for V2 compatibility
+- ✅ **Automatic Endpoint Generation**: V2-specific endpoint generation
+- ✅ **Consistent Response Format**: Includes both `httpStatus` and `status` fields for compatibility
+
+#### Detailed Method Reference
+
+**Basic Usage:**
+
+```javascript
+const { EudrRetrievalClientV2 } = require('eudr-api-client');
+
+// 🚀 NEW: Automatic V2 endpoint generation
+const retrievalClientV2 = new EudrRetrievalClientV2({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-test', // Automatically generates V2 acceptance endpoint
+  ssl: false // Development environment - allow self-signed certificates
+});
+
+// All V1 methods work the same way in V2
+const ddsInfo = await retrievalClientV2.getDdsInfo('some-uuid-string');
+const ddsList = await retrievalClientV2.getDdsInfoByInternalReferenceNumber('DLE20/357');
+const fullDds = await retrievalClientV2.getStatementByIdentifiers('25NLSN6LX69730', 'K7R8LA90');
+
+// 🚀 NEW V2-only feature: Supply chain traversal
+const referencedDds = await retrievalClientV2.getReferencedDds(
+  '25NLWPAZWQ8865', 
+  'XtZ7C6t3lFHnOhAqN9fw5w==:dRES/NzB0xL4nkf5nmRrb/5SMARFHoDK53PaCJFPNRA='
+);
+```
+
+**🚀 Supply Chain Traversal - `getReferencedDds(referenceNumber, securityNumber, options)`**
+
+The key V2 enhancement allows you to traverse the supply chain by following referenced DDS statements:
+
+```javascript
+// Step 1: Get a DDS statement that references other statements
+const mainDds = await retrievalClientV2.getStatementByIdentifiers(
+  '25NLSN6LX69730', 
+  'K7R8LA90'
+);
+
+// Step 2: Extract referenced statements info
+const referencedStatements = mainDds.ddsInfo[0].referencedStatements;
+console.log('Found referenced statements:', referencedStatements);
+// [
+//   {
+//     referenceNumber: '25NLWPAZWQ8865',
+//     securityNumber: 'XtZ7C6t3lFHnOhAqN9fw5w==:dRES/NzB0xL4nkf5nmRrb/5SMARFHoDK53PaCJFPNRA='
+//   }
+// ]
+
+// Step 3: Follow the supply chain using getReferencedDds
+for (const ref of referencedStatements) {
+  const referencedDds = await retrievalClientV2.getReferencedDds(
+    ref.referenceNumber,
+    ref.securityNumber  // Use securityNumber, not verificationNumber
+  );
+  
+  console.log('Referenced DDS content:', referencedDds.ddsInfo);
+  
+  // Continue traversing if this DDS also has references
+  if (referencedDds.ddsInfo[0].referencedStatements?.length > 0) {
+    // Recursive traversal possible
+    console.log('This DDS has further references...');
+  }
+}
+
+// Returns: Same format as other retrieval methods
+// {
+//   httpStatus: 200,
+//   status: 200,
+//   status: 200,              // 🚀 NEW: Added for consistency
+//   ddsInfo: [
+//     {
+//       // Complete DDS content of the referenced statement
+//       geolocation: { /* geolocation data */ },
+//       activity: { /* activity details */ },
+//       commodities: [ /* complete commodity info */ ],
+//       // ... complete referenced DDS data
+//     }
+//   ],
+//   raw: 'xml-response'       // if rawResponse: true
+// }
+```
+
+**Complete Supply Chain Analysis Example:**
+
+```javascript
+async function analyzeSupplyChain(referenceNumber, verificationNumber) {
+  const chain = [];
+  const visited = new Set();
+  
+  // Start with the main statement
+  let currentDds = await retrievalClientV2.getStatementByIdentifiers(
+    referenceNumber, 
+    verificationNumber
+  );
+  
+  chain.push({
+    level: 0,
+    referenceNumber: referenceNumber,
+    dds: currentDds.ddsInfo[0]
+  });
+  
+  // Follow the chain
+  const toProcess = currentDds.ddsInfo[0].referencedStatements?.map(ref => ({
+    ...ref,
+    level: 1
+  })) || [];
+  
+  while (toProcess.length > 0) {
+    const ref = toProcess.shift();
+    
+    // Avoid circular references
+    if (visited.has(ref.referenceNumber)) continue;
+    visited.add(ref.referenceNumber);
+    
+    try {
+      const referencedDds = await retrievalClientV2.getReferencedDds(
+        ref.referenceNumber,
+        ref.securityNumber
+      );
+      
+      chain.push({
+        level: ref.level,
+        referenceNumber: ref.referenceNumber,
+        dds: referencedDds.ddsInfo[0]
+      });
+      
+      // Add next level references
+      const nextRefs = referencedDds.ddsInfo[0].referencedStatements?.map(nextRef => ({
+        ...nextRef,
+        level: ref.level + 1
+      })) || [];
+      
+      toProcess.push(...nextRefs);
+      
+    } catch (error) {
+      console.warn(`Failed to retrieve ${ref.referenceNumber}:`, error.message);
+    }
+  }
+  
+  return chain;
+}
+
+// Usage
+const supplyChain = await analyzeSupplyChain('25NLSN6LX69730', 'K7R8LA90');
+console.log(`Supply chain has ${supplyChain.length} levels:`);
+supplyChain.forEach((item, index) => {
+  console.log(`Level ${item.level}: ${item.referenceNumber} - ${item.dds.activity?.activityType}`);
+});
+```
+
+#### Error Handling
+
+V2 includes the same smart error handling as V1, with enhanced error details:
+
+```javascript
+try {
+  const result = await retrievalClientV2.getReferencedDds(referenceNumber, securityNumber);
+  console.log('Success:', result.ddsInfo);
+} catch (error) {
+  // Same error handling as V1, with both httpStatus and status fields
+  if (error.details.status === 401) {
+    console.error('Authentication failed:', error.message);
+  } else if (error.details.httpStatus === 404) {
+    console.error('Referenced DDS not found:', error.message);
+  }
+  // error.details contains both httpStatus and status for compatibility
+}
+```
+
+#### Configuration Examples
+
+```javascript
+// Production environment with V2
+const productionV2Client = new EudrRetrievalClientV2({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr',  // Production V2 environment
+  ssl: true,  // Validate SSL certificates
+  timeout: 30000
+});
+
+// Development environment with V2
+const devV2Client = new EudrRetrievalClientV2({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-test',  // Acceptance V2 environment
+  ssl: false,  // Allow self-signed certificates
+  timeout: 10000
+});
+
+// Manual V2 endpoint override
+const customV2Client = new EudrRetrievalClientV2({
+  endpoint: 'https://custom-endpoint.com/ws/EUDRRetrievalServiceV2',
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'custom-client',
+  ssl: false
+});
 ```
 
 ### Data Types
@@ -929,10 +1313,42 @@ const referencedDds = await retrievalClient.getReferencedDDS('25NLWPAZWQ8865', '
 **Successful Submission Response:**
 ```javascript
 {
-  httpStatus: 200,
+  httpStatus: 200,           // HTTP status code
+  status: 200,               // 🚀 NEW: Alias for httpStatus (for consistency)
   ddsIdentifier: 'uuid-string',
-  raw: 'raw-xml-response',
-  parsed: { /* parsed XML object */ }
+  raw: 'raw-xml-response',   // Only included if rawResponse: true
+  // Note: 'parsed' field removed for cleaner responses
+}
+```
+
+**Successful Retrieval Response:**
+```javascript
+{
+  httpStatus: 200,           // HTTP status code
+  status: 200,               // 🚀 NEW: Alias for httpStatus (for consistency)
+  ddsInfo: [
+    {
+      identifier: 'uuid-string',
+      status: 'Accepted' | 'Rejected' | 'Processing',  // DDS status (different from HTTP status)
+      referenceNumber: '25NLSN6LX69730',
+      verificationNumber: 'K7R8LA90',
+      // ... other DDS data
+    }
+  ],
+  raw: 'xml-response'        // Only included if rawResponse: true
+}
+```
+
+**Error Response:**
+```javascript
+{
+  message: 'Error description',
+  details: {
+    httpStatus: 401,         // HTTP status code
+    status: 401,             // 🚀 NEW: Alias for httpStatus (for consistency)
+    statusText: 'Unauthorized',
+    data: 'original-soap-response'
+  }
 }
 ```
 
@@ -999,15 +1415,21 @@ const v2Result = await clientV2.submitDds({
 
 #### Error Handling
 
-The library provides comprehensive error handling:
+The library provides comprehensive error handling with smart SOAP fault conversion:
 
 ```javascript
 try {
   const result = await client.submitDds(ddsData);
   console.log('Success:', result);
 } catch (error) {
-  if (error.response) {
-    console.error('API Error:', error.response.status, error.response.data);
+  // 🚀 NEW: Smart error handling converts SOAP authentication faults to HTTP 401
+  if (error.details.status === 401) {
+    console.error('Authentication failed:', error.message);
+    // Handle invalid credentials - SOAP fault converted to proper HTTP status
+  } else if (error.details.status === 404) {
+    console.error('Resource not found:', error.message);
+  } else if (error.details.status === 500) {
+    console.error('Server error:', error.message);
   } else if (error.request) {
     console.error('Network Error:', error.message);
   } else {
@@ -1015,6 +1437,11 @@ try {
   }
 }
 ```
+
+**Key Error Handling Features:**
+- ✅ **SOAP to HTTP Conversion**: Authentication faults automatically converted from SOAP 500 to HTTP 401
+- ✅ **Structured Error Objects**: Consistent error format across all services
+- ✅ **Detailed Error Information**: Full error context with original SOAP response when needed
 
 #### Custom Logging
 
@@ -1194,6 +1621,31 @@ process.env.EUDR_LOG_LEVEL = 'trace';
 - **New fullAddress field** for complete address representation
 - **Updated namespaces** to reflect V2 specifications
 - **Improved validation** and error handling
+- **🚀 NEW: Supply Chain Traversal** with `getReferencedDds()` method in Retrieval V2
+- **🚀 NEW: Consistent Response Format** with both `httpStatus` and `status` fields
+
+#### Q: What's the difference between `httpStatus` and `status` fields in responses?
+
+**A**: All EUDR services now include both fields for consistency and backward compatibility:
+
+- **`httpStatus`**: HTTP status code (200, 401, 500, etc.) - **Original field**
+- **`status`**: Alias for `httpStatus` - **🚀 NEW: Added for consistency**
+
+Both fields contain the same HTTP status value. Use either one based on your preference:
+
+```javascript
+// Both approaches work identically
+if (result.httpStatus === 200) { /* success */ }
+if (result.status === 200) { /* success */ }
+
+// In error handling
+catch (error) {
+  if (error.details.httpStatus === 401) { /* auth error */ }
+  if (error.details.status === 401) { /* auth error */ }
+}
+```
+
+**Note**: In DDS content, there's also a separate `status` field for DDS processing status ('Accepted', 'Rejected', 'Processing') which is different from HTTP status.
 
 #### Q: How do I encode GeoJSON data?
 
@@ -1325,6 +1777,88 @@ const client = new EudrSubmissionClient({
 - Always use `ssl: true` in production environments
 - Use `ssl: false` only for development with self-signed certificates
 - Set `EUDR_SSL_ENABLED=true` in production environment variables
+
+#### 🚀 NEW: Q: How does the Retrieval Service error handling work?
+
+**A**: The EUDR Retrieval Service V1 includes smart error handling that converts SOAP authentication faults to proper HTTP status codes:
+
+- **SOAP Authentication Faults** → Automatically converted to **HTTP 401 Unauthorized**
+- **Consistent Error Objects** → All services return structured error objects
+- **Original SOAP Response** → Still available for debugging when needed
+
+```javascript
+try {
+  const result = await retrievalClient.getDdsInfo('some-uuid');
+} catch (error) {
+  if (error.details.status === 401) {
+    // Authentication failed - properly converted from SOAP fault
+    console.error('Invalid credentials:', error.message);
+  }
+  // error.details.data still contains original SOAP response for debugging
+}
+```
+
+#### 🚀 NEW: Q: What's the difference between CF3 and CF7 specifications?
+
+**A**: The Retrieval Service supports both EUDR specifications:
+
+**CF3 v1.4 (DDS Information Retrieval):**
+- `getDdsInfo()` - Retrieve DDS by UUID(s) with rejection reasons
+- `getDdsInfoByInternalReferenceNumber()` - Search by internal reference
+- **Features**: Rejection reasons, CA communication, batch UUID support (max 100)
+
+**CF7 v1.4 (DDS Statement Retrieval):**
+- `getStatementByIdentifiers()` - Get complete DDS content with geolocation
+- ⚠️ `getReferencedDDS()` - Not available in V1 (use V2 for supply chain traversal)
+- **Features**: Full DDS content, referenced statements info, availability dates
+
+#### 🚀 NEW: Q: How do I traverse the supply chain using the Retrieval Service?
+
+**A**: Supply chain traversal capabilities depend on the service version:
+
+**V1 Retrieval Service (Limited Traversal):**
+```javascript
+// V1 can get referenced statement info but cannot directly traverse
+const mainDds = await retrievalClient.getStatementByIdentifiers(
+  '25NLSN6LX69730', 
+  'K7R8LA90'
+);
+
+// Extract referenced statements info
+const referencedStatements = mainDds.ddsInfo[0].referencedStatements;
+console.log('V1 provides reference info:', referencedStatements);
+// [{ referenceNumber: '25NLWPAZWQ8865', securityNumber: 'GLE9SMMM' }]
+
+// ⚠️ V1 does not have getReferencedDds() method for actual traversal
+```
+
+**🚀 V2 Retrieval Service (Full Supply Chain Traversal):**
+```javascript
+const { EudrRetrievalClientV2 } = require('eudr-api-client');
+const retrievalV2Client = new EudrRetrievalClientV2(config);
+
+// Step 1: Get full DDS statement
+const mainDds = await retrievalV2Client.getStatementByIdentifiers(
+  '25NLSN6LX69730', 
+  'K7R8LA90'
+);
+
+// Step 2: Extract referenced statements
+const referencedStatements = mainDds.ddsInfo[0].referencedStatements;
+
+// Step 3: Follow the supply chain with V2's getReferencedDds
+for (const ref of referencedStatements) {
+  const referencedDds = await retrievalV2Client.getReferencedDds(
+    ref.referenceNumber,
+    ref.securityNumber  // Use security number, not verification number
+  );
+  
+  console.log('Referenced DDS content:', referencedDds.ddsInfo);
+  // Continue traversing if more references exist
+}
+```
+
+**Recommendation**: Use **EudrRetrievalClientV2** for complete supply chain analysis with the `getReferencedDds()` method.
 
 ## Contributing
 

@@ -40,7 +40,7 @@ describe('Endpoint Utils', function() {
 
     it('should return correct service paths for retrieval service', function() {
       expect(endpointUtils.getServicePath('retrieval', 'v1')).to.equal('/EUDRRetrievalServiceV1');
-      expect(endpointUtils.getServicePath('retrieval', 'v2')).to.equal('/EUDRRetrievalServiceV1');
+      expect(endpointUtils.getServicePath('retrieval', 'v2')).to.equal('/EUDRRetrievalServiceV2');
     });
 
     it('should return correct service paths for submission service', function() {

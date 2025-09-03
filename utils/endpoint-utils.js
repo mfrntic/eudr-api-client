@@ -28,7 +28,7 @@ const SERVICE_PATHS = {
   },
   'retrieval': {
     'v1': '/EUDRRetrievalServiceV1',
-    'v2': '/EUDRRetrievalServiceV1' // Retrieval service doesn't have V2
+    'v2': '/EUDRRetrievalServiceV2'
   },
   'submission': {
     'v1': '/EUDRSubmissionServiceV1',

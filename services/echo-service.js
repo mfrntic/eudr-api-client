@@ -219,7 +219,8 @@ class EudrEchoClient {
           resolve({
             raw: xmlResponse,
             parsed: result,
-            status: status
+            status: status,
+            httpStatus: status  // For consistency, though this might be confusing
           });
         } catch (error) {
           reject(new Error(`Failed to extract status from response: ${error.message}`));
@@ -260,6 +261,7 @@ class EudrEchoClient {
       // Return raw response if requested
       if (options.rawResponse) {
         return {
+          httpStatus: response.status,
           status: response.status,
           data: response.data
         };
@@ -286,6 +288,7 @@ class EudrEchoClient {
       if (error.response) {
 
         errorResponse.details = {
+          httpStatus: error.response.status,
           status: error.response.status,
           statusText: error.response.statusText,
           data: error.response.data
@@ -295,6 +298,7 @@ class EudrEchoClient {
         if (errorData.includes('UnauthenticatedException')) {
           errorResponse.httpStatus = 401;
           errorResponse.details.statusText = 'Invalid credentials';
+          errorResponse.details.httpStatus = 401;
           errorResponse.details.status = 401;
         }
 
