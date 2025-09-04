@@ -1,0 +1,156 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (http://jax-ws.java.net). RI's version is JAX-WS RI 2.3.2-wls141100-b230825.0707 git-revision#5f81cab. --><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:base="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:retrieval="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v2" targetNamespace="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v2">
+	
+	<wsdl:import location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRRetrievalServiceV2?wsdl=1" namespace="http://ec.europa.eu/sanco/tracesnt/base/v4"/>
+
+	<wsp:Policy xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+		<sp:TransportBinding>
+			<wsp:Policy>
+				<sp:TransportToken>
+					<wsp:Policy>
+						<sp:HttpsToken/>
+					</wsp:Policy>
+				</sp:TransportToken>
+				<sp:AlgorithmSuite>
+					<wsp:Policy>
+						<sp:Basic256/>
+					</wsp:Policy>
+				</sp:AlgorithmSuite>
+				<sp:Layout>
+					<wsp:Policy>
+						<sp:Lax/>
+					</wsp:Policy>
+				</sp:Layout>
+				<sp:IncludeTimestamp/>
+			</wsp:Policy>
+		</sp:TransportBinding>
+		<sp:SupportingTokens>
+			<wsp:Policy>
+				<sp:UsernameToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+					<wsp:Policy>
+						<sp:HashPassword/>
+						<sp:WssUsernameToken10/>
+					</wsp:Policy>
+				</sp:UsernameToken>
+			</wsp:Policy>
+		</sp:SupportingTokens>
+	</wsp:Policy>
+
+    <wsdl:types>
+        <xs:schema>
+            <xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRRetrievalServiceV2?xsd=3" namespace="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v2"/>
+        </xs:schema>
+    </wsdl:types>
+
+    <wsdl:message name="GetStatementInfoRequest">
+        <wsdl:part name="ddsIdentifier" element="retrieval:GetStatementInfoRequest"/>
+    </wsdl:message>
+        
+    <wsdl:message name="GetStatementInfoResponse">
+        <wsdl:part name="statementInfo" element="retrieval:GetStatementInfoResponse"/>
+    </wsdl:message>
+    
+    <wsdl:message name="GetDdsInfoByInternalReferenceNumberRequest">
+        <wsdl:part name="referenceNumber" element="retrieval:GetDdsInfoByInternalReferenceNumberRequest"/>
+    </wsdl:message>
+        
+    <wsdl:message name="GetDdsInfoByInternalReferenceNumberResponse">
+        <wsdl:part name="statementInfo" element="retrieval:GetDdsInfoByInternalReferenceNumberResponse"/>
+    </wsdl:message>
+    
+    <wsdl:message name="GetStatementByIdentifiersRequest">
+        <wsdl:part name="getStatementByIdentifiersRequest" element="retrieval:GetStatementByIdentifiersRequest"/>
+    </wsdl:message>
+        
+    <wsdl:message name="GetStatementByIdentifiersResponse">
+        <wsdl:part name="statement" element="retrieval:GetStatementByIdentifiersResponse"/>
+    </wsdl:message>
+
+    <wsdl:message name="GetReferencedDdsRequest">
+        <wsdl:part name="referencedDdsRequest" element="retrieval:GetReferencedDdsRequest"/>
+    </wsdl:message>
+	 
+    <wsdl:message name="GetReferencedDdsResponse">
+        <wsdl:part name="referencedDdsResponse" element="retrieval:GetReferencedDdsResponse"/>
+    </wsdl:message>
+
+    <wsdl:message name="BusinessRulesValidationExceptionMessage">
+		<wsdl:part name="fault" element="retrieval:BusinessRulesValidationException"/>
+	</wsdl:message>
+	
+	<wsdl:portType name="EUDRRetrievalPort">
+    	<wsdl:operation name="getDdsInfo">
+    		<wsdl:input message="retrieval:GetStatementInfoRequest" name="GetStatementInfoRequest"/>
+    		<wsdl:output message="retrieval:GetStatementInfoResponse" name="GetStatementInfoResponse"/>
+    	</wsdl:operation>
+    	<wsdl:operation name="getDdsInfoByInternalReferenceNumber">
+    		<wsdl:input message="retrieval:GetDdsInfoByInternalReferenceNumberRequest" name="GetDdsInfoByInternalReferenceNumberRequest"/>
+    		<wsdl:output message="retrieval:GetDdsInfoByInternalReferenceNumberResponse" name="GetDdsInfoByInternalReferenceNumberResponse"/>
+    	</wsdl:operation>
+    	<wsdl:operation name="getStatementByIdentifiers">
+    		<wsdl:input name="GetStatementByIdentifiersRequest" message="retrieval:GetStatementByIdentifiersRequest"/>
+    		<wsdl:output name="GetStatementByIdentifiersResponse" message="retrieval:GetStatementByIdentifiersResponse"/>
+    		<wsdl:fault name="BusinessRulesValidationException" message="retrieval:BusinessRulesValidationExceptionMessage"/>
+    	</wsdl:operation>
+    	<wsdl:operation name="getReferencedDds">
+    		<wsdl:input name="GetReferencedDdsRequest" message="retrieval:GetReferencedDdsRequest"/>
+    		<wsdl:output name="GetReferencedDdsResponse" message="retrieval:GetReferencedDdsResponse"/>
+    		<wsdl:fault name="BusinessRulesValidationException" message="retrieval:BusinessRulesValidationExceptionMessage"/>
+    	</wsdl:operation>
+	</wsdl:portType>
+	
+	<wsdl:binding name="EUDRRetrievalSoapBinding" type="retrieval:EUDRRetrievalPort">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="getDdsInfo">
+            <soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/getDdsInfo"/>
+            <wsdl:input>
+                <soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="getDdsInfoByInternalReferenceNumber">
+            <soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/getDdsInfoByInternalReferenceNumber"/>
+            <wsdl:input>
+                <soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+        </wsdl:operation>
+        <wsdl:operation name="getStatementByIdentifiers">
+            <soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/getStatementByIdentifiers"/>
+            <wsdl:input>
+                <soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+			<wsdl:fault name="BusinessRulesValidationException">
+				<soap:fault name="BusinessRulesValidationException" use="literal"/>
+			</wsdl:fault>
+        </wsdl:operation>
+        <wsdl:operation name="getReferencedDds">
+            <soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/getReferencedDds"/>
+            <wsdl:input>
+                <soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+                <soap:body use="literal"/>
+            </wsdl:input>
+            <wsdl:output>
+                <soap:body use="literal"/>
+            </wsdl:output>
+			<wsdl:fault name="BusinessRulesValidationException">
+				<soap:fault name="BusinessRulesValidationException" use="literal"/>
+			</wsdl:fault>            
+        </wsdl:operation>
+    </wsdl:binding>
+
+    <wsdl:service name="EUDRRetrievalServiceV2">
+        <wsdl:port name="EUDRRetrievalServiceV2Endpoint" binding="retrieval:EUDRRetrievalSoapBinding">
+            <soap:address location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRRetrievalServiceV2"/>
+        </wsdl:port>
+    </wsdl:service>
+</wsdl:definitions>

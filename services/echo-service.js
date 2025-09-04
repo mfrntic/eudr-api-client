@@ -220,7 +220,8 @@ class EudrEchoClient {
           resolve({
             raw: xmlResponse,
             parsed: result,
-            status: status
+            status: status,
+            httpStatus: status  // For consistency, though this might be confusing
           });
         } catch (error) {
           reject(new Error(`Failed to extract status from response: ${error.message}`));
@@ -261,6 +262,7 @@ class EudrEchoClient {
       // Return raw response if requested
       if (options.rawResponse) {
         return {
+          httpStatus: response.status,
           status: response.status,
           data: response.data
         };

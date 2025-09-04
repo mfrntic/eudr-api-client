@@ -538,6 +538,7 @@ class EudrSubmissionClientV2 {
       // Return raw response if requested
       if (options.rawResponse) {
         return {
+          httpStatus: response.status,
           status: response.status,
           data: response.data
         };
@@ -548,6 +549,7 @@ class EudrSubmissionClientV2 {
 
       return {
         httpStatus: response.status,
+        status: response.status,
         ...parsedResponse
       };
     }
@@ -596,6 +598,7 @@ class EudrSubmissionClientV2 {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
         errorResponse.details = {
+          httpStatus: error.response.status,
           status: error.response.status,
           statusText: error.response.statusText,
           data: error.response.data
@@ -642,6 +645,7 @@ class EudrSubmissionClientV2 {
       // Return raw response if requested
       if (options.rawResponse) {
         return {
+          httpStatus: response.status,
           status: response.status,
           data: response.data
         };
@@ -652,6 +656,7 @@ class EudrSubmissionClientV2 {
 
       return {
         httpStatus: response.status,
+        status: response.status,
         ...parsedResponse
       };
     }
@@ -672,6 +677,7 @@ class EudrSubmissionClientV2 {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
         errorResponse.details = {
+          httpStatus: error.response.status,
           status: error.response.status,
           statusText: error.response.statusText,
           data: error.response.data
@@ -850,6 +856,7 @@ class EudrSubmissionClientV2 {
       // Return raw response if requested
       if (options.rawResponse) {
         return {
+          httpStatus: response.status,
           status: response.status,
           data: response.data
         };
@@ -860,6 +867,7 @@ class EudrSubmissionClientV2 {
 
       return {
         httpStatus: response.status,
+        status: response.status,
         ...parsedResponse
       };
     }
@@ -880,6 +888,7 @@ class EudrSubmissionClientV2 {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
         errorResponse.details = {
+          httpStatus: error.response.status,
           status: error.response.status,
           statusText: error.response.statusText,
           data: error.response.data

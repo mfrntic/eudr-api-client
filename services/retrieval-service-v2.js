@@ -1,12 +1,17 @@
 /**
- * EUDR Retrieval Service Client (using axios for raw XML)
+ * EUDR Retrieval Service V2 Client (using axios for raw XML)
  * 
- * This module provides a reusable class for connecting to the EUDR Retrieval Service
+ * This module provides a reusable class for connecting to the EUDR Retrieval Service V2
  * with proper WSSE security headers using direct XML and HTTP requests.
  * 
- * Supports both CF3 and CF7 specifications:
+ * Supports CF3 and CF7 specifications with V2 enhancements:
  * - CF3 v1.4: getDdsInfo, getDdsInfoByInternalReferenceNumber (with rejection reason & CA communication)
- * - CF7 v1.4: getStatementByIdentifiers, getReferencedDDS (supply chain traversal)
+ * - CF7 v1.4: getStatementByIdentifiers, getReferencedDds (supply chain traversal with V2 namespace)
+ * 
+ * Key V2 improvements:
+ * - Corrected SOAPAction URLs to match WSDL specification
+ * - Full getReferencedDds implementation with v2 namespace
+ * - Updated endpoint to use EUDRRetrievalServiceV2
  * 
  * Automatic endpoint generation:
  * - For webServiceClientId 'eudr': production environment
@@ -21,11 +26,11 @@ const { parseString, processors } = require('xml2js');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
 
 /**
- * EUDR Retrieval Service Client class
+ * EUDR Retrieval Service V2 Client class
  */
-class EudrRetrievalClient {
+class EudrRetrievalClientV2 {
   /**
-   * Create a new EUDR Retrieval Service client
+   * Create a new EUDR Retrieval Service V2 client
    * @param {Object} config - Configuration object
    * @param {string} [config.endpoint] - Service endpoint URL (optional for standard webServiceClientId: 'eudr', 'eudr-test')
    * @param {string} config.username - Authentication username (required)
@@ -37,7 +42,7 @@ class EudrRetrievalClient {
    * 
    * @example
    * // Automatic endpoint generation for standard client IDs
-   * const client = new EudrRetrievalClient({
+   * const client = new EudrRetrievalClientV2({
    *   username: 'user',
    *   password: 'pass',
    *   webServiceClientId: 'eudr-test'
@@ -45,7 +50,7 @@ class EudrRetrievalClient {
    * 
    * @example
    * // Manual endpoint override
-   * const client = new EudrRetrievalClient({
+   * const client = new EudrRetrievalClientV2({
    *   endpoint: 'https://custom-endpoint.com/ws/service',
    *   username: 'user',
    *   password: 'pass',
@@ -53,8 +58,8 @@ class EudrRetrievalClient {
    * });
    */
   constructor(config) {
-    // Validate and potentially generate endpoint and SOAP action
-    const validatedConfig = validateAndGenerateEndpoint(config, 'retrieval', 'v1');
+    // Validate and potentially generate endpoint and SOAP action for V2
+    const validatedConfig = validateAndGenerateEndpoint(config, 'retrieval', 'v2');
     
     this.config = {
       // Default configuration (only for non-required fields)
@@ -100,10 +105,10 @@ class EudrRetrievalClient {
    * Helper method to create endpoint from base URL and service name
    * @static
    * @param {string} baseUrl - Base URL (e.g., from EUDR_TRACES_BASE_URL env var)
-   * @param {string} serviceName - Service name (default: 'EUDRRetrievalServiceV1')
+   * @param {string} serviceName - Service name (default: 'EUDRRetrievalServiceV2')
    * @returns {string} Complete endpoint URL
    */
-  static createEndpointFromBaseUrl(baseUrl, serviceName = 'EUDRRetrievalServiceV1') {
+  static createEndpointFromBaseUrl(baseUrl, serviceName = 'EUDRRetrievalServiceV2') {
     return `${baseUrl}/tracesnt/ws/${serviceName}`;
   }
 
@@ -236,13 +241,13 @@ class EudrRetrievalClient {
 
     // Create UUID elements
     const identifierElements = uuidArray.map(uuid =>
-      `<v1:identifier>${uuid}</v1:identifier>`
+      `<v2:identifier>${uuid}</v2:identifier>`
     ).join('');
 
-    // Create the complete SOAP envelope
+    // Create the complete SOAP envelope with v2 namespace
     return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
-                  xmlns:v1="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v1" 
+                  xmlns:v2="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v2" 
                   xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4">
     <soapenv:Header>    
         <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" 
@@ -262,9 +267,9 @@ class EudrRetrievalClient {
         <v4:WebServiceClientId>${this.config.webServiceClientId}</v4:WebServiceClientId>
     </soapenv:Header>
     <soapenv:Body>
-        <v1:GetStatementInfoRequest>
+        <v2:GetStatementInfoRequest>
             ${identifierElements}
-        </v1:GetStatementInfoRequest>
+        </v2:GetStatementInfoRequest>
     </soapenv:Body>
 </soapenv:Envelope>`;
   }
@@ -286,10 +291,10 @@ class EudrRetrievalClient {
     const timestampId = `TS-${uuidv4()}`;
     const usernameTokenId = `UsernameToken-${uuidv4()}`;
 
-    // Create the complete SOAP envelope
+    // Create the complete SOAP envelope with v2 namespace
     return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
-                  xmlns:v1="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v1" 
+                  xmlns:v2="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v2" 
                   xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4">
     <soapenv:Header>    
         <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" 
@@ -309,7 +314,7 @@ class EudrRetrievalClient {
         <v4:WebServiceClientId>${this.config.webServiceClientId}</v4:WebServiceClientId>
     </soapenv:Header>
     <soapenv:Body>
-        <v1:GetDdsInfoByInternalReferenceNumberRequest>${internalReferenceNumber}</v1:GetDdsInfoByInternalReferenceNumberRequest>
+        <v2:GetDdsInfoByInternalReferenceNumberRequest>${internalReferenceNumber}</v2:GetDdsInfoByInternalReferenceNumberRequest>
     </soapenv:Body>
 </soapenv:Envelope>`;
   }
@@ -345,7 +350,7 @@ class EudrRetrievalClient {
           const statementInfoResponse = responseKeys.find(key => key.endsWith(':GetStatementInfoResponse'));
           const ddsInfoByRefResponse = responseKeys.find(key => key.endsWith(':GetDdsInfoByInternalReferenceNumberResponse'));
           const statementByIdResponse = responseKeys.find(key => key.endsWith(':GetStatementByIdentifiersResponse'));
-          const referencedDdsResponse = responseKeys.find(key => key.endsWith(':GetReferencedDDSResponse') || key.endsWith(':GetReferencedDdsResponse'));
+          const referencedDdsResponse = responseKeys.find(key => key.endsWith(':GetReferencedDdsResponse'));
           
           if (statementInfoResponse) {
             ddsInfoResponse = body[statementInfoResponse];
@@ -377,8 +382,9 @@ class EudrRetrievalClient {
           const responseItemKeys = Object.keys(ddsInfoResponse || {});
           const statementInfoKey = responseItemKeys.find(key => key.endsWith(':statementInfo'));
           const statementKey = responseItemKeys.find(key => key.endsWith(':statement'));
+          const referenceDdsKey = responseItemKeys.find(key => key.endsWith(':referenceDds'));
           
-          const ddsInfoItems = ddsInfoResponse[statementInfoKey] || ddsInfoResponse[statementKey];
+          const ddsInfoItems = ddsInfoResponse[statementInfoKey] || ddsInfoResponse[statementKey] || ddsInfoResponse[referenceDdsKey];
           const ddsInfoArray = Array.isArray(ddsInfoItems) ? ddsInfoItems : (ddsInfoItems ? [ddsInfoItems] : []);
 
           const mappedDdsInfo = ddsInfoArray.map(item => {
@@ -417,7 +423,7 @@ class EudrRetrievalClient {
   }
 
   /**
-   * Retrieve DDS information by UUID (CF3 v1.4)
+   * Retrieve DDS information by UUID (CF3 v1.4) - V2 Implementation
    * @param {string|string[]} uuids - UUID or array of UUIDs to retrieve (max 100)
    * @param {Object} options - Additional options
    * @param {boolean} options.rawResponse - Whether to return the raw XML response
@@ -443,7 +449,7 @@ class EudrRetrievalClient {
       // Create SOAP envelope
       const soapEnvelope = this.createGetDdsInfoEnvelope(uuidArray);
 
-      // Send the request
+      // Send the request with corrected SOAPAction
       const response = await axios({
         method: 'post',
         url: this.endpoint,
@@ -489,7 +495,7 @@ class EudrRetrievalClient {
   }
 
   /**
-   * Retrieve DDS information by internal reference number (CF3 v1.4)
+   * Retrieve DDS information by internal reference number (CF3 v1.4) - V2 Implementation
    * @param {string} internalReferenceNumber - Internal reference number to search for (3-50 chars)
    * @param {Object} options - Additional options
    * @param {boolean} options.rawResponse - Whether to return the raw XML response
@@ -512,7 +518,7 @@ class EudrRetrievalClient {
       // Create SOAP envelope
       const soapEnvelope = this.createGetDdsInfoByInternalReferenceNumberEnvelope(internalReferenceNumber);
 
-      // Send the request
+      // Send the request with corrected SOAPAction
       const response = await axios({
         method: 'post',
         url: this.endpoint,
@@ -577,7 +583,7 @@ class EudrRetrievalClient {
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
-                  xmlns:v1="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v1" 
+                  xmlns:v2="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v2" 
                   xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4">
     <soapenv:Header>    
         <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" 
@@ -597,16 +603,16 @@ class EudrRetrievalClient {
         <v4:WebServiceClientId>${this.config.webServiceClientId}</v4:WebServiceClientId>
     </soapenv:Header>
     <soapenv:Body>
-        <v1:GetStatementByIdentifiersRequest>
-            <v1:referenceNumber>${referenceNumber}</v1:referenceNumber>
-            <v1:verificationNumber>${verificationNumber}</v1:verificationNumber>
-        </v1:GetStatementByIdentifiersRequest>
+        <v2:GetStatementByIdentifiersRequest>
+            <v2:referenceNumber>${referenceNumber}</v2:referenceNumber>
+            <v2:verificationNumber>${verificationNumber}</v2:verificationNumber>
+        </v2:GetStatementByIdentifiersRequest>
     </soapenv:Body>
 </soapenv:Envelope>`;
   }
 
   /**
-   * Retrieve DDS by reference number and verification number (CF7 v1.4)
+   * Retrieve DDS by reference number and verification number (CF7 v1.4) - V2 Implementation
    * @param {string} referenceNumber - DDS reference number
    * @param {string} verificationNumber - DDS verification number
    * @param {Object} options - Additional options
@@ -627,13 +633,13 @@ class EudrRetrievalClient {
       // Create SOAP envelope
       const soapEnvelope = this.createGetStatementByIdentifiersEnvelope(referenceNumber, verificationNumber);
 
-      // Send the request
+      // Send the request with corrected SOAPAction for V2
       const response = await axios({
         method: 'post',
         url: this.endpoint,
         headers: {
           'Content-Type': 'text/xml;charset=UTF-8',
-          'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/eudr4authorities/getStatementByIdentifiers'
+          'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/getStatementByIdentifiers'
         },
         data: soapEnvelope,
         timeout: this.config.timeout,
@@ -673,45 +679,117 @@ class EudrRetrievalClient {
   }
 
   /**
-   * Process errors with centralized handling and SOAP to HTTP conversion
+   * Create SOAP envelope for the getReferencedDds operation (CF7 v1.4 - V2 Implementation)
+   * Uses v2 namespace and referenceDdsVerificationNumber parameter as per v1.4 specification
    * @private
-   * @param {Object} error - The error object from axios or other source
-   * @returns {Object} Processed error response
+   * @param {string} referenceNumber - DDS reference number
+   * @param {string} securityNumber - Reference Verification Number (security number)
+   * @returns {string} Complete SOAP envelope as XML string
    */
-  processError(error) {
-    const errorResponse = {
-      error: true,
-      message: error.message,
-      details: {}
-    };
+  createGetReferencedDdsEnvelope(referenceNumber, securityNumber) {
+    // Generate required values for security header
+    const nonce = this.generateNonce();
+    const created = this.getCurrentTimestamp();
+    const expires = this.getExpirationTimestamp(this.config.timestampValidity);
+    const passwordDigest = this.generatePasswordDigest(nonce.bytes, created, this.config.password);
 
-    if (error.response) {
-      let status = error.response.status;
-      let statusText = error.response.statusText;
+    // Generate unique IDs for the security elements
+    const timestampId = `TS-${uuidv4()}`;
+    const usernameTokenId = `UsernameToken-${uuidv4()}`;
 
-      // Check if this is a SOAP authentication fault and convert to 401
-      if (status === 500 && error.response.data &&
-          (error.response.data.includes('UnauthenticatedException') ||
-           error.response.data.includes('Authentication') ||
-           error.response.data.includes('Unauthorized'))) {
-        status = 401;
-        statusText = 'Unauthorized';
-        errorResponse.message = 'Authentication failed - invalid credentials';
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" 
+                  xmlns:v2="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v2" 
+                  xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4">
+    <soapenv:Header>    
+        <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" 
+                      xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd" 
+                      soapenv:mustUnderstand="1">
+            <wsu:Timestamp wsu:Id="${timestampId}">
+                <wsu:Created>${created}</wsu:Created>
+                <wsu:Expires>${expires}</wsu:Expires>
+            </wsu:Timestamp>
+            <wsse:UsernameToken wsu:Id="${usernameTokenId}">
+                <wsse:Username>${this.config.username}</wsse:Username>
+                <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest">${passwordDigest}</wsse:Password>
+                <wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">${nonce.base64}</wsse:Nonce>
+                <wsu:Created>${created}</wsu:Created>
+            </wsse:UsernameToken>
+        </wsse:Security>
+        <v4:WebServiceClientId>${this.config.webServiceClientId}</v4:WebServiceClientId>
+    </soapenv:Header>
+    <soapenv:Body>
+        <v2:GetReferencedDdsRequest>
+            <v2:referenceNumber>${referenceNumber}</v2:referenceNumber>
+            <v2:referenceDdsVerificationNumber>${securityNumber}</v2:referenceDdsVerificationNumber>
+        </v2:GetReferencedDdsRequest>
+    </soapenv:Body>
+</soapenv:Envelope>`;
+  }
+
+  /**
+   * Retrieve subsequent referenced DDS without verification number (CF7 v1.4 - V2 Implementation)
+   * @param {string} referenceNumber - DDS reference number
+   * @param {string} securityNumber - Reference Verification Number (security number)
+   * @param {Object} options - Additional options
+   * @param {boolean} options.rawResponse - Whether to return the raw XML response
+   * @returns {Promise<Object>} Response object with DDS information
+   * @throws {Object} Error response object with details
+   */
+  async getReferencedDds(referenceNumber, securityNumber, options = {}) {
+    try {
+      // Validate input
+      if (!referenceNumber || !securityNumber) {
+        throw new Error('Reference number and security number must be provided');
       }
 
-      errorResponse.details = {
-        httpStatus: status,
-        status: status,
-        statusText: statusText,
-        data: error.response.data
+      // Create SOAP envelope
+      const soapEnvelope = this.createGetReferencedDdsEnvelope(referenceNumber, securityNumber);
+
+      // Send the request with corrected SOAPAction for V2
+      const response = await axios({
+        method: 'post',
+        url: this.endpoint,
+        headers: {
+          'Content-Type': 'text/xml;charset=UTF-8',
+          'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/getReferencedDds'
+        },
+        data: soapEnvelope,
+        timeout: this.config.timeout,
+        httpsAgent: new (require('https').Agent)({
+          rejectUnauthorized: this.config.ssl
+        })
+      });
+
+      // Return raw response if requested
+      if (options.rawResponse) {
+        return {
+          httpStatus: response.status,
+          status: response.status,
+          data: response.data
+        };
+      }
+
+      // Parse the XML response
+      const parsedResponse = await this.parseResponse(response.data);
+
+      const result = {
+        httpStatus: response.status,
+        status: response.status,
+        ...parsedResponse
       };
-    } else if (error.request) {
-      errorResponse.details = {
-        request: 'Request sent but no response received'
-      };
+
+      // Add raw response only if requested
+      if (options.rawResponse) {
+        result.raw = response.data;
+      }
+
+      return result;
+    } catch (error) {
+      // Use the centralized error processing
+      throw this.processError(error);
     }
-    return errorResponse;
   }
 }
 
-module.exports = EudrRetrievalClient;
+module.exports = EudrRetrievalClientV2;

@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 const { EudrRetrievalClient } = require('../../services');
 
-describe('EudrRetrievalClient - CF3 Integration Tests', function () {
+describe('EudrRetrievalClient V1 Tests', function () {
   let retrievalClient;
   let testDdsIdentifiers = [];
 
@@ -45,10 +45,9 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
       'bbcc3108-f2f8-4ad3-9c55-a9484c108bc6', // From simple trade submission test
     ];
 
-    // Note: CF7 operations (getStatementByIdentifiers, getReferencedDDS) are disabled
-    // as this test suite uses CF3 endpoint (EUDRRetrievalServiceV1)
-    // this.realReferenceNumber = '25HRD5I3WZ1046';
-    // this.realVerificationNumber = 'SI17WKC3';
+    // Note: CF7 operations (getStatementByIdentifiers) - getReferencedDDS only available in V2 
+    this.realReferenceNumber = '25HRD5I3WZ1046';
+    this.realVerificationNumber = 'SI17WKC3';
   });
 
   after(async function () {
@@ -84,19 +83,19 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
         expect(result.httpStatus).to.be.equal(200);
       } catch (error) {
 
-        console.log("Error connecting to EUDR Retrieval API", error);
+      //  console.log("Error connecting to EUDR Retrieval API", error);
         throw error;
 
       }
     });
   });
 
-  describe('get identifiers', function () {
+  describe('Real retrieval tests', function () {
     describe('getDdsInfoByInternalReferenceNumber', function () {
       it('should retrieve DDS by internal reference number', async function () {
         try {
           const result = await retrievalClient.getDdsInfoByInternalReferenceNumber('TEST-REF-001');
-          console.log("DDS by internal reference number", result);
+         // console.log("DDS by internal reference number", result);
           // console.log(result);
           expect(result).to.be.an('object');
           expect(result.httpStatus).to.be.equal(200);
@@ -111,12 +110,12 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
 
       it('should reject invalid reference numbers with proper error response', async function () {
         try {
-          const result = await retrievalClient.getDdsInfoByInternalReferenceNumber('INVALID-REF', { rawResponse: true } );
-          console.log("Invalid reference number error", result);
+          const result = await retrievalClient.getDdsInfoByInternalReferenceNumber('INVALID-REF', { rawResponse: true });
+         // console.log("Invalid reference number error", result);
           expect(result).to.be.an('object');
         } catch (error) {
 
-          console.log("Invalid reference number error", error);
+         // console.log("Invalid reference number error", error);
           throw error;
 
         }
@@ -127,12 +126,12 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
       it('should retrieve DDS by UUID', async function () {
         try {
           const result = await retrievalClient.getDdsInfo(testDdsIdentifiers[0]);
-          console.log("DDS by UUID", result);
+         // console.log("DDS by UUID", result);
           expect(result.httpStatus).to.be.equal(200);
           expect(result.ddsInfo[0].identifier).to.be.equal(testDdsIdentifiers[0]);
         } catch (error) {
 
-          console.log("Invalid UUID error", error);
+        //  console.log("Invalid UUID error" , JSON.stringify(error, null, 2));
           throw error;
 
         }
@@ -141,12 +140,12 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
       it('should retrieve multiple DDS by UUIDs', async function () {
         try {
           const result = await retrievalClient.getDdsInfo(testDdsIdentifiers.slice(0, 2));
-          console.log("multiple DDS by UUIDs", result);
+         // console.log("multiple DDS by UUIDs", result);
           expect(result.httpStatus).to.be.equal(200);
           expect(result.ddsInfo).to.be.an('array');
         } catch (error) {
 
-          console.log("Invalid UUIDs error", error);
+         // console.log("Invalid UUIDs error", error);
           throw error;
 
         }
@@ -154,7 +153,7 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
 
       it('should reject invalid UUIDs with proper error response', async function () {
         try {
-          const result = await retrievalClient.getDdsInfo('invalid-uuid-format'); 
+          const result = await retrievalClient.getDdsInfo('invalid-uuid-format');
         } catch (error) {
           expect(error.error).to.be.true;
           expect(error.details.status).to.be.equal(500);
@@ -162,23 +161,32 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
 
         }
       });
+
+      // it("", async function () {
+      //   try {
+      //     const result = await retrievalClient.
+      //     console.log("DDS by internal reference number", result);
+      //     expect(result).to.be.an('object');
+      //   }
+      // });
     });
 
     // Note: getStatementByIdentifiers is a CF7 operation and requires CF7 endpoint
-    // This test is disabled for CF3 endpoint compatibility
-    /*
-    describe('getStatementByIdentifiers', function () {
+    describe('Get full DDS statement by reference and verification number', function () {
       it('should retrieve statement by verification and reference numbers', async function () {
         try {
           const result = await retrievalClient.getStatementByIdentifiers(
             this.realReferenceNumber,
-            this.realVerificationNumber
+            this.realVerificationNumber,
+            { rawResponse: true }
           );
-          expect(result).to.be.an('object');
-          expect(result.httpStatus).to.be.equal(200);
-          expect(result.ddsInfo).to.be.an('array');
-        } catch (error) {
+         // console.log("DDS by reference and verification number", JSON.stringify(result, null, 2));
+          // expect(result).to.be.an('object');
+          // expect(result.status).to.be.equal(200);
+          // expect(result.ddsInfo).to.be.an('array');
 
+        } catch (error) {
+        //  console.log("Error retrieving DDS by reference and verification number", error);
           throw error;
 
         }
@@ -199,48 +207,29 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
         }
       });
     });
-    */
 
-    // Note: getReferencedDDS is a CF7 operation and requires CF7 endpoint
-    // This test is disabled for CF3 endpoint compatibility
-    /*
-    describe('getReferencedDDS', function () {
-      it('should retrieve referenced DDS by reference number', async function () {
-        try {
-          const result = await retrievalClient.getReferencedDDS(
-            this.realReferenceNumber,
-            'SEC123' // Security number is required
-          );
-          console.log(result);
-          expect(result).to.be.an('object');
-        } catch (error) {
-          console.log(error);
-          throw error;
-        }
-      });
-    });
-    */
   });
+
 
   describe('⚠️ Error Handling', function () {
     it('should handle invalid credentials gracefully', async function () {
-      const invalidService = new EudrRetrievalClient({
-        endpoint: `${process.env.EUDR_TRACES_BASE_URL}/tracesnt/ws/EUDRRetrievalServiceV1`,
+      const invalidService = new EudrRetrievalClient({ 
         username: 'invalid_username',
-        password: 'invalid_password',
-        webServiceClientId: 'test'
+        password: 'invalid_password' ,
+        webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test' 
       });
 
       try {
         const result = await invalidService.getDdsInfo(testDdsIdentifiers[0]);
 
-        expect(result).to.be.an('object');
+        // If we reach here, the test should fail because we expect an authentication error
+        throw new Error('Expected authentication error but got successful response');
       } catch (error) {
-        if (error.details && error.details.status === 500) {
-          // API properly rejected invalid credentials
-        } else {
-          throw error;
-        }
+        // Our service now converts SOAP authentication faults to proper HTTP 401
+        expect(error.error).to.be.true;
+        expect(error.details.status).to.be.equal(401);
+        expect(error.details.statusText).to.be.equal('Unauthorized');
+        expect(error.message).to.include('Authentication failed');
       }
     });
 
@@ -361,3 +350,4 @@ describe('EudrRetrievalClient - CF3 Integration Tests', function () {
     });
   });
 });
+
