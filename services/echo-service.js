@@ -188,6 +188,7 @@ class EudrEchoClient {
 </soapenv:Envelope>`;
   }
 
+
   /**
    * Parse XML response to extract the echo status message
    * @private
@@ -268,6 +269,16 @@ class EudrEchoClient {
       // Parse the XML response
       const parsedResponse = await this.parseResponse(response.data);
 
+      // Remove raw and parsed properties if rawResponse is not requested
+      if (!options.rawResponse) {
+        if (parsedResponse.raw) {
+          delete parsedResponse.raw;
+        }
+        if (parsedResponse.parsed) {
+          delete parsedResponse.parsed;
+        }
+      }
+
       return {
         httpStatus: response.status,
         ...parsedResponse
@@ -275,36 +286,49 @@ class EudrEchoClient {
     } catch (error) {
 
 
-      // Create a more structured error response
+      // Create a more structured error response with proper property order
       const errorResponse = new Error(error.message);
-     
-        errorResponse.httpStatus = error.response?.status || 500;
-   
+      
+      // Set properties in desired order: httpStatus, error, code, details
+      errorResponse.httpStatus = error.response?.status || 500;
       errorResponse.error = true;
-
+      
+      // Initialize details object
+      let details = {};
+      let code = undefined;
 
       if (error.response) {
-
-        errorResponse.details = {
+        details = {
           status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data
+          statusText: error.response.statusText
         };
 
-        const errorData = error.response.data; 
-        if (errorData.includes('UnauthenticatedException')) {
-          errorResponse.httpStatus = 401;
-          errorResponse.details.statusText = 'Invalid credentials';
-          errorResponse.details.status = 401;
+        // Include raw data only if rawResponse is requested
+        if (options.rawResponse) {
+          details.data = error.response.data;
         }
 
-   
+        const errorData = error.response.data; 
+
+        if (errorData.includes('UnauthenticatedException')) {
+          // Set logical status and error code for authentication errors
+          code = 'UNAUTHENTICATED';
+          details.status = 401;
+          details.statusText = 'Invalid credentials';
+        }
+
       } else if (error.request) {
         // The request was made but no response was received
-        errorResponse.details = {
+        details = {
           request: 'Request sent but no response received'
         };
       }
+
+      // Set code and details in correct order
+      if (code) {
+        errorResponse.code = code;
+      }
+      errorResponse.details = details;
 
       throw errorResponse;
     }

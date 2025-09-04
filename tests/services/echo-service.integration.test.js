@@ -141,6 +141,8 @@ describe('EudrEchoClient - Integration Tests', function () {
 
       try {
         const response = await echoClient.echo(testMessage);
+
+        console.log("echo response", response);
    
         // If successful, response should be an object
         expect(response.httpStatus).to.equal(200);
@@ -236,15 +238,18 @@ describe('EudrEchoClient - Integration Tests', function () {
         webServiceClientId: testConfig.webServiceClientId
       });
 
+     
+
       try {
-        await invalidClient.echo('Test message');
-        // If we get here, the API accepted invalid credentials
-        console.log('⚠️ API accepted invalid credent  ials (unexpected behavior)');
+       const response = await invalidClient.echo('Test message');
+   
+         
       } catch (error) {
-        expect(error).to.be.instanceOf(Error); 
-        expect(error.httpStatus).to.equal(401);
-        expect(error.details.statusText).to.equal('Invalid credentials');
+        console.log("invalid credentials response", error);
+        expect(error.code).to.equal('UNAUTHENTICATED');
         expect(error.details.status).to.equal(401);
+        expect(error.details.statusText).to.equal('Invalid credentials');
+ 
       }
     });
 
