@@ -22,11 +22,11 @@ describe('Echo Client Endpoint Logic', function() {
       const client = new EudrEchoClient({
         username: 'testuser',
         password: 'testpass',
-        webServiceClientId: 'eudr'
+        webServiceClientId: 'eudr-repository'
       });
 
       expect(client.config.endpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EudrEchoService');
-        expect(client.config.webServiceClientId).to.equal('eudr');
+        expect(client.config.webServiceClientId).to.equal('eudr-repository');
     });
   });
 

@@ -47,14 +47,14 @@ describe('Services Index Integration', function() {
 
   describe('Configuration Functionality', function() {
     it('should identify standard client IDs correctly', function() {
-      expect(services.config.isStandardClientId('eudr')).to.be.true;
+      expect(services.config.isStandardClientId('eudr-repository')).to.be.true;
       expect(services.config.isStandardClientId('eudr-test')).to.be.true;
       expect(services.config.isStandardClientId('custom-client')).to.be.false;
     });
 
     it('should return supported client IDs', function() {
       const supported = services.config.getSupportedClientIds();
-      expect(supported).to.deep.equal(['eudr', 'eudr-test']);
+      expect(supported).to.deep.equal(['eudr-repository', 'eudr-test']);
     });
 
     it('should return supported services', function() {
@@ -72,7 +72,7 @@ describe('Services Index Integration', function() {
 
     it('should generate endpoints correctly', function() {
       const echoEndpoint = services.config.generateEndpoint('echo', 'v1', 'eudr-test');
-      const submissionEndpoint = services.config.generateEndpoint('submission', 'v2', 'eudr');
+      const submissionEndpoint = services.config.generateEndpoint('submission', 'v2', 'eudr-repository');
       
       expect(echoEndpoint).to.equal('https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EudrEchoService');
       expect(submissionEndpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV2');
@@ -95,11 +95,11 @@ describe('Services Index Integration', function() {
       const client = new services.EudrRetrievalClient({
         username: 'testuser',
         password: 'testpass',
-        webServiceClientId: 'eudr'
+        webServiceClientId: 'eudr-repository'
       });
 
       expect(client.config.endpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRRetrievalServiceV1');
-      expect(client.config.webServiceClientId).to.equal('eudr');
+      expect(client.config.webServiceClientId).to.equal('eudr-repository');
     });
 
     it('should create Submission Client V1 with automatic endpoint generation', function() {
@@ -117,11 +117,11 @@ describe('Services Index Integration', function() {
       const client = new services.EudrSubmissionClientV2({
         username: 'testuser',
         password: 'testpass',
-        webServiceClientId: 'eudr'
+        webServiceClientId: 'eudr-repository'
       });
 
       expect(client.config.endpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV2');
-      expect(client.config.webServiceClientId).to.equal('eudr');
+      expect(client.config.webServiceClientId).to.equal('eudr-repository');
     });
   });
 });

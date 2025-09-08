@@ -53,7 +53,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
             const client = new EudrRetrievalClientV2({
                 username: 'test-user',
                 password: 'test-password',
-                webServiceClientId: 'eudr'
+                webServiceClientId: 'eudr-repository'
             });
 
             expect(client).to.be.an.instanceOf(EudrRetrievalClientV2);
