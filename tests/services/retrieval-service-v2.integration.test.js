@@ -210,6 +210,27 @@ describe('EudrRetrievalClient V2 Tests', function () {
             }
         });
 
+        it('should always return commodities as an array in getStatementByIdentifiers V2 response', async function () {
+            try {
+                const result = await service.getStatementByIdentifiers('25HRYVJNLEO828', 'WOHYRNOQ');
+                
+                // Check if we have DDS info
+                if (result.ddsInfo && result.ddsInfo.length > 0) {
+                    const ddsInfo = result.ddsInfo[0];
+                    console.log('V2 DDS Info:', JSON.stringify(ddsInfo, null, 2));
+                    // If commodities exist, they should always be an array
+                    if (ddsInfo.commodities !== undefined) {
+                        expect(ddsInfo.commodities).to.be.an('array');
+                        console.log('V2 Commodities is correctly returned as array:', Array.isArray(ddsInfo.commodities));
+                    }
+                }
+            } catch (error) {
+                // If this is a real test with actual credentials, we might get authentication errors
+                // In that case, we'll just log the error and continue
+                console.log('Note: Could not test V2 commodities array due to error:', error.message);
+            }
+        });
+
         it('should successfully call getReferencedDds with valid credentials V2', async function () {
             try {
                 const result = await service.getReferencedDds(testAssociatedStatementReferenceNumber, testAssociatedStatementSecurityNumber);

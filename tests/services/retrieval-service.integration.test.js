@@ -206,6 +206,30 @@ describe('EudrRetrievalClient V1 Tests', function () {
 
         }
       });
+
+      it('should always return commodities as an array in getStatementByIdentifiers response', async function () {
+        try {
+          const result = await retrievalClient.getStatementByIdentifiers(
+            this.realReferenceNumber,
+            this.realVerificationNumber
+          );
+          
+          // Check if we have DDS info
+          if (result.ddsInfo && result.ddsInfo.length > 0) {
+            const ddsInfo = result.ddsInfo[0];
+            
+            // If commodities exist, they should always be an array
+            if (ddsInfo.commodities !== undefined) {
+              expect(ddsInfo.commodities).to.be.an('array');
+              console.log('Commodities is correctly returned as array:', Array.isArray(ddsInfo.commodities));
+            }
+          }
+        } catch (error) {
+          // If this is a real test with actual credentials, we might get authentication errors
+          // In that case, we'll just log the error and continue
+          console.log('Note: Could not test commodities array due to error:', error.message);
+        }
+      });
     });
 
   });

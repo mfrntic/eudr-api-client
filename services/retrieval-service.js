@@ -396,6 +396,10 @@ class EudrRetrievalClient {
                 if (propertyName === 'associateStatement') {
                   const statements = Array.isArray(value) ? value : [value];
                   cleaned['associatedStatements'] = statements.map(st => cleanObject(st));
+                } else if (propertyName === 'commodities') {
+                  // Ensure commodities is always an array
+                  const commodities = Array.isArray(value) ? value : (value ? [value] : []);
+                  cleaned[propertyName] = commodities.map(commodity => cleanObject(commodity));
                 } else {
                   cleaned[propertyName] = cleanObject(value);
                 }
