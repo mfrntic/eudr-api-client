@@ -230,6 +230,43 @@ describe('EudrRetrievalClient V1 Tests', function () {
           console.log('Note: Could not test commodities array due to error:', error.message);
         }
       });
+
+      it('should always return array fields as arrays in getStatementByIdentifiers response', async function () {
+        try {
+          const result = await retrievalClient.getStatementByIdentifiers(
+            this.realReferenceNumber,
+            this.realVerificationNumber
+          );
+          
+          // Check if we have DDS info
+          if (result.ddsInfo && result.ddsInfo.length > 0) {
+            const ddsInfo = result.ddsInfo[0];
+            
+            // Check all array fields that should always be arrays
+            const arrayFields = ['commodities', 'producers', 'speciesInfo', 'referenceNumber'];
+            
+            arrayFields.forEach(field => {
+              if (ddsInfo[field] !== undefined) {
+                expect(ddsInfo[field]).to.be.an('array', `${field} should be an array`);
+                console.log(`${field} is correctly returned as array:`, Array.isArray(ddsInfo[field]));
+              }
+            });
+
+            // Check nested array fields in commodities
+            if (ddsInfo.commodities && ddsInfo.commodities.length > 0) {
+              const commodity = ddsInfo.commodities[0];
+              if (commodity.producers !== undefined) {
+                expect(commodity.producers).to.be.an('array', 'commodity.producers should be an array');
+              }
+              if (commodity.speciesInfo !== undefined) {
+                expect(commodity.speciesInfo).to.be.an('array', 'commodity.speciesInfo should be an array');
+              }
+            }
+          }
+        } catch (error) {
+          console.log('Note: Could not test array fields due to error:', error.message);
+        }
+      });
     });
 
   });

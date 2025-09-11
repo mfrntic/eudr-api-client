@@ -400,6 +400,18 @@ class EudrRetrievalClient {
                   // Ensure commodities is always an array
                   const commodities = Array.isArray(value) ? value : (value ? [value] : []);
                   cleaned[propertyName] = commodities.map(commodity => cleanObject(commodity));
+                } else if (propertyName === 'producers') {
+                  // Ensure producers is always an array
+                  const producers = Array.isArray(value) ? value : (value ? [value] : []);
+                  cleaned[propertyName] = producers.map(producer => cleanObject(producer));
+                } else if (propertyName === 'speciesInfo') {
+                  // Ensure speciesInfo is always an array
+                  const speciesInfo = Array.isArray(value) ? value : (value ? [value] : []);
+                  cleaned[propertyName] = speciesInfo.map(species => cleanObject(species));
+                } else if (propertyName === 'referenceNumber') {
+                  // Ensure referenceNumber is always an array
+                  const referenceNumbers = Array.isArray(value) ? value : (value ? [value] : []);
+                  cleaned[propertyName] = referenceNumbers.map(ref => cleanObject(ref));
                 } else {
                   cleaned[propertyName] = cleanObject(value);
                 }

@@ -35,6 +35,7 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
 - ✅ **Easy Integration** - Simple API with real-world examples
 - ✅ **Smart Endpoint Management** - Automatic endpoint generation for standard environments
 - ✅ **Flexible Configuration** - Manual endpoint override when needed
+- ✅ **🚀 NEW: Flexible Array Fields** - Array properties accept both single objects and arrays for maximum flexibility
 
 ## Table of Contents
 
@@ -107,6 +108,7 @@ const result = await client.submitDds({
         scientificName: 'Fagus silvatica',
         commonName: 'European Beech'
       }
+      // 🚀 NEW: speciesInfo can also be an array for multiple species
     }],
     operator: {
       nameAndAddress: {
@@ -122,6 +124,7 @@ const result = await client.submitDds({
       referenceNumber: '25NLSN6LX69730',
       verificationNumber: 'K7R8LA90'
     }]
+    // 🚀 NEW: All array fields support both single objects and arrays
   }
 });
 
@@ -656,6 +659,7 @@ const fullDds = await retrievalClient.getStatementByIdentifiers('25NLSN6LX69730'
 - ✅ **Batch Retrieval**: Support for up to 100 UUIDs in a single `getDdsInfo` call
 - ✅ **Smart Error Handling**: Converts SOAP authentication faults to proper HTTP 401 status codes
 - ✅ **Flexible SSL Configuration**: Configurable SSL certificate validation
+- ✅ **🚀 NEW: Consistent Array Fields**: `commodities`, `producers`, `speciesInfo`, `referenceNumber` always returned as arrays
 
 ---
 ### 📝 EudrSubmissionClient
@@ -1006,6 +1010,7 @@ Advanced service for retrieving DDS information and supply chain data with enhan
 - ✅ **Enhanced V2 Namespaces**: Updated SOAP namespaces for V2 compatibility
 - ✅ **Automatic Endpoint Generation**: V2-specific endpoint generation
 - ✅ **Consistent Response Format**: Includes both `httpStatus` and `status` fields for compatibility
+- ✅ **🚀 NEW: Consistent Array Fields**: `commodities`, `producers`, `speciesInfo`, `referenceNumber` always returned as arrays
 
 #### Detailed Method Reference
 
@@ -1206,6 +1211,139 @@ const customV2Client = new EudrRetrievalClientV2({
   ssl: false
 });
 ```
+
+### 🚀 NEW: Flexible Array Fields
+
+The EUDR API Client now supports **maximum flexibility** for array properties. All fields that can contain multiple items according to the XSD schema can be provided as either:
+
+- **Single Object**: `{ property: { ... } }`
+- **Array of Objects**: `{ property: [{ ... }, { ... }] }`
+
+#### Supported Flexible Fields
+
+| Field | XSD maxOccurs | V1 Support | V2 Support | Description |
+|-------|---------------|------------|------------|-------------|
+| **`commodities`** | 200 | ✅ | ✅ | Commodity information |
+| **`producers`** | 1000 | ✅ | ✅ | Producer information |
+| **`speciesInfo`** | 500 | ✅ | ✅ | Species information |
+| **`associatedStatements`** | 2000 | ✅ | ✅ | Referenced DDS statements |
+| **`referenceNumber`** | 12 | ✅ | ✅ | Operator reference numbers |
+
+#### Examples
+
+**Single Object (Traditional):**
+```javascript
+const request = {
+  statement: {
+    commodities: [{
+      speciesInfo: {  // Single species object
+        scientificName: 'Fagus sylvatica',
+        commonName: 'European Beech'
+      },
+      producers: {  // Single producer object
+        country: 'HR',
+        name: 'Forest Company'
+      }
+    }],
+    operator: {
+      referenceNumber: {  // Single reference object
+        identifierType: 'eori',
+        identifierValue: 'HR123456789'
+      }
+    }
+  }
+};
+```
+
+**Array Format (Multiple Items):**
+```javascript
+const request = {
+  statement: {
+    commodities: [{
+      speciesInfo: [  // Array of species
+        {
+          scientificName: 'Fagus sylvatica',
+          commonName: 'European Beech'
+        },
+        {
+          scientificName: 'Quercus robur',
+          commonName: 'English Oak'
+        }
+      ],
+      producers: [  // Array of producers
+        {
+          country: 'HR',
+          name: 'Croatian Forest Company'
+        },
+        {
+          country: 'DE',
+          name: 'German Wood Supplier'
+        }
+      ]
+    }],
+    operator: {
+      referenceNumber: [  // Array of references
+        {
+          identifierType: 'eori',
+          identifierValue: 'HR123456789'
+        },
+        {
+          identifierType: 'vat',
+          identifierValue: 'HR12345678901'
+        }
+      ]
+    },
+    associatedStatements: [  // Array of associated statements
+      {
+        referenceNumber: '25NLSN6LX69730',
+        verificationNumber: 'K7R8LA90'
+      },
+      {
+        referenceNumber: '25NLWPAZWQ8865',
+        verificationNumber: 'GLE9SMMM'
+      }
+    ]
+  }
+};
+```
+
+**Mixed Usage (Maximum Flexibility):**
+```javascript
+const request = {
+  statement: {
+    commodities: [  // Array of commodities
+      {
+        speciesInfo: {  // Single species in first commodity
+          scientificName: 'Fagus sylvatica',
+          commonName: 'European Beech'
+        },
+        producers: [  // Multiple producers in first commodity
+          { country: 'HR', name: 'Croatian Producer' },
+          { country: 'DE', name: 'German Producer' }
+        ]
+      },
+      {
+        speciesInfo: [  // Multiple species in second commodity
+          { scientificName: 'Quercus robur', commonName: 'English Oak' },
+          { scientificName: 'Pinus sylvestris', commonName: 'Scots Pine' }
+        ],
+        producers: {  // Single producer in second commodity
+          country: 'AT',
+          name: 'Austrian Producer'
+        }
+      }
+    ]
+  }
+};
+```
+
+#### Benefits
+
+- **🔄 Backward Compatibility**: Existing code continues to work unchanged
+- **📈 Scalability**: Easy to add multiple items when needed
+- **🎯 Consistency**: Same pattern across all array fields
+- **⚡ Performance**: No overhead for single-item arrays
+- **🛡️ Type Safety**: Full TypeScript support for both formats
 
 ### Data Types
 
@@ -1859,6 +1997,127 @@ for (const ref of referencedStatements) {
 ```
 
 **Recommendation**: Use **EudrRetrievalClientV2** for complete supply chain analysis with the `getReferencedDds()` method.
+
+#### 🚀 NEW: Q: How do flexible array fields work?
+
+**A**: The EUDR API Client now supports **maximum flexibility** for array properties. All fields that can contain multiple items according to the XSD schema can be provided as either single objects or arrays:
+
+**Supported Flexible Fields:**
+- **`commodities`** - Commodity information (maxOccurs="200")
+- **`producers`** - Producer information (maxOccurs="1000") 
+- **`speciesInfo`** - Species information (maxOccurs="500")
+- **`referenceNumber`** - Reference numbers (maxOccurs="12")
+- **`associatedStatements`** - Associated statements (maxOccurs="2000")
+
+**Input Flexibility:**
+```javascript
+// Both formats work identically:
+
+// Single object format (traditional)
+const request1 = {
+  statement: {
+    commodities: [{
+      speciesInfo: {  // Single object
+        scientificName: 'Fagus sylvatica',
+        commonName: 'European Beech'
+      },
+      producers: {  // Single object
+        country: 'HR',
+        name: 'Forest Company'
+      }
+    }]
+  }
+};
+
+// Array format (multiple items)
+const request2 = {
+  statement: {
+    commodities: [{
+      speciesInfo: [  // Array of objects
+        { scientificName: 'Fagus sylvatica', commonName: 'European Beech' },
+        { scientificName: 'Quercus robur', commonName: 'English Oak' }
+      ],
+      producers: [  // Array of objects
+        { country: 'HR', name: 'Croatian Company' },
+        { country: 'DE', name: 'German Company' }
+      ]
+    }]
+  }
+};
+
+// Mixed format (maximum flexibility)
+const request3 = {
+  statement: {
+    commodities: [
+      {
+        speciesInfo: {  // Single in first commodity
+          scientificName: 'Fagus sylvatica',
+          commonName: 'European Beech'
+        },
+        producers: [  // Multiple in first commodity
+          { country: 'HR', name: 'Croatian Company' },
+          { country: 'DE', name: 'German Company' }
+        ]
+      },
+      {
+        speciesInfo: [  // Multiple in second commodity
+          { scientificName: 'Quercus robur', commonName: 'English Oak' },
+          { scientificName: 'Pinus sylvestris', commonName: 'Scots Pine' }
+        ],
+        producers: {  // Single in second commodity
+          country: 'AT',
+          name: 'Austrian Company'
+        }
+      }
+    ]
+  }
+};
+```
+
+**Benefits:**
+- **🔄 Backward Compatibility**: Existing code works unchanged
+- **📈 Scalability**: Easy to add multiple items when needed
+- **🎯 Consistency**: Same pattern across all array fields
+- **⚡ Performance**: No overhead for single-item arrays
+- **🛡️ Type Safety**: Full TypeScript support for both formats
+
+#### 🚀 NEW: Q: Which fields are always returned as arrays in retrieval responses?
+
+**A**: The EUDR API Client ensures that certain fields are always returned as arrays, even when there's only one item. This provides consistent data structure for easier processing:
+
+**Fields Always Returned as Arrays:**
+- **`commodities`** - Array of commodity information (maxOccurs="200")
+- **`producers`** - Array of producer information (maxOccurs="1000") 
+- **`speciesInfo`** - Array of species information (maxOccurs="500")
+- **`referenceNumber`** - Array of reference numbers (maxOccurs="12")
+- **`associatedStatements`** - Array of associated statements (maxOccurs="2000")
+
+**Why This Matters:**
+```javascript
+// Before: Inconsistent data types
+const dds = await retrievalClient.getStatementByIdentifiers('REF123', 'VER456');
+if (dds.ddsInfo[0].commodities) {
+  // commodities could be an object (single item) or array (multiple items)
+  const commodities = Array.isArray(dds.ddsInfo[0].commodities) 
+    ? dds.ddsInfo[0].commodities 
+    : [dds.ddsInfo[0].commodities];
+}
+
+// After: Always consistent arrays
+const dds = await retrievalClient.getStatementByIdentifiers('REF123', 'VER456');
+if (dds.ddsInfo[0].commodities) {
+  // commodities is always an array, even with single item
+  dds.ddsInfo[0].commodities.forEach(commodity => {
+    console.log('Commodity:', commodity.descriptionOfGoods);
+  });
+}
+```
+
+**Implementation Details:**
+- **V1 Retrieval Service**: All array fields are normalized in `getStatementByIdentifiers()`
+- **V2 Retrieval Service**: All array fields are normalized in `getStatementByIdentifiers()` and `getReferencedDds()`
+- **XSD Schema Compliance**: Based on `maxOccurs` values from EUDRSubmissionServiceV1.xsd and EUDRSubmissionServiceV2.xsd
+- **Backward Compatibility**: Existing code continues to work, but now with consistent array structure
 
 ## Contributing
 

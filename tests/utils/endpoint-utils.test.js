@@ -127,7 +127,7 @@ describe('Endpoint Utils', function() {
       };
 
       expect(() => endpointUtils.validateAndGenerateEndpoint(config, 'echo', 'v1')).to.throw(
-        'webServiceClientId "custom-client" does not support automatic endpoint generation. Please provide endpoint manually or use one of: eudr, eudr-test'
+        'webServiceClientId "custom-client" does not support automatic endpoint generation. Please provide endpoint manually or use one of: eudr-repository, eudr-test'
       );
     });
   });

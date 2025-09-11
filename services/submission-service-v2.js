@@ -281,10 +281,13 @@ class EudrSubmissionClientV2 {
     if (statement.operator) {
       xml += '<v21:operator>';
       if (statement.operator.referenceNumber) {
-        xml += '<v21:referenceNumber>';
-        xml += `<v21:identifierType>${statement.operator.referenceNumber.identifierType}</v21:identifierType>`;
-        xml += `<v21:identifierValue>${statement.operator.referenceNumber.identifierValue}</v21:identifierValue>`;
-        xml += '</v21:referenceNumber>';
+        const refArray = Array.isArray(statement.operator.referenceNumber) ? statement.operator.referenceNumber : [statement.operator.referenceNumber];
+        for (const ref of refArray) {
+          xml += '<v21:referenceNumber>';
+          xml += `<v21:identifierType>${ref.identifierType}</v21:identifierType>`;
+          xml += `<v21:identifierValue>${ref.identifierValue}</v21:identifierValue>`;
+          xml += '</v21:referenceNumber>';
+        }
       }
       
       // V2: Use operatorAddress instead of nameAndAddress
@@ -341,9 +344,10 @@ class EudrSubmissionClientV2 {
     // Add geoLocationConfidential flag
     xml += `<v21:geoLocationConfidential>${statement.geoLocationConfidential || false}</v21:geoLocationConfidential>`;
 
-    // Add associated statements if present
+    // Add associated statements if present (support both object and array)
     if (statement.associatedStatements) {
-      for (const assoc of Array.isArray(statement.associatedStatements) ? statement.associatedStatements : [statement.associatedStatements]) {
+      const assocArray = Array.isArray(statement.associatedStatements) ? statement.associatedStatements : [statement.associatedStatements];
+      for (const assoc of assocArray) {
         xml += '<v21:associatedStatements>';
         xml += `<v21:referenceNumber>${assoc.referenceNumber}</v21:referenceNumber>`;
         if (assoc.verificationNumber) {
@@ -400,16 +404,19 @@ class EudrSubmissionClientV2 {
       xml += `<v21:hsHeading>${commodity.hsHeading}</v21:hsHeading>`;
     }
 
-    // Add species info
+    // Add species info (support both object and array)
     if (commodity.speciesInfo) {
-      xml += '<v21:speciesInfo>';
-      if (commodity.speciesInfo.scientificName) {
-        xml += `<v21:scientificName>${commodity.speciesInfo.scientificName}</v21:scientificName>`;
+      const speciesInfoArray = Array.isArray(commodity.speciesInfo) ? commodity.speciesInfo : [commodity.speciesInfo];
+      for (const speciesInfo of speciesInfoArray) {
+        xml += '<v21:speciesInfo>';
+        if (speciesInfo.scientificName) {
+          xml += `<v21:scientificName>${speciesInfo.scientificName}</v21:scientificName>`;
+        }
+        if (speciesInfo.commonName) {
+          xml += `<v21:commonName>${speciesInfo.commonName}</v21:commonName>`;
+        }
+        xml += '</v21:speciesInfo>';
       }
-      if (commodity.speciesInfo.commonName) {
-        xml += `<v21:commonName>${commodity.speciesInfo.commonName}</v21:commonName>`;
-      }
-      xml += '</v21:speciesInfo>';
     }
 
     // Add producers

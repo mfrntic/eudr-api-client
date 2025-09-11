@@ -126,9 +126,9 @@ describe('EudrSubmissionClient - Integration Tests', function () {
 
         createdDdsIdentifiers.push(result.ddsIdentifier);
       } catch (error) {
-        
-          throw error;
-         
+
+        throw error;
+
       }
     });
   });
@@ -185,7 +185,7 @@ describe('EudrSubmissionClient - Integration Tests', function () {
           expect(result.ddsIdentifier.length).to.be.greaterThan(0);
 
           createdDdsIdentifiers.push(result.ddsIdentifier);
-        } catch (error) { 
+        } catch (error) {
           throw error;
         }
       });
@@ -271,14 +271,14 @@ describe('EudrSubmissionClient - Integration Tests', function () {
 
         // API accepted invalid data (unexpected behavior)
       } catch (error) {
-        expect(error.error).to.be.true; 
+        expect(error.error).to.be.true;
         expect(error.message).to.include('internalReferenceNumber is required');
       }
     });
 
     it('should handle network connectivity issues', async function () {
       const invalidClient = new EudrSubmissionClient({
-        endpoint: 'https://invalid-endpoint.com/soap', 
+        endpoint: 'https://invalid-endpoint.com/soap',
         username: 'test',
         password: 'test',
         webServiceClientId: 'test',
@@ -309,7 +309,7 @@ describe('EudrSubmissionClient - Integration Tests', function () {
 
         // API worked with invalid endpoint (unexpected)
       } catch (error) {
-        expect(error.error).to.be.true; 
+        expect(error.error).to.be.true;
         // The error structure from the service is different
         if (error.originalError.code) {
           // Network error structure
@@ -396,7 +396,7 @@ describe('EudrSubmissionClient - Integration Tests', function () {
 
         // API accepted invalid country codes (unexpected behavior)
       } catch (error) {
-        expect(error.error).to.be.true; 
+        expect(error.error).to.be.true;
         expect(error.eudrErrorCode).to.equal('XML_VALIDATION_ERROR');
       }
     });
@@ -426,7 +426,7 @@ describe('EudrSubmissionClient - Integration Tests', function () {
 
         // API accepted invalid HS heading (unexpected behavior)
       } catch (error) {
-        expect(error.error).to.be.true; 
+        expect(error.error).to.be.true;
         expect(error.eudrErrorCode).to.equal('EUDR_COMMODITIES_HS_CODE_INVALID');
       }
     });
@@ -489,6 +489,493 @@ describe('EudrSubmissionClient - Integration Tests', function () {
           throw error;
         }
       }
+    });
+  });
+
+  describe('🌳 Species Info Tests', function () {
+    it('should handle speciesInfo as single object V1', async function () {
+      try {
+        const request = {
+          operatorType: 'TRADER',
+          statement: {
+            internalReferenceNumber: `TEST-SPECIES-OBJECT-V1-${Date.now()}`,
+            activityType: 'TRADE',
+            countryOfActivity: 'HR',
+            borderCrossCountry: 'HR',
+            comment: 'Species info as object test V1',
+            commodities: [{
+              descriptors: {
+                descriptionOfGoods: 'Test wood with single species V1',
+                goodsMeasure: {
+                  supplementaryUnit: 20,
+                  supplementaryUnitQualifier: "MTQ"
+                }
+              },
+              hsHeading: '4401',
+              speciesInfo: {
+                scientificName: 'Quercus robur',
+                commonName: 'Hrast lužnjak'
+              },
+              producers: [{
+                country: 'HR',
+                name: 'Test Producer Species V1',
+                geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+              }]
+            }],
+            geoLocationConfidential: false
+          }
+        };
+
+        const result = await client.submitDds(request);
+
+        expect(result).to.have.property('httpStatus', 200);
+        expect(result).to.have.property('ddsIdentifier');
+        expect(result.ddsIdentifier).to.be.a('string');
+        expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+
+        createdDdsIdentifiers.push(result.ddsIdentifier);
+      } catch (error) {
+        console.log("ERROR", error);
+        throw error;
+      }
+    });
+
+    it('should handle speciesInfo as array V1', async function () {
+      try {
+        const request = {
+          operatorType: 'TRADER',
+          statement: {
+            internalReferenceNumber: `TEST-SPECIES-ARRAY-V1-${Date.now()}`,
+            activityType: 'TRADE',
+            countryOfActivity: 'HR',
+            borderCrossCountry: 'HR',
+            comment: 'Species info as array test V1',
+            commodities: [{
+              descriptors: {
+                descriptionOfGoods: 'Test wood with multiple species V1',
+                goodsMeasure: {
+                  netWeight: 750.750,
+                  supplementaryUnit: 20,
+                  supplementaryUnitQualifier: "MTQ"
+                }
+              },
+              hsHeading: '4401',
+              speciesInfo: [
+                {
+                  scientificName: 'Quercus robur',
+                  commonName: 'Hrast lužnjak'
+                },
+                {
+                  scientificName: 'Fagus sylvatica',
+                  commonName: 'Bukva'
+                },
+                {
+                  scientificName: 'Pinus sylvestris',
+                  commonName: 'Bor'
+                }
+              ],
+              producers: [{
+                country: 'HR',
+                name: 'Test Producer Species Array V1',
+                geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+              }]
+            }],
+            geoLocationConfidential: false
+          }
+        };
+
+        const result = await client.submitDds(request);
+
+        expect(result).to.have.property('httpStatus', 200);
+        expect(result).to.have.property('ddsIdentifier');
+        expect(result.ddsIdentifier).to.be.a('string');
+        expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+
+        createdDdsIdentifiers.push(result.ddsIdentifier);
+
+      } catch (error) {
+        console.log("ERROR", error);
+        throw error;
+      }
+    });
+
+    it('should handle speciesInfo with only scientificName V1', async function () {
+      try {
+        const request = {
+          operatorType: 'TRADER',
+          statement: {
+            internalReferenceNumber: `TEST-SPECIES-SCIENTIFIC-V1-${Date.now()}`,
+            activityType: 'TRADE',
+            countryOfActivity: 'HR',
+            borderCrossCountry: 'HR',
+            comment: 'Species info scientific name only test V1',
+            commodities: [{
+              descriptors: {
+                descriptionOfGoods: 'Test wood with scientific name only V1',
+                goodsMeasure: {
+                  supplementaryUnit: 20,
+                  supplementaryUnitQualifier: "MTQ"
+                }
+              },
+              hsHeading: '4401',
+              speciesInfo: [{
+                scientificName: 'Betula pendula'
+              }],
+              producers: [{
+                country: 'HR',
+                name: 'Test Producer Scientific V1',
+                geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+              }]
+            }],
+            geoLocationConfidential: false
+          }
+        };
+
+        const result = await client.submitDds(request);
+
+      } catch (error) {
+        expect(error.httpStatus).to.be.equal(400);
+        expect(error.error).to.be.true;
+        expect(error.eudrErrorCode).to.be.equal('EUDR_COMMODITIES_SPECIES_INFORMATION_COMMON_NAME_EMPTY');
+      }
+    });
+
+    it('should handle speciesInfo with only commonName V1', async function () {
+      try {
+        const request = {
+          operatorType: 'TRADER',
+          statement: {
+            internalReferenceNumber: `TEST-SPECIES-COMMON-V1-${Date.now()}`,
+            activityType: 'TRADE',
+            countryOfActivity: 'HR',
+            borderCrossCountry: 'HR',
+            comment: 'Species info common name only test V1',
+            commodities: [{
+              descriptors: {
+                descriptionOfGoods: 'Test wood with common name only V1',
+                goodsMeasure: {
+                  netWeight: 200.500,
+                  supplementaryUnit: 20,
+                  supplementaryUnitQualifier: "MTQ"
+                }
+              },
+              hsHeading: '4401',
+              speciesInfo: [{
+                commonName: 'Jela'
+              }],
+
+              producers: [{
+                country: 'HR',
+                name: 'Test Producer Common V1',
+                geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+              }]
+            }],
+            geoLocationConfidential: false
+          }
+        };
+
+        const result = await client.submitDds(request);
+
+
+        createdDdsIdentifiers.push(result.ddsIdentifier);
+      } catch (error) {
+        expect(error.httpStatus).to.be.equal(400);
+        expect(error.error).to.be.true;
+        expect(error.eudrErrorCode).to.be.equal('EUDR_COMMODITIES_SPECIES_INFORMATION_SCIENTIFIC_NAME_EMPTY');
+      }
+    });
+
+    it('should handle empty speciesInfo array V1', async function () {
+      try {
+        const request = {
+          operatorType: 'TRADER',
+          statement: {
+            internalReferenceNumber: `TEST-SPECIES-EMPTY-V1-${Date.now()}`,
+            activityType: 'TRADE',
+            countryOfActivity: 'HR',
+            borderCrossCountry: 'HR',
+            comment: 'Species info empty array test V1',
+            commodities: [{
+              descriptors: {
+                descriptionOfGoods: 'Test wood without species info V1',
+                goodsMeasure: {
+                  netWeight: 100.000,
+                  supplementaryUnit: 20,
+                  supplementaryUnitQualifier: "MTQ"
+                }
+              },
+              hsHeading: '4401',
+              speciesInfo: [],
+              producers: [{
+                country: 'HR',
+                name: 'Test Producer Empty V1',
+                geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+              }]
+            }],
+            geoLocationConfidential: false
+          }
+        };
+
+        const result = await client.submitDds(request);
+ 
+        createdDdsIdentifiers.push(result.ddsIdentifier);
+      } catch (error) {
+        expect(error.httpStatus).to.be.equal(400);
+        expect(error.error).to.be.true;
+        expect(error.eudrErrorCode).to.be.equal('EUDR_COMMODITIES_SPECIES_INFORMATION_EMPTY');
+      }
+    });
+
+    it('should handle mixed speciesInfo array with partial data V1', async function () {
+      try {
+        const request = {
+          operatorType: 'TRADER',
+          statement: {
+            internalReferenceNumber: `TEST-SPECIES-MIXED-V1-${Date.now()}`,
+            activityType: 'TRADE',
+            countryOfActivity: 'HR',
+            borderCrossCountry: 'HR',
+            comment: 'Species info mixed array test V1',
+            commodities: [{
+              descriptors: {
+                descriptionOfGoods: 'Test wood with mixed species data V1',
+                goodsMeasure: {
+                  netWeight: 600.300
+                }
+              },
+              hsHeading: '4401',
+              speciesInfo: [
+                {
+                  scientificName: 'Quercus robur',
+                  commonName: 'Hrast lužnjak'
+                },
+                {
+                  scientificName: 'Fagus sylvatica'
+                  // Missing commonName
+                },
+                {
+                  commonName: 'Jela'
+                  // Missing scientificName
+                }
+              ],
+              producers: [{
+                country: 'HR',
+                name: 'Test Producer Mixed V1',
+                geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+              }]
+            }],
+            geoLocationConfidential: false
+          }
+        };
+
+        const result = await client.submitDds(request);
+ 
+      } catch (error) {
+        expect(error.httpStatus).to.be.equal(400);
+        expect(error.error).to.be.true;
+        expect(error.eudrErrorCode).to.be.equal('EUDR_COMMODITIES_SPECIES_INFORMATION_SCIENTIFIC_NAME_EMPTY');
+      }
+    });
+
+    it('should handle referenceNumber as array V1', async function () {
+      try{
+      const request = {
+        operatorType: 'TRADER',
+        statement: {
+          internalReferenceNumber: `TEST-REF-ARRAY-V1-${Date.now()}`,
+          activityType: 'TRADE',
+          countryOfActivity: 'HR',
+          borderCrossCountry: 'HR',
+          comment: 'Reference number as array test V1',
+          operator: {
+            referenceNumber: [
+              {
+                identifierType: 'eori',
+                identifierValue: 'HR123456789012345'
+              },
+              {
+                identifierType: 'vat',
+                identifierValue: 'HR12345678901'
+              }
+            ],
+            nameAndAddress: {
+              name: 'Test Company Multiple References V1',
+              country: 'HR',
+              address: 'Test Street 123, 10000 Zagreb, Croatia'
+            }
+          },
+          commodities: [{
+            descriptors: {
+              descriptionOfGoods: 'Test wood with multiple references V1',
+              goodsMeasure: {
+                netWeight: 500.250,
+                supplementaryUnit: 20,
+                supplementaryUnitQualifier: "MTQ"
+              }
+            },
+            hsHeading: '4401',
+            speciesInfo: [{
+              scientificName: 'Fagus sylvatica',
+              commonName: 'BUKVA OBIČNA'
+            }],
+            producers: [{
+              country: 'HR',
+              name: 'Test Producer Multiple Refs V1',
+              geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+            }]
+          }],
+          geoLocationConfidential: false
+        }
+      };
+
+      const result = await client.submitDds(request);
+
+      expect(result).to.have.property('httpStatus', 200);
+      expect(result).to.have.property('ddsIdentifier');
+      expect(result.ddsIdentifier).to.be.a('string');
+      expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+
+      createdDdsIdentifiers.push(result.ddsIdentifier);
+    } catch (error) {
+      console.log("ERROR", error);
+      throw error;
+    }
+    });
+
+    it('should handle associatedStatements as array V1', async function () {
+      try{
+      const request = {
+        operatorType: 'TRADER',
+        statement: {
+          internalReferenceNumber: `TEST-ASSOC-ARRAY-V1-${Date.now()}`,
+          activityType: 'TRADE',
+          countryOfActivity: 'HR',
+          borderCrossCountry: 'HR',
+          comment: 'Associated statements as array test V1',
+          operator: {
+            referenceNumber: {
+              identifierType: 'eori',
+              identifierValue: 'HR123456789012345'
+            },
+            nameAndAddress: {
+              name: 'Test Company Multiple Associated V1',
+              country: 'HR',
+              address: 'Test Street 123, 10000 Zagreb, Croatia'
+            }
+          },
+          commodities: [{
+            descriptors: {
+              descriptionOfGoods: 'Test wood with multiple associated statements V1',
+              goodsMeasure: {
+                netWeight: 750.750,
+                supplementaryUnit: 20,
+                supplementaryUnitQualifier: "MTQ"
+              }
+            },
+            hsHeading: '4401',
+            speciesInfo: [{
+              scientificName: 'Fagus sylvatica',
+              commonName: 'BUKVA OBIČNA'
+            }],
+            producers: [{
+              country: 'HR',
+              name: 'Test Producer Multiple Assoc V1',
+              geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+            }]
+          }],
+          associatedStatements: [
+            {
+              referenceNumber: "25HRBLEL9D3262",
+              verificationNumber: 'TEREHUFL'
+            },
+            {
+              referenceNumber: '25HR05KTDX3261',
+              verificationNumber: '45SG4HWA'
+            }
+          ],
+          geoLocationConfidential: false
+        }
+      };
+
+      const result = await client.submitDds(request);
+
+      expect(result).to.have.property('httpStatus', 200);
+      expect(result).to.have.property('ddsIdentifier');
+      expect(result.ddsIdentifier).to.be.a('string');
+      expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+
+      createdDdsIdentifiers.push(result.ddsIdentifier); 
+    } catch (error) {
+      console.log("ERROR", error);
+      throw error;
+    }
+    });
+
+    it('should handle producers as array V1', async function () {
+      try{
+      const request = {
+        operatorType: 'TRADER',
+        statement: {
+          internalReferenceNumber: `TEST-PRODUCERS-ARRAY-V1-${Date.now()}`,
+          activityType: 'TRADE',
+          countryOfActivity: 'HR',
+          borderCrossCountry: 'HR',
+          comment: 'Producers as array test V1',
+          operator: {
+            referenceNumber: {
+              identifierType: 'eori',
+              identifierValue: 'HR123456789012345'
+            },
+            nameAndAddress: {
+              name: 'Test Company Multiple Producers V1',
+              country: 'HR',
+              address: 'Test Street 123, 10000 Zagreb, Croatia'
+            }
+          },
+          commodities: [{
+            descriptors: {
+              descriptionOfGoods: 'Test wood with multiple producers V1',
+              goodsMeasure: {
+                netWeight: 600.300
+              }
+            },
+            hsHeading: '4401',
+            speciesInfo: [{
+              scientificName: 'Fagus sylvatica',
+              commonName: 'BUKVA OBIČNA'
+            }],
+            producers: [
+              {
+                country: 'HR',
+                name: 'Croatian Producer 1 V1',
+                geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+              },
+              {
+                country: 'DE',
+                name: 'German Producer 2 V1',
+                geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+              },
+              {
+                country: 'AT',
+                name: 'Austrian Producer 3 V1',
+                geometryGeojson: "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=="
+              }
+            ]
+          }],
+          geoLocationConfidential: false
+        }
+      };
+
+      const result = await client.submitDds(request);
+
+      expect(result).to.have.property('httpStatus', 200);
+      expect(result).to.have.property('ddsIdentifier');
+      expect(result.ddsIdentifier).to.be.a('string');
+      expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);  
+    } catch (error) {
+      console.log("ERROR", error);
+      throw error;
+    }
     });
   });
 });

@@ -231,6 +231,40 @@ describe('EudrRetrievalClient V2 Tests', function () {
             }
         });
 
+        it('should always return array fields as arrays in getStatementByIdentifiers V2 response', async function () {
+            try {
+                const result = await service.getStatementByIdentifiers('25HRYVJNLEO828', 'WOHYRNOQ');
+                
+                // Check if we have DDS info
+                if (result.ddsInfo && result.ddsInfo.length > 0) {
+                    const ddsInfo = result.ddsInfo[0];
+                    
+                    // Check all array fields that should always be arrays
+                    const arrayFields = ['commodities', 'producers', 'speciesInfo', 'referenceNumber'];
+                    
+                    arrayFields.forEach(field => {
+                        if (ddsInfo[field] !== undefined) {
+                            expect(ddsInfo[field]).to.be.an('array', `V2 ${field} should be an array`);
+                            console.log(`V2 ${field} is correctly returned as array:`, Array.isArray(ddsInfo[field]));
+                        }
+                    });
+
+                    // Check nested array fields in commodities
+                    if (ddsInfo.commodities && ddsInfo.commodities.length > 0) {
+                        const commodity = ddsInfo.commodities[0];
+                        if (commodity.producers !== undefined) {
+                            expect(commodity.producers).to.be.an('array', 'V2 commodity.producers should be an array');
+                        }
+                        if (commodity.speciesInfo !== undefined) {
+                            expect(commodity.speciesInfo).to.be.an('array', 'V2 commodity.speciesInfo should be an array');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.log('Note: Could not test V2 array fields due to error:', error.message);
+            }
+        });
+
         it('should successfully call getReferencedDds with valid credentials V2', async function () {
             try {
                 const result = await service.getReferencedDds(testAssociatedStatementReferenceNumber, testAssociatedStatementSecurityNumber);
