@@ -8,13 +8,13 @@
 /**
  * Standard EUDR webServiceClientId values that support automatic endpoint generation
  */
-const STANDARD_CLIENT_IDS = ['eudr', 'eudr-test'];
+const STANDARD_CLIENT_IDS = ['eudr-repository', 'eudr-test'];
 
 /**
  * Base URLs for different environments
  */
 const BASE_URLS = {
-  'eudr': 'https://eudr.webcloud.ec.europa.eu',
+  'eudr-repository': 'https://eudr.webcloud.ec.europa.eu',
   'eudr-test': 'https://acceptance.eudr.webcloud.ec.europa.eu'
 };
 

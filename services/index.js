@@ -5,7 +5,7 @@
  * endpoint generation capabilities.
  * 
  * Automatic endpoint generation:
- * - For webServiceClientId 'eudr': production environment
+ * - For webServiceClientId 'eudr-repository': production environment
  * - For webServiceClientId 'eudr-test': acceptance environment
  * - For custom webServiceClientId: endpoint must be provided manually
  * 
@@ -24,7 +24,7 @@
  * const submissionClient = new EudrSubmissionClient({
  *   username: 'user',
  *   password: 'pass',
- *   webServiceClientId: 'eudr',
+ *   webServiceClientId: 'eudr-repository',
  *   ssl: true // Use secure SSL/TLS
  * });
  * 

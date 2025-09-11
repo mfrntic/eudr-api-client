@@ -9,7 +9,7 @@
  * - CF7 v1.4: getStatementByIdentifiers, getReferencedDDS (supply chain traversal)
  * 
  * Automatic endpoint generation:
- * - For webServiceClientId 'eudr': production environment
+ * - For webServiceClientId 'eudr-repository': production environment
  * - For webServiceClientId 'eudr-test': acceptance environment
  * - For custom webServiceClientId: endpoint must be provided manually
  */
@@ -27,10 +27,10 @@ class EudrRetrievalClient {
   /**
    * Create a new EUDR Retrieval Service client
    * @param {Object} config - Configuration object
-   * @param {string} [config.endpoint] - Service endpoint URL (optional for standard webServiceClientId: 'eudr', 'eudr-test')
+   * @param {string} [config.endpoint] - Service endpoint URL (optional for standard webServiceClientId: 'eudr-repository', 'eudr-test')
    * @param {string} config.username - Authentication username (required)
    * @param {string} config.password - Authentication password (required)
-   * @param {string} config.webServiceClientId - Client ID ('eudr', 'eudr-test', or custom)
+   * @param {string} config.webServiceClientId - Client ID ('eudr-repository', 'eudr-test', or custom)
    * @param {number} [config.timestampValidity=60] - Timestamp validity in seconds
    * @param {number} [config.timeout=10000] - Request timeout in milliseconds
    * @param {boolean} [config.ssl=false] - SSL configuration: true for secure (default), false to allow unauthorized certificates

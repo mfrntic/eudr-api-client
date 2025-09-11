@@ -8,7 +8,7 @@ const endpointUtils = require('../../utils/endpoint-utils');
 describe('Endpoint Utils', function() {
   describe('isStandardClientId', function() {
     it('should return true for standard client IDs', function() {
-      expect(endpointUtils.isStandardClientId('eudr')).to.be.true;
+      expect(endpointUtils.isStandardClientId('eudr-repository')).to.be.true;
       expect(endpointUtils.isStandardClientId('eudr-test')).to.be.true;
     });
 
@@ -21,7 +21,7 @@ describe('Endpoint Utils', function() {
 
   describe('getBaseUrl', function() {
     it('should return correct base URLs for standard client IDs', function() {
-      expect(endpointUtils.getBaseUrl('eudr')).to.equal('https://eudr.webcloud.ec.europa.eu');
+      expect(endpointUtils.getBaseUrl('eudr-repository')).to.equal('https://eudr.webcloud.ec.europa.eu');
       expect(endpointUtils.getBaseUrl('eudr-test')).to.equal('https://acceptance.eudr.webcloud.ec.europa.eu');
     });
 
@@ -63,7 +63,7 @@ describe('Endpoint Utils', function() {
  
   describe('generateEndpoint', function() {
     it('should generate correct endpoints for echo service', function() {
-      expect(endpointUtils.generateEndpoint('echo', 'v1', 'eudr')).to.equal(
+      expect(endpointUtils.generateEndpoint('echo', 'v1', 'eudr-repository')).to.equal(
         'https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EudrEchoService'
       );
       expect(endpointUtils.generateEndpoint('echo', 'v1', 'eudr-test')).to.equal(
@@ -72,7 +72,7 @@ describe('Endpoint Utils', function() {
     });
 
     it('should generate correct endpoints for submission service V2', function() {
-      expect(endpointUtils.generateEndpoint('submission', 'v2', 'eudr')).to.equal(
+      expect(endpointUtils.generateEndpoint('submission', 'v2', 'eudr-repository')).to.equal(
         'https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV2'
       );
       expect(endpointUtils.generateEndpoint('submission', 'v2', 'eudr-test')).to.equal(
@@ -135,7 +135,7 @@ describe('Endpoint Utils', function() {
   describe('getSupportedClientIds', function() {
     it('should return all supported client IDs', function() {
       const supported = endpointUtils.getSupportedClientIds();
-      expect(supported).to.deep.equal(['eudr', 'eudr-test']);
+      expect(supported).to.deep.equal(['eudr-repository', 'eudr-test']);
     });
   });
 
@@ -165,12 +165,12 @@ describe('Endpoint Utils', function() {
 
   describe('Constants', function() {
     it('should export STANDARD_CLIENT_IDS', function() {
-      expect(endpointUtils.STANDARD_CLIENT_IDS).to.deep.equal(['eudr', 'eudr-test']);
+      expect(endpointUtils.STANDARD_CLIENT_IDS).to.deep.equal(['eudr-repository', 'eudr-test']);
     });
 
     it('should export BASE_URLS', function() {
       expect(endpointUtils.BASE_URLS).to.deep.equal({
-        'eudr': 'https://eudr.webcloud.ec.europa.eu',
+        'eudr-repository': 'https://eudr.webcloud.ec.europa.eu',
         'eudr-test': 'https://acceptance.eudr.webcloud.ec.europa.eu'
       });
     });

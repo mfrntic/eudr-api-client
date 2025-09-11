@@ -81,7 +81,7 @@ const { EudrSubmissionClient } = require('eudr-api-client');
 const client = new EudrSubmissionClient({
   username: 'your-username',
   password: 'your-password',
-  // Use "eudr-test" EUDR Traces acceptance environment, use "eudr" for production environment
+  // Use "eudr-test" EUDR Traces acceptance environment, use "eudr-repository" for production environment
   webServiceClientId: 'eudr-test', // See [Configuration](#configuration) section for details
   ssl: false // SSL configuration: true for secure (production), false for development
 });
@@ -191,7 +191,7 @@ const config = {
 3. **Custom `webServiceClientId`** → Requires manual `endpoint` configuration
 
 **What happens automatically:**
-- **`webServiceClientId: 'eudr'`** → Uses production environment
+- **`webServiceClientId: 'eudr-repository'`** → Uses production environment
 - **`webServiceClientId: 'eudr-test'`** → Uses acceptance environment  
 - **Custom `webServiceClientId`** → Requires manual `endpoint` configuration
 
@@ -219,7 +219,7 @@ const manualClient = new EudrSubmissionClient({
 const productionClient = new EudrSubmissionClient({
   username: 'user',
   password: 'pass',
-  webServiceClientId: 'eudr', // Automatically generates production endpoint
+  webServiceClientId: 'eudr-repository', // Automatically generates production endpoint
   ssl: true // Production environment - validate SSL certificates
 });
 ```
@@ -233,7 +233,7 @@ const { config } = require('eudr-api-client');
 
 // Get supported client IDs
 const supportedIds = config.getSupportedClientIds();
-console.log('Supported IDs:', supportedIds); // ['eudr', 'eudr-test']
+console.log('Supported IDs:', supportedIds); // ['eudr-repository', 'eudr-test']
 
 // Get supported services
 const supportedServices = config.getSupportedServices();
@@ -244,7 +244,7 @@ const echoVersions = config.getSupportedVersions('echo');
 console.log('Echo Service Versions:', echoVersions); // ['v1', 'v2']
 
 // Check if a client ID is standard
-const isStandard = config.isStandardClientId('eudr');
+const isStandard = config.isStandardClientId('eudr-repository');
 console.log('Is eudr standard?', isStandard); // true
 
 // Generate endpoint manually (if needed)
@@ -519,7 +519,7 @@ console.log(`✅ Representative DDS submitted. Identifier: ${representativeResul
 | **Retrieval Service V2** | `EudrRetrievalClientV2` | ✅ Yes | ✅ Yes | CF3 & CF7 v1.4 |
 
 **Endpoint Generation Rules:**
-- **`webServiceClientId: 'eudr'`** → Production environment endpoints
+- **`webServiceClientId: 'eudr-repository'`** → Production environment endpoints
 - **`webServiceClientId: 'eudr-test'`** → Acceptance environment endpoints
 - **Custom `webServiceClientId`** → Requires manual `endpoint` configuration
 
@@ -539,7 +539,7 @@ const echoClient = new EudrEchoClient({
 });
 
 const submissionV1Client = new EudrSubmissionClient({
-  username: 'user', password: 'pass', webServiceClientId: 'eudr', ssl: true
+  username: 'user', password: 'pass', webServiceClientId: 'eudr-repository', ssl: true
 });
 
 const submissionV2Client = new EudrSubmissionClientV2({
@@ -547,7 +547,7 @@ const submissionV2Client = new EudrSubmissionClientV2({
 });
 
 const retrievalClient = new EudrRetrievalClient({
-  username: 'user', password: 'pass', webServiceClientId: 'eudr', ssl: true
+  username: 'user', password: 'pass', webServiceClientId: 'eudr-repository', ssl: true
 });
 
 const retrievalV2Client = new EudrRetrievalClientV2({
@@ -963,7 +963,7 @@ try {
 const productionClient = new EudrRetrievalClient({
   username: process.env.EUDR_USERNAME,
   password: process.env.EUDR_PASSWORD,
-  webServiceClientId: 'eudr',  // Production environment
+  webServiceClientId: 'eudr-repository',  // Production environment
   ssl: true,  // Validate SSL certificates
   timeout: 30000  // 30 seconds timeout
 });
@@ -1183,7 +1183,7 @@ try {
 const productionV2Client = new EudrRetrievalClientV2({
   username: process.env.EUDR_USERNAME,
   password: process.env.EUDR_PASSWORD,
-  webServiceClientId: 'eudr',  // Production V2 environment
+  webServiceClientId: 'eudr-repository',  // Production V2 environment
   ssl: true,  // Validate SSL certificates
   timeout: 30000
 });
@@ -1726,7 +1726,7 @@ for (const submission of submissions) {
 
 **A**: See the [Configuration](#configuration) section for detailed information. The EUDR API Client automatically generates service endpoints based on your `webServiceClientId`:
 
-- **`webServiceClientId: 'eudr'`** → Automatically uses production environment endpoints
+- **`webServiceClientId: 'eudr-repository'`** → Automatically uses production environment endpoints
 - **`webServiceClientId: 'eudr-test'`** → Automatically uses acceptance environment endpoints
 - **Custom `webServiceClientId`** → Requires manual `endpoint` configuration
 
@@ -1747,7 +1747,7 @@ for (const submission of submissions) {
 const productionClient = new EudrSubmissionClient({
   username: 'user',
   password: 'pass',
-  webServiceClientId: 'eudr',
+  webServiceClientId: 'eudr-repository',
   ssl: true  // Reject unauthorized certificates
 });
 

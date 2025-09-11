@@ -22,11 +22,11 @@ describe('Submission Service V1 Endpoint Logic', function () {
       const client = new EudrSubmissionClient({
         username: 'testuser',
         password: 'testpass',
-        webServiceClientId: 'eudr'
+        webServiceClientId: 'eudr-repository'
       });
 
       expect(client.config.endpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV1');
-      expect(client.config.webServiceClientId).to.equal('eudr');
+      expect(client.config.webServiceClientId).to.equal('eudr-repository');
     });
   });
 
