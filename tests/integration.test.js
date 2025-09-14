@@ -11,9 +11,9 @@ describe('EUDR API Client - Integration Test Suite', function() {
   
   after(function() {
     console.log('');
-    console.log('✅ Integration test suite completed');
-    console.log('📊 All tests have been executed against the real EUDR API');
-    console.log('🔍 Check individual test results for detailed information');
+    console.log('[OK] Integration test suite completed');
+    console.log('[INFO] All tests have been executed against the real EUDR API');
+    console.log('[INFO] Check individual test results for detailed information');
   });
 
   // describe('Test Suite Overview', function() {
@@ -23,7 +23,7 @@ describe('EUDR API Client - Integration Test Suite', function() {
   //     expect(process.env.EUDR_TRACES_PASSWORD).to.be.a('string').that.is.not.empty;
   //     expect(process.env.EUDR_TRACES_BASE_URL).to.be.a('string').that.is.not.empty;
       
-  //     console.log('✅ Environment configuration validated');
+  //     console.log('[OK] Environment configuration validated');
   //   });
 
   //   it('should be able to connect to EUDR API endpoints', function() {
@@ -31,7 +31,7 @@ describe('EUDR API Client - Integration Test Suite', function() {
   //     expect(baseUrl).to.include('https://');
   //     expect(baseUrl).to.include('eudr.webcloud.ec.europa.eu');
       
-  //     console.log(`✅ EUDR API endpoint validated: ${baseUrl}`);
+  //     console.log(`[OK] EUDR API endpoint validated: ${baseUrl}`);
   //   });
   // });
 });

@@ -126,14 +126,14 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
         // Store for cleanup
         createdDdsIdentifiers.push(result.ddsIdentifier);
 
-        logger.info('✅ Successfully connected to EUDR Submission V2 API');
-        logger.info(`📋 DDS Identifier: ${result.ddsIdentifier}`);
+        logger.info('[OK] Successfully connected to EUDR Submission V2 API');
+        logger.info(`[INFO] DDS Identifier: ${result.ddsIdentifier}`);
       } catch (error) {
 
         console.log("ERROR", error);
         // If it's a validation error from the API, that's still a successful connection
         if (error.response && error.response.status === 500) {
-          logger.info('✅ Successfully connected to EUDR Submission V2 API (with validation error)');
+          logger.info('[OK] Successfully connected to EUDR Submission V2 API (with validation error)');
         } else {
           throw error;
         }
@@ -153,7 +153,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
           expect(result.ddsIdentifier.length).to.be.greaterThan(0);
 
           createdDdsIdentifiers.push(result.ddsIdentifier);
-          logger.info(`✅ Operator import submission successful - DDS: ${result.ddsIdentifier}`);
+          logger.info(`[OK] Operator import submission successful - DDS: ${result.ddsIdentifier}`);
         } catch (error) {
           if (error.response && error.response.status === 500) {
             logger.info('⚠️ Operator import submission failed with API error (expected for test data)');
@@ -174,7 +174,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
 
           createdDdsIdentifiers.push(result.ddsIdentifier);
 
-          logger.info(`✅ Domestic production submission successful - DDS: ${result.ddsIdentifier}`);
+          logger.info(`[OK] Domestic production submission successful - DDS: ${result.ddsIdentifier}`);
         } catch (error) {
           if (error.response && error.response.status === 500) {
 
@@ -196,7 +196,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
 
           createdDdsIdentifiers.push(result.ddsIdentifier);
 
-          logger.info(`✅ Export submission successful - DDS: ${result.ddsIdentifier}`);
+          logger.info(`[OK] Export submission successful - DDS: ${result.ddsIdentifier}`);
         } catch (error) {
           if (error.response && error.response.status === 500) {
 
@@ -220,7 +220,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
 
           createdDdsIdentifiers.push(result.ddsIdentifier);
 
-          logger.info(`✅ Authorized representative submission successful - DDS: ${result.ddsIdentifier}`);
+          logger.info(`[OK] Authorized representative submission successful - DDS: ${result.ddsIdentifier}`);
         } catch (error) {
           console.log("ERROR", error);
           throw error;
@@ -238,7 +238,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
 
       //     createdDdsIdentifiers.push(result.ddsIdentifier);
 
-      //     logger.info(`✅ Representative trader submission successful - DDS: ${result.ddsIdentifier}`);
+      //     logger.info(`[OK] Representative trader submission successful - DDS: ${result.ddsIdentifier}`);
       //   } catch (error) {
 
       //     console.log("ERROR", error.details);
@@ -261,7 +261,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
 
           createdDdsIdentifiers.push(result.ddsIdentifier);
 
-          logger.info(`✅ Trade submission with referenced DDS successful - DDS: ${result.ddsIdentifier}`);
+          logger.info(`[OK] Trade submission with referenced DDS successful - DDS: ${result.ddsIdentifier}`);
         } catch (error) {
 
           throw error;
@@ -368,7 +368,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
         createdDdsIdentifiers.push(result.ddsIdentifier);
 
 
-        logger.info('✅ V2 WSSE security headers properly configured');
+        logger.info('[OK] V2 WSSE security headers properly configured');
       } catch (error) {
 
         throw error;
@@ -390,7 +390,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
 
         createdDdsIdentifiers.push(result.ddsIdentifier);
 
-        logger.info(`✅ V2 specific data structures handled correctly - DDS: ${result.ddsIdentifier}`);
+        logger.info(`[OK] V2 specific data structures handled correctly - DDS: ${result.ddsIdentifier}`);
       } catch (error) {
 
         throw error;
@@ -431,7 +431,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
         });
 
 
-        logger.info(`✅ Rapid successive V2 requests handled successfully in ${totalTime}ms`);
+        logger.info(`[OK] Rapid successive V2 requests handled successfully in ${totalTime}ms`);
         logger.info(`📋 Created DDS identifiers: ${results.map(r => r.ddsIdentifier).join(', ')}`);
       } catch (error) {
 
@@ -496,7 +496,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
         expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
         createdDdsIdentifiers.push(result.ddsIdentifier);
-        logger.info(`✅ SpeciesInfo as object test passed - DDS: ${result.ddsIdentifier}`);
+        logger.info(`[OK] SpeciesInfo as object test passed - DDS: ${result.ddsIdentifier}`);
       } catch (error) {
         console.log("ERROR", error);
         throw error;
@@ -563,7 +563,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
       expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
       createdDdsIdentifiers.push(result.ddsIdentifier);
-      logger.info(`✅ SpeciesInfo as array test passed - DDS: ${result.ddsIdentifier}`);
+      logger.info(`[OK] SpeciesInfo as array test passed - DDS: ${result.ddsIdentifier}`);
     });
 
     it('should handle speciesInfo with only scientificName V2', async function () {
@@ -667,7 +667,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
         expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
         createdDdsIdentifiers.push(result.ddsIdentifier);
-        logger.info(`✅ SpeciesInfo with common name only test passed - DDS: ${result.ddsIdentifier}`);
+        logger.info(`[OK] SpeciesInfo with common name only test passed - DDS: ${result.ddsIdentifier}`);
       } catch (error) {
         expect(error.httpStatus).to.be.equal(400);
         expect(error.error).to.be.true;
@@ -736,7 +736,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
         expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
         createdDdsIdentifiers.push(result.ddsIdentifier);
-        logger.info(`✅ Mixed speciesInfo array test passed - DDS: ${result.ddsIdentifier}`);
+        logger.info(`[OK] Mixed speciesInfo array test passed - DDS: ${result.ddsIdentifier}`);
       } catch (error) {
         expect(error.httpStatus).to.be.equal(400);
         expect(error.error).to.be.true;
@@ -801,7 +801,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
         expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
         createdDdsIdentifiers.push(result.ddsIdentifier);
-        logger.info(`✅ ReferenceNumber as array test passed - DDS: ${result.ddsIdentifier}`);
+        logger.info(`[OK] ReferenceNumber as array test passed - DDS: ${result.ddsIdentifier}`);
       } catch (error) {
         console.log("ERROR", error);
         throw error;
@@ -865,7 +865,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
         expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
         createdDdsIdentifiers.push(result.ddsIdentifier);
-        logger.info(`✅ AssociatedStatements as array test passed - DDS: ${result.ddsIdentifier}`);
+        logger.info(`[OK] AssociatedStatements as array test passed - DDS: ${result.ddsIdentifier}`);
       } catch (error) {
         console.log("ERROR", error);
         throw error;
@@ -935,7 +935,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
         expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
         createdDdsIdentifiers.push(result.ddsIdentifier);
-        logger.info(`✅ Producers as array test passed - DDS: ${result.ddsIdentifier}`);
+        logger.info(`[OK] Producers as array test passed - DDS: ${result.ddsIdentifier}`);
       } catch (error) {
         console.log("ERROR", error);
         throw error;

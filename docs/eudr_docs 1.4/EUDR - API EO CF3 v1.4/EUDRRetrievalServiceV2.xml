@@ -1,0 +1,109 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (http://jax-ws.java.net). RI's version is JAX-WS RI 2.3.2-wls141100-b230825.0707 git-revision#5f81cab. --><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:base="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:error="http://ec.europa.eu/sanco/tracesnt/error/v01" xmlns:model="http://ec.europa.eu/tracesnt/certificate/eudr/model/v2" xmlns:retrieval="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v2" targetNamespace="http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/v2" elementFormDefault="qualified">
+
+	<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRRetrievalServiceV2?xsd=4" namespace="http://ec.europa.eu/sanco/tracesnt/error/v01"/>
+	<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRRetrievalServiceV2?xsd=2" namespace="http://ec.europa.eu/tracesnt/certificate/eudr/model/v2"/>
+
+	<xs:element name="GetStatementInfoRequest" type="retrieval:GetStatementInfoRequestType"/>
+	<xs:element name="GetStatementInfoResponse" type="retrieval:GetStatementInfoResponseType"/>
+	<xs:element name="GetDdsInfoByInternalReferenceNumberRequest" type="retrieval:searchReferenceNumberType"/>
+	<xs:element name="GetDdsInfoByInternalReferenceNumberResponse" type="retrieval:GetDdsInfoByInternalReferenceNumberResponseType"/>
+	<xs:element name="GetStatementByIdentifiersRequest" type="retrieval:GetStatementByIdentifiersRequest"/>
+	<xs:element name="GetStatementByIdentifiersResponse" type="retrieval:GetStatementByIdentifiersResponse"/>
+	<xs:element name="GetReferencedDdsRequest" type="retrieval:GetReferencedDdsRequest"/>
+	<xs:element name="GetReferencedDdsResponse" type="retrieval:GetReferencedDdsResponse"/>	
+	<xs:element name="BusinessRulesValidationException" type="error:BusinessRulesValidationExceptionType"/>
+	<!-- TYPE DEFINITIONS -->
+
+	<xs:complexType name="GetStatementInfoRequestType">
+		<xs:sequence>
+			<xs:element name="identifier" type="model:uuidType" minOccurs="1" maxOccurs="100"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetStatementInfoResponseType">
+		<xs:sequence>
+			<xs:element name="statementInfo" type="retrieval:StatementInfoType" minOccurs="0" maxOccurs="100"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetDdsInfoByInternalReferenceNumberResponseType">
+		<xs:sequence>
+			<xs:element name="statementInfo" type="retrieval:StatementInfoType" minOccurs="0" maxOccurs="1000"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetStatementByIdentifiersRequest">
+		<xs:sequence>
+			<xs:element name="referenceNumber" type="model:DocumentReferenceNumberType" minOccurs="1"/>
+			<xs:element name="verificationNumber" type="model:VerificationNumberType" minOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetStatementByIdentifiersResponse">
+		<xs:sequence>
+			<xs:element name="statement" type="retrieval:SupplierStatement" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:complexType name="GetReferencedDdsRequest">
+		<xs:sequence>
+			<xs:element name="referenceNumber" type="model:DocumentReferenceNumberType" minOccurs="1"/>
+			<xs:element name="referenceDdsVerificationNumber" type="model:ReferenceDdsVerificationNumberType" minOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetReferencedDdsResponse">
+		<xs:sequence>
+			<xs:element name="referenceDds" type="retrieval:SupplierStatement" minOccurs="0"/>
+		</xs:sequence>
+	</xs:complexType>		
+
+	<xs:complexType name="StatementInfoType">
+		<xs:sequence>
+			<xs:element name="identifier" type="model:uuidType"/>
+			<xs:element name="internalReferenceNumber" type="model:DocumentReferenceNumberType"/>
+			<xs:element name="referenceNumber" type="model:DocumentReferenceNumberType" minOccurs="0"/>
+			<xs:element name="verificationNumber" type="model:VerificationNumberType" minOccurs="0"/>
+			<xs:element name="status" type="model:DdsStatusType"/>
+			<xs:element name="rejectionReason" type="model:RejectionReasonType" minOccurs="0"/>
+			<xs:element name="communicationToOperator" type="model:CommunicationToOperatorType" minOccurs="0"/>
+			<xs:element name="date" type="xs:dateTime" minOccurs="0"/>
+			<xs:element name="updatedBy" minOccurs="0">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="1"/>
+						<xs:maxLength value="200"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="AssociatedStatements">
+		<xs:sequence>
+			<xs:element name="referenceNumber" type="model:DocumentReferenceNumberType" minOccurs="1"/>
+			<xs:element name="referenceDdsVerificationNumber" type="model:ReferenceDdsVerificationNumberType" minOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="SupplierStatement">
+		<xs:sequence>
+			<xs:element name="referenceNumber" type="model:DocumentReferenceNumberType" minOccurs="0"/>
+			<xs:element name="activityType" type="model:ActivityType"/>
+			<xs:element name="status" type="model:EventInfo"/>
+			<xs:element name="operator" type="model:operatorInfo"/>
+			<xs:element name="commodities" type="model:CommodityType" minOccurs="1" maxOccurs="200"/>
+			<xs:element name="associateStatement" type="retrieval:AssociatedStatements" minOccurs="0" maxOccurs="2000"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="searchReferenceNumberType">
+		<xs:annotation>
+			<xs:documentation>Searchable Reference Number of the DDS</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:minLength value="3"/>
+			<xs:maxLength value="50"/>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>

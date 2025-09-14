@@ -196,7 +196,7 @@ npm run test:runner -- --skip-logger
     - Service usage simulation
     - Level persistence
 
-## 🔍 Debugging
+## [DEBUG] Debugging
 
 ### Enable Verbose Logging
 
@@ -313,7 +313,7 @@ When modifying the logging system:
 5. **Check performance impact**
 6. **Update this documentation**
 
-## 🎯 Future Enhancements
+## [FUTURE] Future Enhancements
 
 - [ ] Structured logging in fallback mode
 - [ ] Log rotation and file output

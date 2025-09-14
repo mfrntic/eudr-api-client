@@ -1011,6 +1011,7 @@ Advanced service for retrieving DDS information and supply chain data with enhan
 - ✅ **Automatic Endpoint Generation**: V2-specific endpoint generation
 - ✅ **Consistent Response Format**: Includes both `httpStatus` and `status` fields for compatibility
 - ✅ **🚀 NEW: Consistent Array Fields**: `commodities`, `producers`, `speciesInfo`, `referenceNumber` always returned as arrays
+- ✅ **🚀 NEW: Business Rules Validation**: Comprehensive input validation with detailed error messages
 
 #### Detailed Method Reference
 
@@ -1038,6 +1039,32 @@ const referencedDds = await retrievalClientV2.getReferencedDds(
   'XtZ7C6t3lFHnOhAqN9fw5w==:dRES/NzB0xL4nkf5nmRrb/5SMARFHoDK53PaCJFPNRA='
 );
 ```
+
+**🚀 Business Rules Validation**
+
+The V2 Retrieval Service includes comprehensive input validation with detailed error messages for all methods:
+
+```javascript
+try {
+  const result = await retrievalClientV2.getStatementByIdentifiers('25HRW9IURY3412', 'COAASVYH');
+  console.log('Success:', result.ddsInfo);
+} catch (error) {
+  if (error.errorType === 'BUSINESS_RULES_VALIDATION') {
+    console.error('Validation Error:', error.message);
+    // Handle validation errors with specific error messages:
+    // - "Reference number too long" (if > 15 characters)
+    // - "Reference number too short" (if < 8 characters)  
+    // - "Verification number must be exactly 8 characters"
+    // - "Reference number must contain only uppercase letters and numbers"
+    // - "Verification number must contain only uppercase letters and numbers"
+  }
+}
+```
+
+**Validation Rules:**
+- **Reference Number**: 8-15 characters, uppercase letters and numbers only
+- **Verification Number**: Exactly 8 characters, uppercase letters and numbers only
+- **Internal Reference Number**: 3-50 characters (for `getDdsInfoByInternalReferenceNumber`)
 
 **🚀 Supply Chain Traversal - `getReferencedDds(referenceNumber, securityNumber, options)`**
 
@@ -1933,6 +1960,51 @@ try {
     console.error('Invalid credentials:', error.message);
   }
   // error.details.data still contains original SOAP response for debugging
+}
+```
+
+#### 🚀 NEW: Q: How does Business Rules Validation work in V2?
+
+**A**: The V2 Retrieval Service includes comprehensive input validation with detailed error messages:
+
+**Validation Features:**
+- **Pre-API Validation**: Input validation before making API calls
+- **Detailed Error Messages**: Specific error messages for each validation rule
+- **Error Type Classification**: `BUSINESS_RULES_VALIDATION` error type for easy handling
+
+**Validation Rules:**
+```javascript
+// Reference Number validation
+if (referenceNumber.length > 15) {
+  throw new Error('Reference number too long');
+}
+if (referenceNumber.length < 8) {
+  throw new Error('Reference number too short');
+}
+if (!/^[A-Z0-9]+$/.test(referenceNumber)) {
+  throw new Error('Reference number must contain only uppercase letters and numbers');
+}
+
+// Verification Number validation  
+if (verificationNumber.length !== 8) {
+  throw new Error('Verification number must be exactly 8 characters');
+}
+if (!/^[A-Z0-9]+$/.test(verificationNumber)) {
+  throw new Error('Verification number must contain only uppercase letters and numbers');
+}
+```
+
+**Error Handling:**
+```javascript
+try {
+  const result = await retrievalClientV2.getStatementByIdentifiers('25HRW9IURY3412', 'COAASVYH');
+} catch (error) {
+  if (error.errorType === 'BUSINESS_RULES_VALIDATION') {
+    console.error('Validation failed:', error.message);
+    // Handle specific validation errors
+  } else {
+    console.error('Other error:', error.message);
+  }
 }
 ```
 

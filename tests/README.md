@@ -150,7 +150,7 @@ Tests verify WSSE security implementation:
 
 1. **Missing Environment Variables**
    ```
-   ❌ Missing required environment variables:
+   [ERROR] Missing required environment variables:
       - EUDR_TRACES_USERNAME
       - EUDR_TRACES_PASSWORD
       - EUDR_TRACES_BASE_URL
@@ -159,7 +159,7 @@ Tests verify WSSE security implementation:
 
 2. **Authentication Failures**
    ```
-   ✅ Properly handled invalid credentials
+   [OK] Properly handled invalid credentials
    ```
    **Solution**: Verify username/password in `.env` file
 
@@ -171,7 +171,7 @@ Tests verify WSSE security implementation:
 
 4. **Test Data Validation Errors**
    ```
-   ✅ Properly handled invalid submission data
+   [OK] Properly handled invalid submission data
    ```
    **Expected**: Tests use invalid data to verify error handling
 

@@ -78,18 +78,18 @@ function validateEnvironment() {
   const missing = required.filter(key => !process.env[key]);
   
   if (missing.length > 0) {
-    console.error('⚠️ Missing required environment variables:');
+    console.error('[WARNING] Missing required environment variables:');
     missing.forEach(key => console.error(`   - ${key}`));
     console.error('');
-    console.error('📝 Please create a .env file based on env.example and fill in your credentials');
-    console.error('🔐 You can get your credentials from the EUDR acceptance system');
+    console.error('[INFO] Please create a .env file based on env.example and fill in your credentials');
+    console.error('[INFO] You can get your credentials from the EUDR acceptance system');
     process.exit(1);
   }
   
-  console.log('✅ Environment variables loaded successfully');
-  console.log(`🌐 Using EUDR API: ${process.env.EUDR_TRACES_BASE_URL}`);
-  console.log(`👤 Username: ${process.env.EUDR_TRACES_USERNAME}`);
-  console.log(`🔑 Web Service Client ID: ${process.env.EUDR_WEB_SERVICE_CLIENT_ID}`);
+  console.log('[OK] Environment variables loaded successfully');
+  console.log(`[INFO] Using EUDR API: ${process.env.EUDR_TRACES_BASE_URL}`);
+  console.log(`[INFO] Username: ${process.env.EUDR_TRACES_USERNAME}`);
+  console.log(`[INFO] Web Service Client ID: ${process.env.EUDR_WEB_SERVICE_CLIENT_ID}`);
   console.log('');
 }
 

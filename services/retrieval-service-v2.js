@@ -185,6 +185,7 @@ class EudrRetrievalClientV2 {
     const errorResponse = {
       error: true,
       message: error.message,
+      errorType: error.errorType || 'UNKNOWN',
       details: {}
     };
 
@@ -193,14 +194,31 @@ class EudrRetrievalClientV2 {
       let status = error.response.status;
       let statusText = error.response.statusText;
       
+      // Check for BusinessRulesValidationException fault
+      if (error.response.data && 
+          (error.response.data.includes('BusinessRulesValidationException') ||
+           error.response.data.includes('BusinessRulesValidationExceptionMessage') ||
+           error.response.data.includes('cvc-minLength-valid') ||
+           error.response.data.includes('cvc-maxLength-valid') ||
+           error.response.data.includes('cvc-pattern-valid') ||
+           error.response.data.includes('cvc-type.3.1.3') ||
+           error.response.data.includes('SAXParseException') ||
+           (error.response.data.includes('<faultcode>S:Client</faultcode>') && 
+            error.response.data.includes('facet-valid')))) {
+        status = 400; // Bad Request
+        statusText = 'Business Rules Validation Failed';
+        errorResponse.message = 'Request failed business rules validation';
+        errorResponse.errorType = 'BUSINESS_RULES_VALIDATION';
+      }
       // Check if this is a SOAP authentication fault and convert to 401
-      if (status === 500 && error.response.data && 
+      else if (status === 500 && error.response.data && 
           (error.response.data.includes('UnauthenticatedException') || 
            error.response.data.includes('Authentication') ||
            error.response.data.includes('Unauthorized'))) {
         status = 401;
         statusText = 'Unauthorized';
         errorResponse.message = 'Authentication failed - invalid credentials';
+        errorResponse.errorType = 'AUTHENTICATION_FAILED';
       }
       
       errorResponse.details = {
@@ -209,8 +227,14 @@ class EudrRetrievalClientV2 {
         statusText: statusText,
         data: error.response.data
       };
+      
+      // Add fault details if available
+      if (error.faultDetails) {
+        errorResponse.details.faultDetails = error.faultDetails;
+      }
     } else if (error.request) {
       // The request was made but no response was received
+      errorResponse.errorType = 'NETWORK_ERROR';
       errorResponse.details = {
         request: 'Request sent but no response received'
       };
@@ -368,6 +392,20 @@ class EudrRetrievalClientV2 {
             // Check for fault
             if (body['S:Fault'] || body['soapenv:Fault']) {
               const fault = body['S:Fault'] || body['soapenv:Fault'];
+              
+              // Check for specific fault types
+              if (fault.faultcode && 
+                  (fault.faultcode.includes('BusinessRulesValidationException') ||
+                   (fault.faultcode.includes('S:Client') && fault.faultstring && 
+                    (fault.faultstring.includes('cvc-') || fault.faultstring.includes('facet-valid') || fault.faultstring.includes('SAXParseException'))))) {
+                const error = new Error(`Business Rules Validation Failed: ${fault.faultstring || 'Request failed business rules validation'}`);
+                error.errorType = 'BUSINESS_RULES_VALIDATION';
+                error.faultDetails = fault;
+                reject(error);
+                return;
+              }
+              
+              // Generic SOAP fault
               reject(new Error(`SOAP Fault: ${fault.faultstring || JSON.stringify(fault)}`));
               return;
             }
@@ -451,7 +489,9 @@ class EudrRetrievalClientV2 {
     try {
       // Validate input
       if (!uuids) {
-        throw new Error('UUID(s) must be provided');
+        const error = new Error('UUID(s) must be provided');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
       }
 
       // Ensure uuids is an array
@@ -459,7 +499,9 @@ class EudrRetrievalClientV2 {
 
       // Check limit (100 UUIDs per call as per documentation)
       if (uuidArray.length > 100) {
-        throw new Error('Maximum of 100 UUIDs can be retrieved in a single call');
+        const error = new Error('Maximum of 100 UUIDs can be retrieved in a single call');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
       }
 
       // Create SOAP envelope
@@ -523,12 +565,16 @@ class EudrRetrievalClientV2 {
     try {
       // Validate input
       if (!internalReferenceNumber) {
-        throw new Error('Internal reference number must be provided');
+        const error = new Error('Internal reference number must be provided');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
       }
 
       // Validate length (min 3, max 50 characters as per documentation)
       if (internalReferenceNumber.length < 3 || internalReferenceNumber.length > 50) {
-        throw new Error('Internal reference number must be between 3 and 50 characters');
+        const error = new Error('Internal reference number must be between 3 and 50 characters');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
       }
 
       // Create SOAP envelope
@@ -643,7 +689,43 @@ class EudrRetrievalClientV2 {
     try {
       // Validate input
       if (!referenceNumber || !verificationNumber) {
-        throw new Error('Reference number and verification number must be provided');
+        const error = new Error('Reference number and verification number must be provided');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
+      }
+
+      // Validate reference number format and length (based on real examples: 25HRW9IURY3412)
+      if (referenceNumber.length > 15) {
+        const error = new Error('Reference number too long');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
+      }
+      
+      if (referenceNumber.length < 8) {
+        const error = new Error('Reference number too short');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
+      }
+
+      // Validate verification number format and length (based on real examples: COAASVYH)
+      if (verificationNumber.length !== 8) {
+        const error = new Error('Verification number must be exactly 8 characters');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
+      }
+
+      // Validate reference number format (based on real examples: 25HRW9IURY3412)
+      if (!/^[A-Z0-9]+$/.test(referenceNumber)) {
+        const error = new Error('Reference number must contain only uppercase letters and numbers');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
+      }
+
+      // Validate verification number format (based on real examples: COAASVYH)
+      if (!/^[A-Z0-9]+$/.test(verificationNumber)) {
+        const error = new Error('Verification number must contain only uppercase letters and numbers');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
       }
 
       // Create SOAP envelope
@@ -756,9 +838,26 @@ class EudrRetrievalClientV2 {
     try {
       // Validate input
       if (!referenceNumber || !securityNumber) {
-        throw new Error('Reference number and security number must be provided');
+        const error = new Error('Reference number and security number must be provided');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
       }
 
+      // Validate reference number format and length (based on XSD: DocumentReferenceNumberType maxLength="50")
+      if (referenceNumber.length < 1 || referenceNumber.length > 50) {
+        const error = new Error('Reference number must be between 1 and 50 characters');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
+      }
+
+      // Validate reference number format (should contain only alphanumeric characters)
+      if (!/^[A-Z0-9]+$/.test(referenceNumber)) {
+        const error = new Error('Reference number must contain only uppercase letters and numbers');
+        error.errorType = 'BUSINESS_RULES_VALIDATION';
+        throw error;
+      }
+
+     
       // Create SOAP envelope
       const soapEnvelope = this.createGetReferencedDdsEnvelope(referenceNumber, securityNumber);
 

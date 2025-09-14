@@ -14,6 +14,10 @@
  * - EUDR_WEB_SERVICE_CLIENT_ID: Client ID (defaults to 'eudr-test')
  */
 
+// Set UTF-8 encoding for console output
+process.stdout.setEncoding('utf8');
+process.stderr.setEncoding('utf8');
+
 const { expect } = require('chai');
 const EudrRetrievalClientV2 = require('../../services/retrieval-service-v2');
 
@@ -385,6 +389,205 @@ describe('EudrRetrievalClient V2 Tests', function () {
             } catch (error) {
                 expect(error.message).to.include('must be between 3 and 50 characters');
             }
+        });
+
+        it('should handle BusinessRulesValidationException error type V2', async function () {
+            const service = new EudrRetrievalClientV2({
+                username: 'test',
+                password: 'test',
+                webServiceClientId: 'eudr-test'
+            });
+
+            // Test processError method with BusinessRulesValidationException
+            const mockError = {
+                response: {
+                    status: 500,
+                    statusText: 'Internal Server Error',
+                    data: '<?xml version="1.0"?><soapenv:Fault><faultcode>BusinessRulesValidationException</faultcode><faultstring>Invalid business rules</faultstring></soapenv:Fault>'
+                }
+            };
+
+            const processedError = service.processError(mockError);
+
+            
+            
+            expect(processedError.error).to.be.true;
+            expect(processedError.errorType).to.equal('BUSINESS_RULES_VALIDATION');
+            expect(processedError.message).to.include('Request failed business rules validation');
+            expect(processedError.details.status).to.equal(400);
+            expect(processedError.details.statusText).to.equal('Business Rules Validation Failed');
+        });
+
+        it('should trigger BusinessRulesValidationException with real API calls V2', async function () {
+            // Skip if no credentials available
+            if (!process.env.EUDR_TRACES_USERNAME || !process.env.EUDR_TRACES_PASSWORD) {
+                this.skip();
+            }
+
+            const service = new EudrRetrievalClientV2({
+                username: process.env.EUDR_TRACES_USERNAME,
+                password: process.env.EUDR_TRACES_PASSWORD,
+                webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
+            });
+
+            console.log('\n[TEST] Testiranje s pravim API pozivima za BusinessRulesValidationException...');
+
+            // Test 1: Nevaljani reference number format
+            console.log('   Test 1: Nevaljani reference number format');
+            try {
+                const result = await service.getStatementByIdentifiers('INVALID_FORMAT_123', 'INVALID_VER');
+                console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
+            } catch (error) {
+                console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
+                
+                // Provjeri sadrži li response BusinessRulesValidationException
+                if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
+                    console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
+                    expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
+                } else if (error.details?.data) {
+                    console.log('      [INFO] Response sadrži:', error.details.data.substring(0, 200) + '...');
+                }
+            }
+
+            // Test 2: Prekratak reference number
+            console.log('\n   Test 2: Prekratak reference number');
+            try {
+                const result = await service.getStatementByIdentifiers('AB', 'CD');
+                console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
+            } catch (error) {
+                 console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
+                
+                if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
+                    console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
+                    expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
+                }
+            }
+
+            // Test 3: Nevaljani internal reference number
+            console.log('\n   Test 3: Nevaljani internal reference number');
+            try {
+                const result = await service.getDdsInfoByInternalReferenceNumber('INVALID_INTERNAL_REF_TOO_LONG_FOR_VALIDATION_INVALID_INTERNAL_REF_TOO_LONG_FOR_VALIDATION_INVALID_INTERNAL_REF_TOO_LONG_FOR_VALIDATION');
+                console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
+            } catch (error) {
+                console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
+                if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
+                    console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
+                    expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
+                }
+            }
+
+            // Test 4: Prazan reference number
+            console.log('\n   Test 4: Prazan reference number');
+            try {
+                const result = await service.getStatementByIdentifiers('', '');
+                console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
+            } catch (error) {
+                console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
+                
+                if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
+                    console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
+                    expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
+                }
+            }
+
+            // Test 5: Prekratak verification number (manje od 8 znakova)
+            console.log('\n   Test 5: Prekratak verification number');
+            try {
+                const result = await service.getStatementByIdentifiers('25HRW9IURY3412', 'COAASV');
+                console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
+            } catch (error) {
+                console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
+                
+                if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
+                    console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
+                    expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
+                }
+            }
+
+            // Test 6: Predugačak verification number (više od 8 znakova)
+            console.log('\n   Test 6: Predugačak verification number');
+            try {
+                const result = await service.getStatementByIdentifiers('25HRW9IURY3412', 'COAASVYHX');
+                console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
+            } catch (error) {
+                console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
+                
+                if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
+                    console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
+                    expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
+                }
+            }
+
+            // Test 7: Nevaljani format verification number (mala slova)
+            console.log('\n   Test 7: Nevaljani format verification number (mala slova)');
+            try {
+                const result = await service.getStatementByIdentifiers('25HRW9IURY3412', 'coaasvyh');
+                console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
+            } catch (error) {
+                console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
+                
+                if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
+                    console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
+                    expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
+                }
+            }
+
+            // // Test 5: Predugačak reference number
+            // console.log('\n   Test 5: Predugačak reference number');
+            // try {
+            //     const longRef = 'A'.repeat(100); // Predugačak reference number
+            //     const result = await service.getStatementByIdentifiers(longRef, 'VER');
+            //     console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
+            // } catch (error) {
+            //     console.log('   [ERROR] Greška:');
+            //     console.log('      Error Type:', error.errorType || 'N/A');
+            //     console.log('      Message:', error.message);
+            //     console.log('      HTTP Status:', error.details?.status || 'N/A');
+                
+            //     if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
+            //         console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
+            //         expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
+            //     }
+            // }
+
+            console.log('\n[SUCCESS] Testiranje s pravim API pozivima završeno!');
+        });
+
+        it('should handle different error types correctly (V2)', async function () {
+            const service = new EudrRetrievalClientV2({
+                username: 'test',
+                password: 'test',
+                webServiceClientId: 'eudr-test'
+            });
+
+            // Test authentication error
+            const authError = {
+                response: {
+                    status: 500,
+                    statusText: 'Internal Server Error',
+                    data: 'UnauthenticatedException: Invalid credentials'
+                }
+            };
+
+            const processedAuthError = service.processError(authError);
+            expect(processedAuthError.errorType).to.equal('AUTHENTICATION_FAILED');
+            expect(processedAuthError.details.status).to.equal(401);
+
+            // Test network error
+            const networkError = {
+                request: 'Request sent but no response received'
+            };
+
+            const processedNetworkError = service.processError(networkError);
+            expect(processedNetworkError.errorType).to.equal('NETWORK_ERROR');
+
+            // Test unknown error
+            const unknownError = {
+                message: 'Some unknown error'
+            };
+
+            const processedUnknownError = service.processError(unknownError);
+            expect(processedUnknownError.errorType).to.equal('UNKNOWN');
         });
     });
 

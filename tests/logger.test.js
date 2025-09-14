@@ -372,13 +372,13 @@ describe('🔧 EUDR API Client Logger System Tests', function() {
     });
   });
 
-  describe('🔍 Pino Integration (when available)', function() {
+  describe('[TEST] Pino Integration (when available)', function() {
     it('should detect pino availability', function() {
       // This test checks if pino is available in the environment
       const pinoAvailable = typeof require('pino') !== 'undefined';
       
       if (pinoAvailable) {
-        console.log('✅ Pino is available - testing pino logger functionality');
+        console.log('[OK] Pino is available - testing pino logger functionality');
         
         const pinoLogger = loggerModule.createLogger({ level: 'debug' });
         expect(pinoLogger).to.be.an('object');
@@ -487,7 +487,7 @@ describe('🔧 EUDR API Client Logger System Tests', function() {
     });
   });
 
-  describe('✅ Integration with Services', function() {
+  describe('[OK] Integration with Services', function() {
     it('should provide logger to services without errors', function() {
       const { logger } = loggerModule;
       
