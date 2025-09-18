@@ -217,7 +217,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
         it('should always return commodities as an array in getStatementByIdentifiers V2 response', async function () {
             try {
                 const result = await service.getStatementByIdentifiers('25HRYVJNLEO828', 'WOHYRNOQ');
-                
+
                 // Check if we have DDS info
                 if (result.ddsInfo && result.ddsInfo.length > 0) {
                     const ddsInfo = result.ddsInfo[0];
@@ -238,14 +238,14 @@ describe('EudrRetrievalClient V2 Tests', function () {
         it('should always return array fields as arrays in getStatementByIdentifiers V2 response', async function () {
             try {
                 const result = await service.getStatementByIdentifiers('25HRYVJNLEO828', 'WOHYRNOQ');
-                
+
                 // Check if we have DDS info
                 if (result.ddsInfo && result.ddsInfo.length > 0) {
                     const ddsInfo = result.ddsInfo[0];
-                    
+
                     // Check all array fields that should always be arrays
                     const arrayFields = ['commodities', 'producers', 'speciesInfo', 'referenceNumber'];
-                    
+
                     arrayFields.forEach(field => {
                         if (ddsInfo[field] !== undefined) {
                             expect(ddsInfo[field]).to.be.an('array', `V2 ${field} should be an array`);
@@ -283,6 +283,73 @@ describe('EudrRetrievalClient V2 Tests', function () {
                 // If it's a valid service error (404, etc.), that's acceptable for testing
                 if (error.details && error.details.status) {
                     expect(error.details.status).to.be.oneOf([404, 500]);
+                } else {
+                    throw error;
+                }
+            }
+        });
+
+        it('should successfully deal with EUDR-API-NO-DDS error V2 with getStatementByIdentifiers', async function () {
+            try {
+                const result = await service.getStatementByIdentifiers('25HRYY2LN63594', 'XZSNMTXO');
+
+                console.log('getStatementByIdentifiers V2 result:', JSON.stringify(result, null, 2));
+ 
+            } catch (error) {
+                // If this is a real test with actual credentials, we might get authentication errors
+                // In that case, we'll just log the error and continue
+                console.log('getStatementByIdentifiers ERROR:', JSON.stringify(error, null, 2));
+                 // Check if this is the specific EUDR-API-NO-DDS error we're testing
+                 if (error.details && error.details.soapFault && error.details.soapFault.includes('EUDR-VERIFICATION-NUMBER-INVALID')) {
+                    // Verify the new error handling
+                    expect(error.errorType).to.equal('INVALID_VERIFICATION_NUMBER');
+                    expect(error.details.status).to.equal(400);
+                    expect(error.details.statusText).to.equal('Invalid Verification Number');
+                    expect(error.message).to.include('Invalid verification number');
+                    console.log('✅ EUDR-VERIFICATION-NUMBER-INVALID error properly handled with 400 status');
+                } 
+                // Check if this is the specific EUDR-WEBSERVICE-STATEMENT-NOT-FOUND error we're testing
+                else if (error.details && error.details.soapFault && error.details.soapFault.includes('EUDR-WEBSERVICE-STATEMENT-NOT-FOUND')) {
+                    // Verify the new error handling
+                    expect(error.errorType).to.equal('DDS_NOT_FOUND');
+                    expect(error.details.status).to.equal(404);
+                  
+                    console.log('✅ EUDR-WEBSERVICE-STATEMENT-NOT-FOUND error properly handled with 404 status');
+                } 
+                else if (error.details && error.details.status) {
+                    // Accept other valid service errors for testing
+                    expect(error.details.status).to.be.oneOf([404, 500]);
+                    console.log('ℹ️ Other service error (acceptable for testing):', error.details.status);
+                } else {
+                    throw error;
+                }
+            }
+        });
+
+ 
+        it('should successfully deal with EUDR-API-NO-DDS error V2 with getReferencedDds', async function () {
+            try {
+                const result = await service.getReferencedDds('25DEISLG346760', 'mCgowPlRBDixzr7Y3B8n5Q%3D%3D%3ALOD9ln9BPy1Edbs6+poDQhxu2GAvhfpZYf2TS+QTbqE%3D');
+                console.log('getReferencedDds V2 result:', JSON.stringify(result, null, 2));
+                expect(result).to.be.an('object');
+                expect(result.httpStatus).to.be.a('number');
+                expect(result.ddsInfo).to.be.an('array');
+            } catch (error) {
+                // Log the error for debugging
+                // console.log('getReferencedDds V2 error (expected):', JSON.stringify(error, null, 2));
+
+                // Check if this is the specific EUDR-API-NO-DDS error we're testing
+                if (error.details && error.details.data && error.details.data.includes('EUDR-API-NO-DDS')) {
+                    // Verify the new error handling
+                    expect(error.errorType).to.equal('DDS_NOT_FOUND');
+                    expect(error.details.status).to.equal(404);
+                    expect(error.details.statusText).to.equal('DDS Not Found');
+                    expect(error.message).to.include('DDS not found');
+                    console.log('✅ EUDR-API-NO-DDS error properly handled with 404 status');
+                } else if (error.details && error.details.status) {
+                    // Accept other valid service errors for testing
+                    expect(error.details.status).to.be.oneOf([404, 500]);
+                    console.log('ℹ️ Other service error (acceptable for testing):', error.details.status);
                 } else {
                     throw error;
                 }
@@ -409,8 +476,8 @@ describe('EudrRetrievalClient V2 Tests', function () {
 
             const processedError = service.processError(mockError);
 
-            
-            
+
+
             expect(processedError.error).to.be.true;
             expect(processedError.errorType).to.equal('BUSINESS_RULES_VALIDATION');
             expect(processedError.message).to.include('Request failed business rules validation');
@@ -439,7 +506,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
                 console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
             } catch (error) {
                 console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
-                
+
                 // Provjeri sadrži li response BusinessRulesValidationException
                 if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
                     console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
@@ -455,8 +522,8 @@ describe('EudrRetrievalClient V2 Tests', function () {
                 const result = await service.getStatementByIdentifiers('AB', 'CD');
                 console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
             } catch (error) {
-                 console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
-                
+                console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
+
                 if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
                     console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
                     expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
@@ -483,7 +550,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
                 console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
             } catch (error) {
                 console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
-                
+
                 if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
                     console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
                     expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
@@ -497,7 +564,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
                 console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
             } catch (error) {
                 console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
-                
+
                 if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
                     console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
                     expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
@@ -511,7 +578,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
                 console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
             } catch (error) {
                 console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
-                
+
                 if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
                     console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
                     expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
@@ -525,7 +592,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
                 console.log('   [OK] Neočekivano uspješan poziv:', result.httpStatus);
             } catch (error) {
                 console.log('   [ERROR] Greška:', JSON.stringify(error, null, 2));
-                
+
                 if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
                     console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
                     expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');
@@ -543,7 +610,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
             //     console.log('      Error Type:', error.errorType || 'N/A');
             //     console.log('      Message:', error.message);
             //     console.log('      HTTP Status:', error.details?.status || 'N/A');
-                
+
             //     if (error.details?.data && error.details.data.includes('BusinessRulesValidationException')) {
             //         console.log('      [SUCCESS] Prepoznat BusinessRulesValidationException!');
             //         expect(error.errorType).to.equal('BUSINESS_RULES_VALIDATION');

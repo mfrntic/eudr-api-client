@@ -949,7 +949,10 @@ try {
     // Handle invalid credentials
   } else if (error.details.status === 404) {
     console.error('DDS not found:', error.message);
-    // Handle missing DDS
+    // Handle missing DDS (covers both EUDR-API-NO-DDS and EUDR-WEBSERVICE-STATEMENT-NOT-FOUND)
+  } else if (error.details.status === 400) {
+    console.error('Invalid verification number:', error.message);
+    // Handle invalid verification number (EUDR-VERIFICATION-NUMBER-INVALID)
   } else if (error.details.status === 500) {
     console.error('Server error:', error.message);
     // Handle server issues
@@ -1201,8 +1204,14 @@ try {
   // Same error handling as V1, with both httpStatus and status fields
   if (error.details.status === 401) {
     console.error('Authentication failed:', error.message);
-  } else if (error.details.httpStatus === 404) {
-    console.error('Referenced DDS not found:', error.message);
+  } else if (error.details.status === 404) {
+    console.error('DDS not found:', error.message);
+    // Handle missing DDS (covers both EUDR-API-NO-DDS and EUDR-WEBSERVICE-STATEMENT-NOT-FOUND)
+  } else if (error.details.status === 400) {
+    console.error('Invalid verification number:', error.message);
+    // Handle invalid verification number (EUDR-VERIFICATION-NUMBER-INVALID)
+  } else if (error.details.status === 500) {
+    console.error('Server error:', error.message);
   }
   // error.details contains both httpStatus and status for compatibility
 }
@@ -1605,6 +1614,8 @@ try {
 
 **Key Error Handling Features:**
 - ✅ **SOAP to HTTP Conversion**: Authentication faults automatically converted from SOAP 500 to HTTP 401
+- ✅ **Consolidated Error Types**: Both `EUDR-API-NO-DDS` and `EUDR-WEBSERVICE-STATEMENT-NOT-FOUND` treated as `DDS_NOT_FOUND` (404)
+- ✅ **Invalid Verification Number Handling**: `EUDR-VERIFICATION-NUMBER-INVALID` converted to `INVALID_VERIFICATION_NUMBER` (400)
 - ✅ **Structured Error Objects**: Consistent error format across all services
 - ✅ **Detailed Error Information**: Full error context with original SOAP response when needed
 
@@ -1945,9 +1956,11 @@ const client = new EudrSubmissionClient({
 
 #### 🚀 NEW: Q: How does the Retrieval Service error handling work?
 
-**A**: The EUDR Retrieval Service V1 includes smart error handling that converts SOAP authentication faults to proper HTTP status codes:
+**A**: The EUDR Retrieval Service includes smart error handling that converts SOAP faults to proper HTTP status codes:
 
 - **SOAP Authentication Faults** → Automatically converted to **HTTP 401 Unauthorized**
+- **DDS Not Found Errors** → Both `EUDR-API-NO-DDS` and `EUDR-WEBSERVICE-STATEMENT-NOT-FOUND` converted to **HTTP 404 Not Found**
+- **Invalid Verification Number** → `EUDR-VERIFICATION-NUMBER-INVALID` converted to **HTTP 400 Bad Request**
 - **Consistent Error Objects** → All services return structured error objects
 - **Original SOAP Response** → Still available for debugging when needed
 
@@ -1958,8 +1971,52 @@ try {
   if (error.details.status === 401) {
     // Authentication failed - properly converted from SOAP fault
     console.error('Invalid credentials:', error.message);
+  } else if (error.details.status === 404) {
+    // DDS not found - covers both EUDR-API-NO-DDS and EUDR-WEBSERVICE-STATEMENT-NOT-FOUND
+    console.error('DDS not found:', error.message);
+  } else if (error.details.status === 400) {
+    // Invalid verification number - EUDR-VERIFICATION-NUMBER-INVALID
+    console.error('Invalid verification number:', error.message);
   }
   // error.details.data still contains original SOAP response for debugging
+}
+```
+
+#### 🚀 NEW: Q: What are the consolidated error types in the Retrieval Service?
+
+**A**: The EUDR Retrieval Service consolidates similar error types for better consistency:
+
+**Consolidated Error Types:**
+- **`DDS_NOT_FOUND` (404)**: Covers both `EUDR-API-NO-DDS` and `EUDR-WEBSERVICE-STATEMENT-NOT-FOUND` errors
+- **`INVALID_VERIFICATION_NUMBER` (400)**: Covers `EUDR-VERIFICATION-NUMBER-INVALID` errors
+- **`AUTHENTICATION_FAILED` (401)**: Covers SOAP authentication faults
+- **`BUSINESS_RULES_VALIDATION` (400)**: Covers validation errors
+
+**Benefits:**
+- **Simplified Error Handling**: One error type for similar issues
+- **Consistent Status Codes**: Proper HTTP status codes instead of SOAP 500 errors
+- **Better User Experience**: Clear error messages for each error type
+
+```javascript
+try {
+  const result = await retrievalClient.getStatementByIdentifiers('REF123', 'VER456');
+} catch (error) {
+  switch (error.errorType) {
+    case 'DDS_NOT_FOUND':
+      // Handle both EUDR-API-NO-DDS and EUDR-WEBSERVICE-STATEMENT-NOT-FOUND
+      console.error('DDS not found:', error.message);
+      break;
+    case 'INVALID_VERIFICATION_NUMBER':
+      // Handle EUDR-VERIFICATION-NUMBER-INVALID
+      console.error('Invalid verification number:', error.message);
+      break;
+    case 'AUTHENTICATION_FAILED':
+      console.error('Authentication failed:', error.message);
+      break;
+    case 'BUSINESS_RULES_VALIDATION':
+      console.error('Validation failed:', error.message);
+      break;
+  }
 }
 ```
 

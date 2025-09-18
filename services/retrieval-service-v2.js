@@ -194,8 +194,23 @@ class EudrRetrievalClientV2 {
       let status = error.response.status;
       let statusText = error.response.statusText;
       
+      // Check for specific EUDR error codes first
+      if (error.response.data && error.response.data.includes('EUDR-API-NO-DDS') || error.response.data.includes('EUDR-WEBSERVICE-STATEMENT-NOT-FOUND')) {
+        status = 404; // Not Found
+        statusText = 'DDS Not Found';
+        errorResponse.message = 'DDS not found - the requested DDS does not exist or is not accessible';
+        errorResponse.errorType = 'DDS_NOT_FOUND';
+      }
+      // Check for invalid verification number error
+      else if (error.response.data && error.response.data.includes('EUDR-VERIFICATION-NUMBER-INVALID')) {
+        status = 400; // Bad Request
+        statusText = 'Invalid Verification Number';
+        errorResponse.message = 'Invalid verification number - the provided verification number contains invalid characters or format';
+        errorResponse.errorType = 'INVALID_VERIFICATION_NUMBER';
+      }
+     
       // Check for BusinessRulesValidationException fault
-      if (error.response.data && 
+      else if (error.response.data && 
           (error.response.data.includes('BusinessRulesValidationException') ||
            error.response.data.includes('BusinessRulesValidationExceptionMessage') ||
            error.response.data.includes('cvc-minLength-valid') ||
@@ -222,10 +237,10 @@ class EudrRetrievalClientV2 {
       }
       
       errorResponse.details = {
-        httpStatus: status,
+        httpStatus: 500, //SOAP uvijek vraća 500
         status: status,
         statusText: statusText,
-        data: error.response.data
+        soapFault: error.response.data
       };
       
       // Add fault details if available
