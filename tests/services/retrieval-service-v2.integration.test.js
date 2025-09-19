@@ -176,8 +176,8 @@ describe('EudrRetrievalClient V2 Tests', function () {
 
         it('should successfully call getDdsInfoByInternalReferenceNumber with valid credentials V2', async function () {
             try {
-                const result = await service.getDdsInfoByInternalReferenceNumber(testInternalRef);
-
+                const result = await service.getDdsInfoByInternalReferenceNumber("DLE");
+console.log('getDdsInfoByInternalReferenceNumber V2 result:', JSON.stringify(result, null, 2));
                 expect(result).to.be.an('object');
                 expect(result.httpStatus).to.be.a('number');
                 expect(result.ddsInfo).to.be.an('array');
@@ -244,7 +244,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
                     const ddsInfo = result.ddsInfo[0];
 
                     // Check all array fields that should always be arrays
-                    const arrayFields = ['commodities', 'producers', 'speciesInfo', 'referenceNumber'];
+                    const arrayFields = ['commodities', 'producers', 'speciesInfo' ];
 
                     arrayFields.forEach(field => {
                         if (ddsInfo[field] !== undefined) {

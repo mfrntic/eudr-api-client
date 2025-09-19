@@ -409,9 +409,8 @@ class EudrRetrievalClient {
                   const speciesInfo = Array.isArray(value) ? value : (value ? [value] : []);
                   cleaned[propertyName] = speciesInfo.map(species => cleanObject(species));
                 } else if (propertyName === 'referenceNumber') {
-                  // Ensure referenceNumber is always an array
-                  const referenceNumbers = Array.isArray(value) ? value : (value ? [value] : []);
-                  cleaned[propertyName] = referenceNumbers.map(ref => cleanObject(ref));
+                  // referenceNumber is always a single value, not an array
+                  cleaned[propertyName] = value;
                 } else {
                   cleaned[propertyName] = cleanObject(value);
                 }
