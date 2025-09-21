@@ -155,9 +155,10 @@ describe('EudrRetrievalClient V2 Tests', function () {
 
         it('should successfully call getDdsInfo with valid credentials V2', async function () {
             try {
-                const result = await service.getDdsInfo(testDdsIdentifiers[0]);
+                const result = await service.getDdsInfo("8d2f35d0-e9bf-4f08-8659-695e1cdf3256"); //testDdsIdentifiers[0]
 
                 console.log('getDdsInfo V2 result:', JSON.stringify(result, null, 2));
+
                 expect(result).to.be.an('object');
                 expect(result.httpStatus).to.be.a('number');
                 expect(result.ddsInfo).to.be.an('array');
@@ -177,7 +178,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
         it('should successfully call getDdsInfoByInternalReferenceNumber with valid credentials V2', async function () {
             try {
                 const result = await service.getDdsInfoByInternalReferenceNumber("DLE");
-console.log('getDdsInfoByInternalReferenceNumber V2 result:', JSON.stringify(result, null, 2));
+                console.log('getDdsInfoByInternalReferenceNumber V2 result:', JSON.stringify(result, null, 2));
                 expect(result).to.be.an('object');
                 expect(result.httpStatus).to.be.a('number');
                 expect(result.ddsInfo).to.be.an('array');
@@ -196,7 +197,7 @@ console.log('getDdsInfoByInternalReferenceNumber V2 result:', JSON.stringify(res
 
         it('should successfully call getStatementByIdentifiers with valid credentials V2', async function () {
             try {
-                const result = await service.getStatementByIdentifiers(testReferenceNumber, testVerificationNumber);
+                const result = await service.getStatementByIdentifiers('25HRE7K4NL3709', 'WTGUSQN6' );
                 console.log('getStatementByIdentifiers V2 result:', JSON.stringify(result, null, 2));
                 expect(result).to.be.an('object');
                 expect(result.httpStatus).to.be.a('number');
@@ -216,7 +217,7 @@ console.log('getDdsInfoByInternalReferenceNumber V2 result:', JSON.stringify(res
 
         it('should always return commodities as an array in getStatementByIdentifiers V2 response', async function () {
             try {
-                const result = await service.getStatementByIdentifiers('25HRYVJNLEO828', 'WOHYRNOQ');
+                const result = await service.getStatementByIdentifiers('25HRE7K4NL3709', 'WTGUSQN6');
 
                 // Check if we have DDS info
                 if (result.ddsInfo && result.ddsInfo.length > 0) {
@@ -244,7 +245,7 @@ console.log('getDdsInfoByInternalReferenceNumber V2 result:', JSON.stringify(res
                     const ddsInfo = result.ddsInfo[0];
 
                     // Check all array fields that should always be arrays
-                    const arrayFields = ['commodities', 'producers', 'speciesInfo' ];
+                    const arrayFields = ['commodities', 'producers', 'speciesInfo'];
 
                     arrayFields.forEach(field => {
                         if (ddsInfo[field] !== undefined) {
@@ -294,28 +295,28 @@ console.log('getDdsInfoByInternalReferenceNumber V2 result:', JSON.stringify(res
                 const result = await service.getStatementByIdentifiers('25HRYY2LN63594', 'XZSNMTXO');
 
                 console.log('getStatementByIdentifiers V2 result:', JSON.stringify(result, null, 2));
- 
+
             } catch (error) {
                 // If this is a real test with actual credentials, we might get authentication errors
                 // In that case, we'll just log the error and continue
                 console.log('getStatementByIdentifiers ERROR:', JSON.stringify(error, null, 2));
-                 // Check if this is the specific EUDR-API-NO-DDS error we're testing
-                 if (error.details && error.details.soapFault && error.details.soapFault.includes('EUDR-VERIFICATION-NUMBER-INVALID')) {
+                // Check if this is the specific EUDR-API-NO-DDS error we're testing
+                if (error.details && error.details.soapFault && error.details.soapFault.includes('EUDR-VERIFICATION-NUMBER-INVALID')) {
                     // Verify the new error handling
                     expect(error.errorType).to.equal('INVALID_VERIFICATION_NUMBER');
                     expect(error.details.status).to.equal(400);
                     expect(error.details.statusText).to.equal('Invalid Verification Number');
                     expect(error.message).to.include('Invalid verification number');
                     console.log('✅ EUDR-VERIFICATION-NUMBER-INVALID error properly handled with 400 status');
-                } 
+                }
                 // Check if this is the specific EUDR-WEBSERVICE-STATEMENT-NOT-FOUND error we're testing
                 else if (error.details && error.details.soapFault && error.details.soapFault.includes('EUDR-WEBSERVICE-STATEMENT-NOT-FOUND')) {
                     // Verify the new error handling
                     expect(error.errorType).to.equal('DDS_NOT_FOUND');
                     expect(error.details.status).to.equal(404);
-                  
+
                     console.log('✅ EUDR-WEBSERVICE-STATEMENT-NOT-FOUND error properly handled with 404 status');
-                } 
+                }
                 else if (error.details && error.details.status) {
                     // Accept other valid service errors for testing
                     expect(error.details.status).to.be.oneOf([404, 500]);
@@ -326,7 +327,7 @@ console.log('getDdsInfoByInternalReferenceNumber V2 result:', JSON.stringify(res
             }
         });
 
- 
+
         it('should successfully deal with EUDR-API-NO-DDS error V2 with getReferencedDds', async function () {
             try {
                 const result = await service.getReferencedDds('25DEISLG346760', 'mCgowPlRBDixzr7Y3B8n5Q%3D%3D%3ALOD9ln9BPy1Edbs6+poDQhxu2GAvhfpZYf2TS+QTbqE%3D');

@@ -420,9 +420,56 @@ class EudrRetrievalClient {
             return cleanObject(item);
           });
 
-          resolve({
-            ddsInfo: mappedDdsInfo
-          });
+          // Special handling for getStatementByIdentifiers - return complete DDS structure
+          if (statementByIdResponse) {
+            // For getStatementByIdentifiers, we need to return the complete DDS structure
+            // that matches the submission request format
+            const processedDdsInfo = mappedDdsInfo.map(item => {
+              // Convert status from object to string for consistency with submission format
+              if (item.status && typeof item.status === 'object') {
+                item.status = item.status.status || item.status;
+              }
+              
+              // Check if any producer has geometryGeojson to determine geoLocationConfidential
+              let hasGeometry = false;
+              if (item.commodities && Array.isArray(item.commodities)) {
+                for (const commodity of item.commodities) {
+                  if (commodity.producers && Array.isArray(commodity.producers)) {
+                    for (const producer of commodity.producers) {
+                      if (producer.geometryGeojson) {
+                        hasGeometry = true;
+                        break;
+                      }
+                    }
+                  }
+                  if (hasGeometry) break;
+                }
+              }
+              
+              // Add missing fields that should be present in complete DDS structure
+              if (!item.geoLocationConfidential) {
+                item.geoLocationConfidential = !hasGeometry; // false if geometry exists, true if not
+              }
+              
+              // Ensure all required fields are present for complete DDS structure
+              if (!item.activityType) {
+                item.activityType = 'DOMESTIC'; // Default value
+              }
+              
+              return item;
+            });
+            
+            resolve({
+              status: 'success',
+              httpStatus: 200,
+              data: processedDdsInfo
+            });
+          } else {
+            // For other methods, return the standard format
+            resolve({
+              ddsInfo: mappedDdsInfo
+            });
+          }
 
         } catch (error) {
           reject(new Error(`Failed to extract DDS info from response: ${error.message}`));

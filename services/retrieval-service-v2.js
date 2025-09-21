@@ -383,6 +383,7 @@ class EudrRetrievalClientV2 {
           // Check response type and extract appropriate data
           // Support multiple namespace prefixes (ns4, ns5, etc.)
           let ddsInfoResponse;
+          let responseType = 'unknown';
           
           // Find response by checking multiple possible namespace prefixes
           const responseKeys = Object.keys(body);
@@ -393,15 +394,19 @@ class EudrRetrievalClientV2 {
           
           if (statementInfoResponse) {
             ddsInfoResponse = body[statementInfoResponse];
+            responseType = 'statementInfo';
           }
           else if (ddsInfoByRefResponse) {
             ddsInfoResponse = body[ddsInfoByRefResponse];
+            responseType = 'ddsInfoByRef';
           }
           else if (statementByIdResponse) {
             ddsInfoResponse = body[statementByIdResponse];
+            responseType = 'statementById';
           }
           else if (referencedDdsResponse) {
             ddsInfoResponse = body[referencedDdsResponse];
+            responseType = 'referencedDds';
           }
           else {
             // Check for fault
@@ -479,9 +484,53 @@ class EudrRetrievalClientV2 {
             return cleanObject(item);
           });
 
-          resolve({
-            ddsInfo: mappedDdsInfo
-          });
+          // Special handling for getStatementByIdentifiers - return complete DDS structure
+          if (responseType === 'statementById' || responseType === 'referencedDds') {
+            // For getStatementByIdentifiers, we need to return the complete DDS structure
+            // that matches the submission request format
+            const processedDdsInfo = mappedDdsInfo.map(item => {
+              // Convert status from object to string for consistency with submission format
+              if (item.status && typeof item.status === 'object') {
+                item.status = item.status.status || item.status;
+              }
+              
+              // Determine geoLocationConfidential based on presence of geometryGeojson
+              if (item.geoLocationConfidential === undefined) {
+                // Check if any commodity has producers with geometryGeojson
+                let hasGeometry = false;
+                if (item.commodities && Array.isArray(item.commodities)) {
+                  for (const commodity of item.commodities) {
+                    if (commodity.producers && Array.isArray(commodity.producers)) {
+                      for (const producer of commodity.producers) {
+                        if (producer.geometryGeojson) {
+                          hasGeometry = true;
+                          break;
+                        }
+                      }
+                    }
+                    if (hasGeometry) break;
+                  }
+                }
+                item.geoLocationConfidential = !hasGeometry;
+              }
+              
+              // Ensure all required fields are present
+              if (!item.activityType) {
+                item.activityType = 'UNKNOWN';
+              }
+              
+              return item;
+            });
+
+            resolve({
+              ddsInfo: processedDdsInfo
+            });
+          } else {
+            // For other response types, return as before
+            resolve({
+              ddsInfo: mappedDdsInfo
+            });
+          }
 
         } catch (error) {
           reject(new Error(`Failed to extract DDS info from response: ${error.message}`));
