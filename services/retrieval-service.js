@@ -426,8 +426,14 @@ class EudrRetrievalClient {
             // that matches the submission request format
             const processedDdsInfo = mappedDdsInfo.map(item => {
               // Convert status from object to string for consistency with submission format
+              // but preserve the date information
               if (item.status && typeof item.status === 'object') {
-                item.status = item.status.status || item.status;
+                const statusValue = item.status.status || item.status;
+                const statusDate = item.status.date;
+                item.status = statusValue;
+                if (statusDate) {
+                  item.statusDate = statusDate;
+                }
               }
               
               // Check if any producer has geometryGeojson to determine geoLocationConfidential
