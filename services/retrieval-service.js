@@ -460,9 +460,7 @@ class EudrRetrievalClient {
             });
             
             resolve({
-              status: 'success',
-              httpStatus: 200,
-              data: processedDdsInfo
+              ddsInfo: processedDdsInfo
             });
           } else {
             // For other methods, return the standard format
