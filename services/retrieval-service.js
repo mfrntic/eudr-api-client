@@ -318,9 +318,11 @@ class EudrRetrievalClient {
    * Parse XML response to extract the DDS information
    * @private
    * @param {string} xmlResponse - XML response from the service
+   * @param {Object} options - Additional options
+   * @param {boolean} options.decodeGeojson - Whether to decode base64 geometryGeojson to plain string
    * @returns {Promise<Object>} Parsed response object
    */
-  parseResponse(xmlResponse) {
+  parseResponse(xmlResponse, options = {}) {
     return new Promise((resolve, reject) => {
       parseString(xmlResponse, { 
         explicitArray: false,
@@ -444,11 +446,19 @@ class EudrRetrievalClient {
                     for (const producer of commodity.producers) {
                       if (producer.geometryGeojson) {
                         hasGeometry = true;
-                        break;
+                        // Decode GeoJSON if requested
+                        if (options.decodeGeojson) {
+                          try {
+                            const decodedString = Buffer.from(producer.geometryGeojson, 'base64').toString('utf-8');
+                            producer.geometryGeojson = JSON.parse(decodedString);
+                          } catch (error) {
+                            // If decoding fails, keep original value
+                            console.warn('Failed to decode geometryGeojson:', error.message);
+                          }
+                        }
                       }
                     }
                   }
-                  if (hasGeometry) break;
                 }
               }
               
@@ -677,6 +687,7 @@ class EudrRetrievalClient {
    * @param {string} verificationNumber - DDS verification number
    * @param {Object} options - Additional options
    * @param {boolean} options.rawResponse - Whether to return the raw XML response
+   * @param {boolean} options.decodeGeojson - Whether to decode base64 geometryGeojson to plain string (default: false)
    * @returns {Promise<Object>} Response object with complete DDS content including v1.4 fields:
    *   - Full DDS content (geolocation, activity, etc.)
    *   - Referenced DDS list with security numbers for supply chain traversal
@@ -718,7 +729,7 @@ class EudrRetrievalClient {
       }
 
       // Parse the XML response
-      const parsedResponse = await this.parseResponse(response.data);
+      const parsedResponse = await this.parseResponse(response.data, options);
 
       const result = {
         httpStatus: response.status,

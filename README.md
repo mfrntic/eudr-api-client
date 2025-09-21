@@ -683,7 +683,8 @@ const result = await client.submitDds({
     // ... other statement data
   }
 }, {
-  rawResponse: false  // Set to true to get raw XML response
+  rawResponse: false,  // Set to true to get raw XML response
+  encodeGeojson: true  // Encode plain geometryGeojson strings to base64
 });
 
 // Returns: { httpStatus: 200, status: 200, ddsIdentifier: 'uuid-string', raw: 'xml...' }
@@ -699,7 +700,8 @@ const result = await client.amendDds(
     // ... other updated fields
   },
   {
-    rawResponse: false
+    rawResponse: false,  // Set to true to get raw XML response
+    encodeGeojson: true  // Encode plain geometryGeojson strings to base64
   }
 );
 
@@ -767,13 +769,14 @@ const result = await clientV2.submitDds({
       producers: [{
         country: 'HR',
         name: 'GreenWood Solutions Ltd.',
-        geometryGeojson: 'base64-encoded-geojson'
+        geometryGeojson: 'plain-json-string'  // Will be encoded to base64 if encodeGeojson: true
       }]
     }],
     geoLocationConfidential: false
   }
 }, {
-  rawResponse: false  // Set to true to get raw XML response
+  rawResponse: false,  // Set to true to get raw XML response
+  encodeGeojson: true  // Encode plain geometryGeojson strings to base64
 });
 
 // Returns: { httpStatus: 200, status: 200, ddsIdentifier: 'uuid-string', raw: 'xml...' }
@@ -789,7 +792,8 @@ const result = await clientV2.amendDds(
     // ... other updated fields
   },
   {
-    rawResponse: false
+    rawResponse: false,  // Set to true to get raw XML response
+    encodeGeojson: true  // Encode plain geometryGeojson strings to base64
   }
 );
 
@@ -819,6 +823,12 @@ Service for retrieving DDS information and supply chain data with automatic endp
 | `getDdsInfoByInternalReferenceNumber(internalReferenceNumber, options)` | Retrieve DDS by internal reference | CF3 v1.4 | `internalReferenceNumber` (String, 3-50 chars), `options` (Object) | Promise with DDS array |
 | `getStatementByIdentifiers(referenceNumber, verificationNumber, options)` | Get full DDS statement | CF7 v1.4 | `referenceNumber` (String), `verificationNumber` (String), `options` (Object) | Promise with complete DDS |
 | ~~`getReferencedDDS()`~~ | ❌ Not available in V1 | N/A | Use `EudrRetrievalClientV2` instead | V2 only |
+
+#### Options
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `rawResponse` | boolean | false | Whether to return the raw XML response |
+| `decodeGeojson` | boolean | false | Whether to decode base64 geometryGeojson to plain string |
 
 #### Detailed Method Reference
 
@@ -897,6 +907,15 @@ const fullDds = await retrievalClient.getStatementByIdentifiers(
   'K7R8LA90'
 );
 
+// With decodeGeojson option to decode base64 geometryGeojson to plain string
+const fullDdsDecoded = await retrievalClient.getStatementByIdentifiers(
+  '25NLSN6LX69730', 
+  'K7R8LA90',
+  {
+    decodeGeojson: true  // Decode base64 geometryGeojson to plain string
+  }
+);
+
 // Returns: Complete DDS object with v1.4 fields
 // {
 //   httpStatus: 200,
@@ -919,6 +938,10 @@ const fullDds = await retrievalClient.getStatementByIdentifiers(
 //   ]
 // }
 ```
+
+**Options:**
+- `rawResponse` (boolean): Whether to return the raw XML response
+- `decodeGeojson` (boolean): Whether to decode base64 geometryGeojson to plain string (default: false)
 
 **Supply Chain Traversal (V2 Only)**
 
@@ -1005,6 +1028,12 @@ Advanced service for retrieving DDS information and supply chain data with enhan
 | `getDdsInfoByInternalReferenceNumber(internalReferenceNumber, options)` | Retrieve DDS by internal reference | CF3 v1.4 | `internalReferenceNumber` (String, 3-50 chars), `options` (Object) | Promise with DDS array |
 | `getStatementByIdentifiers(referenceNumber, verificationNumber, options)` | Get full DDS statement | CF7 v1.4 | `referenceNumber` (String), `verificationNumber` (String), `options` (Object) | Promise with complete DDS |
 | `getReferencedDds(referenceNumber, securityNumber, options)` | 🚀 **V2 Only**: Supply chain traversal | CF7 v1.4 | `referenceNumber` (String), `securityNumber` (String), `options` (Object) | Promise with referenced DDS |
+
+#### Options
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `rawResponse` | boolean | false | Whether to return the raw XML response |
+| `decodeGeojson` | boolean | false | Whether to decode base64 geometryGeojson to plain string |
 
 #### Key Features
 
@@ -1094,7 +1123,10 @@ console.log('Found referenced statements:', referencedStatements);
 for (const ref of referencedStatements) {
   const referencedDds = await retrievalClientV2.getReferencedDds(
     ref.referenceNumber,
-    ref.securityNumber  // Use securityNumber, not verificationNumber
+    ref.securityNumber,  // Use securityNumber, not verificationNumber
+    {
+      decodeGeojson: true  // Decode base64 geometryGeojson to plain string
+    }
   );
   
   console.log('Referenced DDS content:', referencedDds.ddsInfo);
@@ -1843,6 +1875,77 @@ const geojson = {
 // Encode to base64
 const encodedGeojson = Buffer.from(JSON.stringify(geojson)).toString('base64');
 ```
+
+#### Q: How do I decode GeoJSON data from retrieval responses?
+
+**A**: The EUDR API Client provides a `decodeGeojson` option to automatically decode base64 geometryGeojson to plain string:
+
+```javascript
+// Get DDS with decoded GeoJSON
+const fullDds = await retrievalClient.getStatementByIdentifiers(
+  '25NLSN6LX69730', 
+  'K7R8LA90',
+  {
+    decodeGeojson: true  // Decode base64 geometryGeojson to plain string
+  }
+);
+
+// Now geometryGeojson is a plain JSON string instead of base64
+const producers = fullDds.ddsInfo[0].commodities[0].producers;
+producers.forEach(producer => {
+  if (producer.geometryGeojson) {
+    // geometryGeojson is now a plain JSON string, not base64
+    const geojson = JSON.parse(producer.geometryGeojson);
+    console.log('Decoded GeoJSON:', geojson);
+  }
+});
+```
+
+**Note**: By default, `decodeGeojson` is `false` to maintain backward compatibility. Set it to `true` when you need to work with the actual GeoJSON data instead of the base64-encoded string.
+
+#### Q: How do I encode GeoJSON data for submission?
+
+**A**: The EUDR API Client provides an `encodeGeojson` option to automatically encode plain GeoJSON strings to base64 format before submission:
+
+```javascript
+// Submit DDS with automatic GeoJSON encoding
+const result = await submissionClient.submitDds({
+  operatorType: 'OPERATOR',
+  statement: {
+    // ... other statement data
+    commodities: [{
+      producers: [{
+        country: 'HR',
+        name: 'Forest Company',
+        geometryGeojson: JSON.stringify({
+          type: "FeatureCollection",
+          features: [{
+            type: "Feature",
+            geometry: {
+              type: "Polygon",
+              coordinates: [[[14.97046, 45.192398], [14.969858, 45.188344]]]
+            },
+            properties: { name: "Forest Area" }
+          }]
+        })  // Plain JSON string - will be encoded to base64
+      }]
+    }]
+  }
+}, {
+  encodeGeojson: true  // Automatically encode plain GeoJSON strings to base64
+});
+
+// The same works for amendDds
+const amendResult = await submissionClient.amendDds(
+  'existing-dds-uuid',
+  updatedStatement,
+  {
+    encodeGeojson: true  // Encode GeoJSON in amendment
+  }
+);
+```
+
+**Note**: By default, `encodeGeojson` is `false` to maintain backward compatibility. Set it to `true` when you want to work with plain JSON strings instead of manually encoding them to base64.
 
 #### Q: How do I handle rate limiting?
 

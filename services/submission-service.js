@@ -149,6 +149,59 @@ class EudrSubmissionClient {
   }
 
   /**
+   * Encode plain GeoJSON strings to base64 in request
+   * @private
+   * @param {Object} request - The DDS submission request object
+   */
+  encodeGeojsonInRequest(request) {
+    if (!request.statement || !request.statement.commodities) {
+      return;
+    }
+
+    const processCommodities = (commodities) => {
+      if (!Array.isArray(commodities)) {
+        commodities = [commodities];
+      }
+
+      commodities.forEach(commodity => {
+        if (commodity.producers && Array.isArray(commodity.producers)) {
+          commodity.producers.forEach(producer => {
+            if (producer.geometryGeojson) {
+              // Handle different input types
+              if (typeof producer.geometryGeojson === 'object') {
+                // If it's an object, stringify it first
+                try {
+                  producer.geometryGeojson = Buffer.from(JSON.stringify(producer.geometryGeojson), 'utf-8').toString('base64');
+                } catch (error) {
+                  logger.warn('Invalid GeoJSON object, skipping encoding:', error.message);
+                }
+              } else if (typeof producer.geometryGeojson === 'string') {
+                try {
+                  // Check if it's already base64 encoded
+                  const decoded = Buffer.from(producer.geometryGeojson, 'base64').toString('utf-8');
+                  JSON.parse(decoded); // Try to parse as JSON
+                  // If successful, it's already base64 encoded, do nothing
+                } catch (error) {
+                  // If it fails, it's a plain JSON string, encode it
+                  try {
+                    JSON.parse(producer.geometryGeojson); // Validate it's valid JSON
+                    producer.geometryGeojson = Buffer.from(producer.geometryGeojson, 'utf-8').toString('base64');
+                  } catch (jsonError) {
+                    // If it's not valid JSON, leave it as is
+                    logger.warn('Invalid GeoJSON format, skipping encoding:', jsonError.message);
+                  }
+                }
+              }
+            }
+          });
+        }
+      });
+    };
+
+    processCommodities(request.statement.commodities);
+  }
+
+  /**
    * Create SOAP envelope for the submitDds operation
    * @private
    * @param {Object} request - The DDS submission request object
@@ -486,11 +539,18 @@ class EudrSubmissionClient {
    * Submit a DDS to the EUDR Submission Service
    * @param {Object} request - Request object containing the DDS data
    * @param {Object} options - Additional options for the request
+   * @param {boolean} options.rawResponse - Whether to return the raw XML response
+   * @param {boolean} options.encodeGeojson - Whether to encode plain geometryGeojson strings to base64 (default: false)
    * @returns {Promise<Object>} Response object with DDS identifier
    */
   async submitDds(request, options = {}) {
     try {
       logger.debug('DEBUG: Starting submitDds with request:', JSON.stringify(request, null, 2));
+      
+      // Encode GeoJSON if requested
+      if (options.encodeGeojson) {
+        this.encodeGeojsonInRequest(request);
+      }
       
       // Create SOAP envelope
       logger.debug('DEBUG: Creating SOAP envelope...');
@@ -602,10 +662,17 @@ class EudrSubmissionClient {
    * @param {string} ddsIdentifier - UUID of the DDS to amend
    * @param {Object} statement - The updated DDS statement
    * @param {Object} options - Additional options for the request
+   * @param {boolean} options.rawResponse - Whether to return the raw XML response
+   * @param {boolean} options.encodeGeojson - Whether to encode plain geometryGeojson strings to base64 (default: false)
    * @returns {Promise<Object>} Response object indicating success
    */
   async amendDds(ddsIdentifier, statement, options = {}) {
     try {
+      // Encode GeoJSON if requested
+      if (options.encodeGeojson) {
+        this.encodeGeojsonInRequest({ statement });
+      }
+      
       // Create SOAP envelope
       const soapEnvelope = this.createAmendSoapEnvelope(ddsIdentifier, statement);
 

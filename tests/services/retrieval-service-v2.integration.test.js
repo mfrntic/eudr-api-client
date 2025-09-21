@@ -197,7 +197,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
 
         it('should successfully call getStatementByIdentifiers with valid credentials V2', async function () {
             try {
-                const result = await service.getStatementByIdentifiers('25HRE7K4NL3709', 'WTGUSQN6' );
+                const result = await service.getStatementByIdentifiers('25HRE7K4NL3709', 'WTGUSQN6', { decodeGeojson: true } );
                 console.log('getStatementByIdentifiers V2 result:', JSON.stringify(result, null, 2));
                 expect(result).to.be.an('object');
                 expect(result.httpStatus).to.be.a('number');
@@ -272,7 +272,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
 
         it('should successfully call getReferencedDds with valid credentials V2', async function () {
             try {
-                const result = await service.getReferencedDds(testAssociatedStatementReferenceNumber, testAssociatedStatementSecurityNumber);
+                const result = await service.getReferencedDds(testAssociatedStatementReferenceNumber, testAssociatedStatementSecurityNumber, { decodeGeojson: true });
                 console.log('getReferencedDds V2 result:', JSON.stringify(result, null, 2));
                 expect(result).to.be.an('object');
                 expect(result.httpStatus).to.be.a('number');

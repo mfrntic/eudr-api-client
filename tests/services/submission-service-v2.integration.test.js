@@ -617,6 +617,104 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
       }
     });
 
+    it('should submit DDS with not encoded geometryGeojson V2', async function () {
+      try {
+        const request = {
+          operatorType: 'OPERATOR',
+          statement: {
+            internalReferenceNumber: `TEST-SPECIES-COMMON-${Date.now()}`,
+            activityType: 'DOMESTIC',
+            operator: {
+              referenceNumber: {
+                identifierType: 'eori',
+                identifierValue: 'HR123456789012345'
+              },
+              operatorAddress: {
+                name: 'Test Company Species Common',
+                country: 'HR',
+                street: 'Test Street 123',
+                postalCode: '10000',
+                city: 'Zagreb'
+              }
+            },
+            commodities: [{
+              descriptors: {
+                descriptionOfGoods: 'Test wood with common name only',
+                goodsMeasure: {
+                  supplementaryUnit: 20,
+                  supplementaryUnitQualifier: "MTQ"
+                }
+              },
+              hsHeading: '4401',
+              speciesInfo:[ {
+                commonName: 'Jela',
+                scientificName: 'Betula pendula'
+              }],
+              producers: [{
+                country: 'HR',
+                name: 'Test Producer Common',
+                geometryGeojson: {
+                  "type": "FeatureCollection",
+                  "features": [
+                    {
+                      "type": "Feature",
+                      "properties": {
+                        "Area": 4,
+                        "ProductionPlace": "wdwdws"
+                      },
+                      "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                          0,
+                          0
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "country": "AT",
+                "geometryGeojson": {
+                  "type": "FeatureCollection",
+                  "features": [
+                    {
+                      "type": "Feature",
+                      "properties": {
+                        "Area": 4,
+                        "ProductionPlace": "dwqdwdwd"
+                      },
+                      "geometry": {
+                        "type": "Point",
+                        "coordinates": [
+                          0,
+                          0
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }]
+            }],
+            geoLocationConfidential: false
+          }
+        };
+
+        const result = await client.submitDds(request, { encodeGeojson: true });
+
+        expect(result).to.have.property('httpStatus', 200);
+        expect(result).to.have.property('ddsIdentifier');
+        expect(result.ddsIdentifier).to.be.a('string');
+        expect(result.ddsIdentifier).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+
+        createdDdsIdentifiers.push(result.ddsIdentifier);
+        logger.info(`[OK] SpeciesInfo with common name only test passed - DDS: ${result.ddsIdentifier}`);
+      } catch (error) {
+        console.log("ERROR", error);
+        throw error;
+      }
+    });
+
     it('should handle speciesInfo with only commonName V2', async function () {
       try {
         const request = {
