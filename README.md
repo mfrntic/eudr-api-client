@@ -35,7 +35,8 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
 - ✅ **Easy Integration** - Simple API with real-world examples
 - ✅ **Smart Endpoint Management** - Automatic endpoint generation for standard environments
 - ✅ **Flexible Configuration** - Manual endpoint override when needed
-- ✅ **🚀 NEW: Flexible Array Fields** - Array properties accept both single objects and arrays for maximum flexibility
+- ✅ **Flexible Array Fields** - Array properties accept both single objects and arrays for maximum flexibility
+- ✅ **🚀 NEW: Units of Measure Validation** - Automatic validation of units of measure according to official EUDR rules
 
 ## Table of Contents
 
@@ -48,6 +49,10 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
   - [Import Operations](#import-operations)
   - [Domestic Production](#domestic-production)
   - [Authorized Representatives](#authorized-representatives)
+- [Units of Measure Validation](#units-of-measure-validation)
+  - [Validation Rules](#validation-rules)
+  - [Error Handling](#error-handling)
+  - [Examples](#examples)
 - [API Reference](#api-reference)
   - [Services Overview](#services-overview)
   - [Echo Service](#echo-service)
@@ -507,6 +512,130 @@ const representativeResult = await client.submitDds({
 console.log(`✅ Representative DDS submitted. Identifier: ${representativeResult.ddsIdentifier}`);
 ```
 
+## Units of Measure Validation
+
+The EUDR API Client now includes **automatic validation of units of measure** according to official EUDR rules from the economic operators documentation. This validation ensures compliance with EUDR requirements before submission.
+
+### Validation Rules
+
+The validation system enforces different rules based on activity type:
+
+#### Import/Export Activities
+
+**Mandatory Fields:**
+- **Net Mass (Kg)** - Always required for Import/Export activities
+- **Supplementary Unit** - Required only if HS code appears in Appendix I
+
+**Validation Logic:**
+- If HS code is in Appendix I → Supplementary unit is **mandatory**
+- If HS code is NOT in Appendix I → Supplementary unit is **forbidden**
+- Percentage estimation/deviation is **not allowed** for Import/Export
+
+**Supported HS Codes with Supplementary Units:**
+- **4-digit codes** (first 4 digits): `4011`, `4013`, `4104`, `4403`, `4406`, `4408`, `4410`, `4411`, `4412`, `4413`, `4701`, `4702`, `4704`, `4705`
+
+#### Domestic/Trade Activities
+
+**Valid Combinations:**
+1. **Net Mass + Percentage** (0-25% estimation/deviation)
+2. **Net Mass + Supplementary Unit** (with valid qualifier)
+3. **Net Mass + Volume** (cubic meters)
+
+**Valid Supplementary Unit Types:**
+- `NAR` - Number of articles
+- `MTQ` - Cubic meters
+- `KSD` - Kilograms per square decimeter
+
+### Error Handling
+
+The validation system uses the same error handling as other EUDR operations, ensuring consistency:
+
+```javascript
+try {
+  const result = await client.submitDds(ddsData);
+  console.log('Success:', result.ddsIdentifier);
+} catch (error) {
+  if (error.eudrErrorCode === 'EUDR_COMMODITIES_DESCRIPTOR_NET_MASS_EMPTY') {
+    console.error('Net Mass is mandatory for Import/Export activities');
+  } else if (error.eudrErrorCode === 'EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_MISSING') {
+    console.error('Supplementary unit is mandatory for this HS code');
+  } else if (error.eudrErrorCode === 'EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_NOT_ALLOWED') {
+    console.error('Percentage estimation not allowed for Import/Export activities');
+  } else if (error.eudrErrorCode === 'EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_INVALID') {
+    console.error('Percentage must be between 0-25% for Domestic/Trade activities');
+  }
+}
+```
+
+### Examples
+
+#### Valid Import Submission
+
+```javascript
+const importResult = await client.submitDds({
+  operatorType: 'OPERATOR',
+  statement: {
+    activityType: 'IMPORT',
+    commodities: [{
+      hsHeading: '4701', // HS code in Appendix I
+      descriptors: {
+        goodsMeasure: {
+          netWeight: 1000, // Required for Import
+          supplementaryUnit: 50, // Required for HS 4701
+          supplementaryUnitQualifier: 'KSD' // Required for HS 4701
+        }
+      }
+    }]
+  }
+});
+```
+
+#### Valid Domestic Submission
+
+```javascript
+const domesticResult = await client.submitDds({
+  operatorType: 'OPERATOR',
+  statement: {
+    activityType: 'DOMESTIC',
+    commodities: [{
+      hsHeading: '4401', // HS code not in Appendix I
+      descriptors: {
+        goodsMeasure: {
+          netWeight: 500, // Required
+          percentageEstimationOrDeviation: 15 // Valid for Domestic (0-25%)
+        }
+      }
+    }]
+  }
+});
+```
+
+#### Invalid Submission (Will Throw Error)
+
+```javascript
+try {
+  const invalidResult = await client.submitDds({
+    operatorType: 'OPERATOR',
+    statement: {
+      activityType: 'IMPORT',
+      commodities: [{
+        hsHeading: '4701', // HS code in Appendix I
+        descriptors: {
+          goodsMeasure: {
+            // Missing netWeight - will throw error
+            supplementaryUnit: 50,
+            supplementaryUnitQualifier: 'KSD'
+          }
+        }
+      }]
+    }
+  });
+} catch (error) {
+  // Error: EUDR_COMMODITIES_DESCRIPTOR_NET_MASS_EMPTY
+  // "Net Mass is mandatory for IMPORT or EXPORT activity."
+}
+```
+
 ## API Reference
 
 ### Services Overview
@@ -588,6 +717,8 @@ const response = await echoClient.echo('Hello EUDR');
 ### Submission Service
 
 Submit, amend, and retract DDS statements. Available in both V1 and V2 APIs with different validation requirements.
+
+**🚀 NEW: Automatic Units of Measure Validation** - Both V1 and V2 clients now include automatic validation of units of measure according to official EUDR rules. Validation occurs before API calls to ensure compliance and provide immediate feedback.
 
 #### V1 Client (`EudrSubmissionClient`)
 
@@ -2229,6 +2360,64 @@ for (const ref of referencedStatements) {
 ```
 
 **Recommendation**: Use **EudrRetrievalClientV2** for complete supply chain analysis with the `getReferencedDds()` method.
+
+#### 🚀 NEW: Q: How does units of measure validation work?
+
+**A**: The EUDR API Client now includes **automatic validation of units of measure** according to official EUDR rules. This validation ensures compliance before submission and provides immediate feedback.
+
+**Key Features:**
+- **Pre-submission Validation**: Validation occurs before API calls, not after
+- **Activity-based Rules**: Different validation rules for Import/Export vs Domestic/Trade
+- **HS Code Integration**: Automatic detection of required supplementary units based on HS codes
+- **Consistent Error Handling**: Uses the same error handling as other EUDR operations
+
+**Validation Rules:**
+
+**For Import/Export Activities:**
+- **Net Mass (Kg)** is always mandatory
+- **Supplementary Unit** is mandatory only if HS code is in Appendix I
+- **Percentage estimation/deviation** is not allowed
+
+**For Domestic/Trade Activities:**
+- **Net Mass + Percentage** (0-25% estimation/deviation)
+- **Net Mass + Supplementary Unit** (with valid qualifier)
+- **Net Mass + Volume** (cubic meters)
+
+**Error Codes:**
+```javascript
+// Common validation error codes
+EUDR_COMMODITIES_DESCRIPTOR_NET_MASS_EMPTY
+EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_MISSING
+EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_NOT_ALLOWED
+EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_NOT_ALLOWED
+EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_INVALID
+```
+
+**Example Usage:**
+```javascript
+try {
+  const result = await client.submitDds({
+    operatorType: 'OPERATOR',
+    statement: {
+      activityType: 'IMPORT',
+      commodities: [{
+        hsHeading: '4701', // HS code in Appendix I
+        descriptors: {
+          goodsMeasure: {
+            netWeight: 1000, // Required
+            supplementaryUnit: 50, // Required for HS 4701
+            supplementaryUnitQualifier: 'KSD' // Required for HS 4701
+          }
+        }
+      }]
+    }
+  });
+} catch (error) {
+  if (error.eudrErrorCode === 'EUDR_COMMODITIES_DESCRIPTOR_NET_MASS_EMPTY') {
+    console.error('Net Mass is mandatory for Import/Export activities');
+  }
+}
+```
 
 #### 🚀 NEW: Q: How do flexible array fields work?
 

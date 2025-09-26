@@ -49,10 +49,10 @@ const EUDR_ERROR_CODES = {
   EUDR_COMMODITIES_DESCRIPTOR_NUMBER_OF_UNITS_MISSING: 'A supplementary unit qualifier is provided but the supplementary units are missing.',
   EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_NOT_ALLOWED: 'Supplementary Unit not allowed for import and export where the supplementary unit is not applicable.',
   EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_QUALIFIER_INVALID: 'Invalid Supplementary Unit type.',
-  EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_QUALIFIER_NOT_COMPATIBLE: 'Supplementary Unit type not applicable.',
+  EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_QUALIFIER_NOT_COMPATIBLE: 'Supplementary Unit type not compatible with HS code requirement.',
   EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_MISSING: 'Net Mass Percentage estimate or deviation is mandatory for Domestic or Trade activities.',
-  EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_NOT_ALLOWED: 'Percentage estimate or deviation not allowed for Import/Export.',
-  EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_INVALID: 'Percentage estimate or deviation lower than 0 or higher than 50.',
+  EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_NOT_ALLOWED: 'Percentage estimate or deviation not allowed for Import/Export activities.',
+  EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_INVALID: 'Percentage estimate or deviation lower than 0 or higher than 25 for Domestic/Trade activities.',
 
   // Species information errors
   EUDR_COMMODITIES_SPECIES_INFORMATION_COMMON_NAME_EMPTY: 'The common name is mandatory if the commodity contains Annex I wood (timber) products.',

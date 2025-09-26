@@ -27,6 +27,28 @@ const EudrErrorHandler = require('../utils/error-handler');
 const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
 
+// Constants for Units of Measure validation based on economic_operators.md
+const HS_CODES_WITH_SUPPLEMENTARY_UNITS = {
+  // 4-digit codes (match on first 4 digits)
+  '4011': 'NAR',
+  '4013': 'NAR',
+  '4104': 'NAR',
+  '4403': 'MTQ',
+  '4406': 'MTQ',
+  '4408': 'MTQ',
+  '4410': 'MTQ',
+  '4411': 'MTQ',
+  '4412': 'MTQ',
+  '4413': 'MTQ',
+  '4701': 'KSD',
+  '4702': 'KSD',
+  '4704': 'KSD',
+  '4705': 'KSD'
+};
+
+// Valid supplementary unit types for Domestic/Trade activities
+const VALID_SUPPLEMENTARY_UNIT_TYPES = ['KSD', 'MTK', 'MTQ', 'MTR', 'NAR', 'NPR'];
+
 /**
  * EUDR Submission Service Client V2 class
  */
@@ -309,6 +331,169 @@ class EudrSubmissionClientV2 {
   }
 
   /**
+   * Validate units of measure according to economic_operators.md rules
+   * @private
+   * @param {Object} statement - The statement object to validate
+   * @throws {Error} If validation fails
+   */
+  validateUnitsOfMeasure(statement) {
+    if (!statement.commodities) {
+      return; // No commodities to validate
+    }
+
+    const commodities = Array.isArray(statement.commodities) ? statement.commodities : [statement.commodities];
+    const activityType = statement.activityType;
+
+    for (const commodity of commodities) {
+      if (!commodity.descriptors || !commodity.descriptors.goodsMeasure) {
+        continue; // Skip if no goods measure
+      }
+
+      const measure = commodity.descriptors.goodsMeasure;
+      const hsHeading = commodity.hsHeading;
+
+      // Validate based on activity type
+      if (activityType === 'IMPORT' || activityType === 'EXPORT') {
+        this.validateImportExportUnits(measure, hsHeading);
+      } else if (activityType === 'DOMESTIC' || activityType === 'TRADE') {
+        this.validateDomesticTradeUnits(measure);
+      }
+    }
+  }
+
+  /**
+   * Validate units of measure for Import/Export activities
+   * @private
+   * @param {Object} measure - The goods measure object
+   * @param {string} hsHeading - The HS heading code
+   * @throws {Error} If validation fails
+   */
+  validateImportExportUnits(measure, hsHeading) {
+    // Percentage estimation not allowed for Import/Export (check first)
+    if (measure.percentageEstimationOrDeviation !== undefined) {
+      const error = new Error('Percentage estimate or deviation not allowed for Import/Export activities.');
+      error.eudrErrorCode = 'EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_NOT_ALLOWED';
+      error.eudrSpecific = true;
+      throw error;
+    }
+
+    // Net Mass is mandatory for Import/Export
+    if (!measure.netWeight) {
+      const error = new Error('Net Mass is mandatory for IMPORT or EXPORT activity.');
+      error.eudrErrorCode = 'EUDR_COMMODITIES_DESCRIPTOR_NET_MASS_EMPTY';
+      error.eudrSpecific = true;
+      throw error;
+    }
+
+    // Check if HS code requires supplementary unit
+    if (hsHeading) {
+      const requiredSupplementaryUnit = this.getRequiredSupplementaryUnit(hsHeading);
+      
+      if (requiredSupplementaryUnit) {
+        // Supplementary unit is mandatory for this HS code
+        if (!measure.supplementaryUnit || !measure.supplementaryUnitQualifier) {
+          const error = new Error(`Supplementary unit is mandatory for HS code ${hsHeading}. Required type: ${requiredSupplementaryUnit}`);
+          error.eudrErrorCode = 'EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_MISSING';
+          error.eudrSpecific = true;
+          throw error;
+        }
+
+        // Validate supplementary unit type matches requirement
+        if (measure.supplementaryUnitQualifier !== requiredSupplementaryUnit) {
+          const error = new Error(`Invalid supplementary unit type for HS code ${hsHeading}. Expected: ${requiredSupplementaryUnit}, got: ${measure.supplementaryUnitQualifier}`);
+          error.eudrErrorCode = 'EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_QUALIFIER_NOT_COMPATIBLE';
+          error.eudrSpecific = true;
+          throw error;
+        }
+      } else {
+        // No supplementary unit should be provided for this HS code
+        if (measure.supplementaryUnit || measure.supplementaryUnitQualifier) {
+          const error = new Error(`Supplementary unit not allowed for HS code ${hsHeading} in Import/Export activities.`);
+          error.eudrErrorCode = 'EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_NOT_ALLOWED';
+          error.eudrSpecific = true;
+          throw error;
+        }
+      }
+    }
+  }
+
+  /**
+   * Validate units of measure for Domestic/Trade activities
+   * @private
+   * @param {Object} measure - The goods measure object
+   * @throws {Error} If validation fails
+   */
+  validateDomesticTradeUnits(measure) {
+    // Validate percentage estimation (0-25%)
+    if (measure.percentageEstimationOrDeviation !== undefined) {
+      const percentage = parseFloat(measure.percentageEstimationOrDeviation);
+      if (isNaN(percentage) || percentage < 0 || percentage > 25) {
+        const error = new Error('Percentage estimate or deviation must be between 0 and 25 for Domestic/Trade activities.');
+        error.eudrErrorCode = 'EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_INVALID';
+        error.eudrSpecific = true;
+        throw error;
+      }
+    }
+
+    // Validate supplementary unit type if provided
+    if (measure.supplementaryUnitQualifier) {
+      if (!VALID_SUPPLEMENTARY_UNIT_TYPES.includes(measure.supplementaryUnitQualifier)) {
+        const error = new Error(`Invalid supplementary unit type: ${measure.supplementaryUnitQualifier}. Valid types: ${VALID_SUPPLEMENTARY_UNIT_TYPES.join(', ')}`);
+        error.eudrErrorCode = 'EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_QUALIFIER_INVALID';
+        error.eudrSpecific = true;
+        throw error;
+      }
+
+      // If supplementary unit qualifier is provided, supplementary unit must also be provided
+      if (!measure.supplementaryUnit) {
+        const error = new Error('Supplementary unit quantity is required when supplementary unit qualifier is provided.');
+        error.eudrErrorCode = 'EUDR_COMMODITIES_DESCRIPTOR_NUMBER_OF_UNITS_MISSING';
+        error.eudrSpecific = true;
+        throw error;
+      }
+    }
+
+    // If supplementary unit is provided, qualifier must also be provided
+    if (measure.supplementaryUnit && !measure.supplementaryUnitQualifier) {
+      const error = new Error('Supplementary unit qualifier is required when supplementary unit quantity is provided.');
+      error.eudrErrorCode = 'EUDR_COMMODITIES_DESCRIPTOR_SUPPLEMENTARY_UNIT_MISSING';
+      error.eudrSpecific = true;
+      throw error;
+    }
+
+    // Validate combinations: at least one unit of measure must be provided
+    if (!measure.netWeight && !measure.supplementaryUnit) {
+      const error = new Error('At least one unit of measure quantity must be provided for Domestic/Trade activities.');
+      error.eudrErrorCode = 'EUDR_COMMODITIES_DESCRIPTOR_QUANTITY_MISSING';
+      error.eudrSpecific = true;
+      throw error;
+    }
+  }
+
+  /**
+   * Get required supplementary unit for HS code
+   * @private
+   * @param {string} hsHeading - The HS heading code
+   * @returns {string|null} Required supplementary unit type or null
+   */
+  getRequiredSupplementaryUnit(hsHeading) {
+    if (!hsHeading) return null;
+
+    // First check for exact 6-digit match
+    if (HS_CODES_WITH_SUPPLEMENTARY_UNITS[hsHeading]) {
+      return HS_CODES_WITH_SUPPLEMENTARY_UNITS[hsHeading];
+    }
+
+    // Then check for 4-digit match (first 4 digits)
+    if (hsHeading.length >= 4) {
+      const fourDigitCode = hsHeading.substring(0, 4);
+      return HS_CODES_WITH_SUPPLEMENTARY_UNITS[fourDigitCode] || null;
+    }
+
+    return null;
+  }
+
+  /**
    * Generate XML for the statement part of the request (V2)
    * @private
    * @param {Object} statement - The statement object
@@ -571,6 +756,9 @@ class EudrSubmissionClientV2 {
     try {
       logger.debug({ request }, 'Starting submitDds');
       
+      // Validate units of measure before processing
+      this.validateUnitsOfMeasure(request.statement);
+      
       // Encode GeoJSON if requested
       if (options.encodeGeojson) {
         this.encodeGeojsonInRequest(request);
@@ -693,6 +881,9 @@ class EudrSubmissionClientV2 {
    */
   async amendDds(ddsIdentifier, statement, options = {}) {
     try {
+      // Validate units of measure before processing
+      this.validateUnitsOfMeasure(statement);
+      
       // Encode GeoJSON if requested
       if (options.encodeGeojson) {
         this.encodeGeojsonInRequest({ statement });
