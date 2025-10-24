@@ -87,36 +87,83 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
       try {
         // Test with minimal valid V2 data
         const result = await client.submitDds({
-          operatorType: "OPERATOR",
-          statement: {
-            internalReferenceNumber: `TEST-${Date.now()}-v2-connection`,
-            activityType: "IMPORT",
-            countryOfActivity: "HR",
-            borderCrossCountry: "HR",
-            comment: "V2 connection test",
-            commodities: [{
-              descriptors: {
-                descriptionOfGoods: "Test goods",
-                goodsMeasure: {
-                  netWeight: 10
-                }
+          "statement": {
+            "geoLocationConfidential": false,
+            "borderCrossCountry": null,
+            "internalReferenceNumber": "19\/5",
+            "countryOfActivity": "AT",
+            "commodities": [
+              {
+                "descriptors": {
+                  "descriptionOfGoods": "N\/A",
+                  "goodsMeasure": {
+                    "netWeight": 14500.0
+                  }
+                },
+                "hsHeading": "4401",
+                "speciesInfo": {
+                  "commonName": "Cinnamon",
+                  "scientificName": "Cinnamon"
+                },
+                "producers": [
+                  {
+                    "country": "LK",
+                    "geometryGeojson": "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1s4MC41OTk0NjE4NDM2OTE3Niw3LjI1MjMyMDIyNDg0NzY3OV0sWzgwLjU5OTc2MjI1MTEwMTQyLDcuMjUxNzAyOTMwMjEzNTkwNV0sWzgwLjU5OTkxMjQ1NDgwNjI2LDcuMjUxMDY0MzQ4NjY3MDc3XSxbODAuNTk5MjY4NzI0NjQyNjgsNy4yNTA4MzAyMDE4NzMxMzNdLFs4MC41OTg5ODk3NzQ5MDUxNCw3LjI0OTk1NzQ3MTg0MTMzM10sWzgwLjU5OTIwNDM1MTYyNjMzLDcuMjQ5MDQyMTY3Nzk1OTc0XSxbODAuNTk4NzEwODI1MTY3NTksNy4yNDg0Njc0NDEwNDk0Nzg1XSxbODAuNTk4NDc0NzkwNzc0MjgsNy4yNDY3NDMyNTY0MTA2OTldLFs4MC41OTk4MjY2MjQxMTc3OCw3LjI0ODQ0NjE1NDg1OTU5OV0sWzgwLjYwMDY0MjAxNTY1ODMxLDcuMjQ5ODI5NzU1MTA5NDYxXSxbODAuNjAxMTk5OTE1MTMzNCw3LjI1MDg1MTQ4Nzk1MDMzMl0sWzgwLjYwMTQ3ODg2NDg3MDk2LDcuMjUxNDI2MjExNjU0NjI2XSxbODAuNjAyNDAxNTQ0NzcyMDgsNy4yNTIwMDA5MzQ2MjUzNzFdLFs4MC42MDI2Mzc1NzkxNjUzOSw3LjI1MjI1NjM2NjgyMTMzMl0sWzgwLjYwMTYwNzYxMDkwMzY3LDcuMjUyNjgyMDg2ODI1OTI1XSxbODAuNjAwODk5NTA3NzIzNzQsNy4yNTI3ODg1MTY3NjQxNzJdLFs4MC41OTk5OTgyODU0OTQ3Myw3LjI1MjUzMzA4NDg3MDEwOV0sWzgwLjU5OTQ2MTg0MzY5MTc2LDcuMjUyMzIwMjI0ODQ3Njc5XV1dfSwicHJvcGVydGllcyI6e319XX0=",
+                    "ProductionPlace": "FC-25645_A (vally)",
+                    "name": "Anura Madushan Perera"
+                  },
+                  {
+                    "country": "LK",
+                    "geometryGeojson": "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1s4MS4xMjYwMDU2ODY4MTk1NSw4LjQ1NTA3MDA5NDgyMDIyN10sWzgxLjEyNTgxMTg5NzIxODIzLDguNDU0MDU3OTUyMTE2MzU0XSxbODEuMTI0ODIzNTAzMTk2MjQsOC40NTM1MDU0NTEwNzg3MzNdLFs4MS4xMjQ2NDIxMTg4MTE2MSw4LjQ1MzIzOTE0OTI3NTM5NF0sWzgxLjEyNDM4ODY1MDA1OTcsOC40NTMxNzIxNTkyNTM1NzJdLFs4MS4xMjQxNDY5MTU5NzIyMyw4LjQ1MjkxNTgwNjI0MDc2XSxbODEuMTIzNzg5NTExNjIxLDguNDUyOTkxMDg3MTU2MTJdLFs4MS4xMjM0NzAzMjg3NDgyMyw4LjQ1Mjk0OTk2NDU0MzRdLFs4MS4xMjMwNzYzNzkyOTkxNiw4LjQ1Mjg0NzE1Nzk5MjM2OF0sWzgxLjEyMjc1MTE2MTQ1NjExLDguNDUyNDYyNDYyMjY3ODg1XSxbODEuMTIwODg4MDMyMDE5MTQsOC40NTI3NzQ1MzAxMjIwNF0sWzgxLjEyMDk1OTQ0NTgzNDE2LDguNDU0NjUxMjQzMTY1MTYzXSxbODEuMTIxMTExOTk2NDcxODgsOC40NTUwMDU3NTgxNzQzNjhdLFs4MS4xMjExMjk0MzA4MzA0OCw4LjQ1NTcwMjUxNjg0NDY3Nl0sWzgxLjEyMzY0NzY4OTgxOTM0LDguNDU1NTQzNjY1MjY0NDAyXSxbODEuMTI0NzU2NzgzMjQ3LDguNDU1NDUwMTQ1MDk2NzM0XSxbODEuMTI2MDA1Njg2ODE5NTUsOC40NTUwNzAwOTQ4MjAyMjddXV19LCJwcm9wZXJ0aWVzIjp7fX1dfQ==",
+                    "ProductionPlace": "KLM-7359_A (breez farm)",
+                    "name": "Oshan Piyal Ranathunga"
+                  },
+                  {
+                    "country": "LK",
+                    "geometryGeojson": "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1s4MC42MjA1Nzg5MzcyMzI1LDcuNDgxMDQ5NTk3ODg5NThdLFs4MC42MjA1MzA5OTI3NDYzNSw3LjQ4MTAyMTAwOTU3NTIwOV0sWzgwLjYyMDI4NjkxMTcyNiw3LjQ4MDk5OTQwMjEyNzA1Nl0sWzgwLjYyMDE1NjgyNDU4ODc4LDcuNDgxMTcyOTI2NTI2NjA0XSxbODAuNjIwMjk4OTgxNjY2NTYsNy40ODEzMDQ4OTgxMDIyNjddLFs4MC42MjA0NTMyMDg2ODQ5Miw3LjQ4MTI2OTY2MTM2MzA1XSxbODAuNjIwNTI2NjM0MTU2Nyw3LjQ4MTIxNTQ3NjU2MDM4M10sWzgwLjYyMDU3ODkzNzIzMjUsNy40ODEwNDk1OTc4ODk1OF1dXX0sInByb3BlcnRpZXMiOnt9fV19",
+                    "ProductionPlace": "FAT-5454_A (spice garden)",
+                    "name": "Ruwan Lakmal de Silva"
+                  },
+                  {
+                    "country": "LK",
+                    "geometryGeojson": "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1s4MC4wMjIyNTI2OTU2NDcwMSw3LjE2MjE4ODM5NTc2Mjk0NTVdLFs4MC4wMjI0MTM2MjgxODc5LDcuMTYxNjU2MTM5Mzk4ODZdLFs4MC4wMjIyNzY4MzU1MjgxNSw3LjE2MTU4NDI4NDc0MjExM10sWzgwLjAyMjI0NzMzMTIyODk4LDcuMTYxNjI0MjAzOTk3MjYzXSxbODAuMDIyMTQ4MDg5NDk1NDMsNy4xNjE2Mzc1MTA0MTQ4NjVdLFs4MC4wMjIxNDAwNDI4NjgzOSw3LjE2MjE1NjQ2MDM5ODYxMV0sWzgwLjAyMjI1MjY5NTY0NzAxLDcuMTYyMTg4Mzk1NzYyOTQ1NV1dXX0sInByb3BlcnRpZXMiOnt9fV19",
+                    "ProductionPlace": "FC-9635_F (mountain farm)",
+                    "name": "Malini Anuradha Fernando"
+                  },
+                  {
+                    "country": "LK",
+                    "geometryGeojson": "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1s4MC42MzU2MjQ3ODg3MDE1Myw3LjI4MTg1NjAyNTQxMTI2MV0sWzgwLjYzNTg5NzcwMzQ2ODgsNy4yODMwMDYwNTc5MTYwOV0sWzgwLjYzNjA2MTk4ODc3MDk2LDcuMjgzNTQ1NDg3OTkzNjM5XSxbODAuNjM2MzE2NDYzMzUxMjUsNy4yODQ0MjA0ODA3NzcyNTNdLFs4MC42Mzc0NDczNDk3MjcxNSw3LjI4MzU2NTEwOTY2NzMyNF0sWzgwLjYzNzYzNzQ1MTI5MTA4LDcuMjgyOTM3ODgwODI1NTY0XSxbODAuNjM3NDUzMDQ5NDIxMzEsNy4yODE4OTE5NDMxODU5MzZdLFs4MC42MzY5ODIzMjE3MzkyLDcuMjgxMTg3NTU1MTkwODM2XSxbODAuNjM2NTU5ODczODE5MzUsNy4yODExODY1NTc0NzMzNV0sWzgwLjYzNjIwNjQ5Mjc4MTY0LDcuMjgxNDEwMzc4NzA4Mzc0XSxbODAuNjM1OTExNDQ5NzksNy4yODE0MzI2NjEwNTQwMzVdLFs4MC42MzU2MjQ3ODg3MDE1Myw3LjI4MTg1NjAyNTQxMTI2MV1dXX0sInByb3BlcnRpZXMiOnt9fV19",
+                    "ProductionPlace": "AS-987654_A (Amara Farms)",
+                    "name": "Sangeeth Wijesooriya"
+                  },
+                  {
+                    "country": "LK",
+                    "geometryGeojson": "eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1s4MC4wODExNDc5MTA3MTY4NCw3LjA5MzcyMDU4OTM1OTcyNzVdLFs4MC4wODExMjkxMzUyNTM3Myw3LjA5NDAwMjcyNzEzOTk1Ml0sWzgwLjA4MTA5NDI2NjUzNjU0LDcuMDk0MjA1MDE0NDk4NTk5XSxbODAuMDgxMDU5Mzk3ODE5MzUsNy4wOTQ0NjMxOTY5MTkzNDE1XSxbODAuMDgxMjg0NzAzMzc2Niw3LjA5NDU1OTAxNzE2MjM1Ml0sWzgwLjA4MTc1NDA4OTk1NDIsNy4wOTQ2NTIxNzU3MTI4MzddLFs4MC4wODIwNjI1NDM5OTA5Miw3LjA5NDcyOTM2NDIxMTgxOV0sWzgwLjA4MjExNjE4ODE3MTIxLDcuMDk0NTYxNjc4ODM1NDkxNV0sWzgwLjA4MjEwNTQ1OTMzNTE1LDcuMDk0NDIzMjcxODEyMTg3XSxbODAuMDgyMDIyMzEwODU1NjksNy4wOTQzNDg3NDQ5MzYyNTddLFs4MC4wODE5Njg2NjY2NzU0LDcuMDk0MzM1NDM2NTY0MjhdLFs4MC4wODE5NTI1NzM0MjEzLDcuMDk0MTQ5MTE5MzE2MjgxXSxbODAuMDgxOTM2NDgwMTY3MjIsNy4wOTM5MTQ4OTE4MTE4MDZdLFs4MC4wODE5NzQwMzEwOTM0Miw3LjA5Mzc2MzE3NjIwNTU1MTVdLFs4MC4wODIwMDg4OTk4MTA2Miw3LjA5MzU5ODE1MjE1NjAxM10sWzgwLjA4MjAzNTcyMTkwMDc3LDcuMDkzNDQ5MDk4MTI0OTVdLFs4MC4wODE3NzI4NjU0MTczLDcuMDkzMzUzMjc3NjUwOTI4NV0sWzgwLjA4MTcxOTIyMTIzNzAxLDcuMDkzNTQyMjU2OTAwMDE5XSxbODAuMDgxNzA4NDkyNDAwOTUsNy4wOTM1ODc1MDU0NDExMDZdLFs4MC4wODE1NTI5MjQyNzgwOSw3LjA5MzU1NTU2NTI5NDkyM10sWzgwLjA4MTI3MTI5MjMzMTUyLDcuMDkzNTIzNjI1MTQ2NTI1XSxbODAuMDgxMTY0MDAzOTcwOTMsNy4wOTM0NzMwNTMyNDAzNDRdLFs4MC4wODExNDc5MTA3MTY4NCw3LjA5MzcyMDU4OTM1OTcyNzVdXV19LCJwcm9wZXJ0aWVzIjp7fX1dfQ==",
+                    "ProductionPlace": "FBI-4657_A (Hattin National Estate )",
+                    "name": "Janadara Premadasa"
+                  }
+                ]
+              }
+            ],
+            "comment": "",
+            "activityType": "IMPORT",
+            "operator": {
+              "phone": "0778655083",
+              "operatorAddress": {
+                "country": "LK",
+                "city": "Colombo",
+                "street": "400, Deans Road, Colombo 10, Sri Lanka",
+                "postalCode": "400",
+                "name": "Operator 01",
+                "fullAddress": "400, Deans Road, Colombo 10, Sri Lanka"
               },
-              hsHeading: "4407",
-              speciesInfo: {
-                scientificName: 'Fagus sylvatica',
-                commonName: 'European Beech'
-              },
-              producers: [{
-                country: 'HR',
-                name: 'Test Producer',
-                geometryGeojson: 'eyJ0eXBlIjoiRmVhdHVyZUNvbGxlY3Rpb24iLCJmZWF0dXJlcyI6W3sidHlwZSI6IkZlYXR1cmUiLCJnZW9tZXRyeSI6eyJ0eXBlIjoiUG9seWdvbiIsImNvb3JkaW5hdGVzIjpbW1sxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXSxbMTQuOTY5ODU4Mjc1LDQ1LjE4ODM0NDEwNl0sWzE0Ljk2ODIyMzYzMSw0NS4xODY4NjQzMTRdLFsxNC45NjI0NDc0NjQsNDUuMTg1Njg0NTJdLFsxNC45NjM2MzE4MzksNDUuMTkxMTExMzkxXSxbMTQuOTY2MTQ1ODEzLDQ1LjE5MDg2MjIzNF0sWzE0Ljk2NzU4NDQwMyw0NS4xOTIyODAxMDZdLFsxNC45NzA0NTk4MzIsNDUuMTkyMzk4MjUyXV1dfSwicHJvcGVydGllcyI6eyJnamlkIjoiNTgwIiwiZ29kaW5hIjoyMDE2LCJwb3Zyc2luYSI6MzEuMjQsIm96bmFrYSI6IjQyIGEifX1dfQ=='
-              }]
-            }],
-            geoLocationConfidential: false
-          }
-        });
+              "email": "abc@gmail.com"
+            }
+          },
+          "operatorType": "OPERATOR"
+        } );
 
-
+console.log(result);
 
         expect(result).to.be.an('object');
         expect(result).to.have.property('ddsIdentifier');
@@ -646,7 +693,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
                 }
               },
               hsHeading: '4401',
-              speciesInfo:[ {
+              speciesInfo: [{
                 commonName: 'Jela',
                 scientificName: 'Betula pendula'
               }],
