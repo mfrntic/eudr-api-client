@@ -41,11 +41,13 @@ describe('Endpoint Utils', function() {
     it('should return correct service paths for retrieval service', function() {
       expect(endpointUtils.getServicePath('retrieval', 'v1')).to.equal('/EUDRRetrievalServiceV1');
       expect(endpointUtils.getServicePath('retrieval', 'v2')).to.equal('/EUDRRetrievalServiceV2');
+      expect(endpointUtils.getServicePath('retrieval', 'v3')).to.equal('/EUDRDueDiligenceStatementServiceV3');
     });
 
     it('should return correct service paths for submission service', function() {
       expect(endpointUtils.getServicePath('submission', 'v1')).to.equal('/EUDRSubmissionServiceV1');
       expect(endpointUtils.getServicePath('submission', 'v2')).to.equal('/EUDRSubmissionServiceV2');
+      expect(endpointUtils.getServicePath('submission', 'v3')).to.equal('/EUDRDueDiligenceStatementServiceV3');
     });
 
     it('should throw error for unknown service', function() {
@@ -77,6 +79,15 @@ describe('Endpoint Utils', function() {
       );
       expect(endpointUtils.generateEndpoint('submission', 'v2', 'eudr-test')).to.equal(
         'https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV2'
+      );
+    });
+
+    it('should generate correct endpoints for submission and retrieval service V3', function() {
+      expect(endpointUtils.generateEndpoint('submission', 'v3', 'eudr-repository')).to.equal(
+        'https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRDueDiligenceStatementServiceV3'
+      );
+      expect(endpointUtils.generateEndpoint('retrieval', 'v3', 'eudr-test')).to.equal(
+        'https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRDueDiligenceStatementServiceV3'
       );
     });
   });
@@ -154,7 +165,12 @@ describe('Endpoint Utils', function() {
 
     it('should return supported versions for submission service', function() {
       const versions = endpointUtils.getSupportedVersions('submission');
-      expect(versions).to.deep.equal(['v1', 'v2']);
+      expect(versions).to.deep.equal(['v1', 'v2', 'v3']);
+    });
+
+    it('should return supported versions for retrieval service', function() {
+      const versions = endpointUtils.getSupportedVersions('retrieval');
+      expect(versions).to.deep.equal(['v1', 'v2', 'v3']);
     });
 
     it('should return empty array for unknown service', function() {

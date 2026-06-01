@@ -58,6 +58,7 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
   - [Echo Service](#echo-service)
   - [Submission Service](#submission-service)
   - [Retrieval Service](#retrieval-service)
+  - [V3 DDS Facade Clients](#v3-dds-facade-clients)
   - [Data Types](#data-types)
   - [Advanced Usage](#advanced-usage)
 
@@ -647,8 +648,10 @@ try {
 | **Echo Service** | `EudrEchoClient` | ✅ Yes | ✅ Yes | CF1 v1.4 |
 | **Submission Service V1** | `EudrSubmissionClient` | ✅ Yes | ✅ Yes | CF2 v1.4 |
 | **Submission Service V2** | `EudrSubmissionClientV2` | ✅ Yes | ✅ Yes | CF2 v1.4 |
+| **Submission Service V3 facade** | `EudrSubmissionClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
 | **Retrieval Service V1** | `EudrRetrievalClient` | ✅ Yes | ✅ Yes | CF3 & CF7 v1.4 |
 | **Retrieval Service V2** | `EudrRetrievalClientV2` | ✅ Yes | ✅ Yes | CF3 & CF7 v1.4 |
+| **Retrieval Service V3 facade** | `EudrRetrievalClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
 
 **Endpoint Generation Rules:**
 - **`webServiceClientId: 'eudr-repository'`** → Production environment endpoints
@@ -661,8 +664,10 @@ const {
   EudrEchoClient, 
   EudrSubmissionClient, 
   EudrSubmissionClientV2, 
+  EudrSubmissionClientV3,
   EudrRetrievalClient,
-  EudrRetrievalClientV2 
+  EudrRetrievalClientV2,
+  EudrRetrievalClientV3
 } = require('eudr-api-client');
 
 // All services automatically generate endpoints 
@@ -684,6 +689,14 @@ const retrievalClient = new EudrRetrievalClient({
 
 const retrievalV2Client = new EudrRetrievalClientV2({
   username: 'user', password: 'pass', webServiceClientId: 'eudr-test', ssl: false
+});
+
+const submissionV3Client = new EudrSubmissionClientV3({
+  username: 'user', password: 'pass', webServiceClientId: 'eudr-test', ssl: false
+});
+
+const retrievalV3Client = new EudrRetrievalClientV3({
+  username: 'user', password: 'pass', webServiceClientId: 'eudr-repository', ssl: true
 });
 ```
 
@@ -791,6 +804,46 @@ const fullDds = await retrievalClient.getStatementByIdentifiers('25NLSN6LX69730'
 - ✅ **Smart Error Handling**: Converts SOAP authentication faults to proper HTTP 401 status codes
 - ✅ **Flexible SSL Configuration**: Configurable SSL certificate validation
 - ✅ **🚀 NEW: Consistent Array Fields**: `commodities`, `producers`, `speciesInfo`, `referenceNumber` always returned as arrays
+
+### V3 DDS Facade Clients
+
+V3 koristi jedinstveni DDS backend servis, ali javni API biblioteke je namjerno podijeljen u dva facade klijenta radi konzistentnosti s dosadasnjim obrascem:
+
+- `EudrSubmissionClientV3` za write operacije (`submitDds`, `amendDds`, `withdrawDds`)
+- `EudrRetrievalClientV3` za retrieval operacije (`getDds`, `getDdsByInternalReference`, `getDdsByIdentifiers`)
+
+```javascript
+const { EudrSubmissionClientV3, EudrRetrievalClientV3 } = require('eudr-api-client');
+
+const submissionV3 = new EudrSubmissionClientV3({
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'eudr-test',
+  ssl: false
+});
+
+const retrievalV3 = new EudrRetrievalClientV3({
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'eudr-repository',
+  ssl: true
+});
+
+// Write operations
+await submissionV3.submitDds({ /* V3 payload */ });
+await submissionV3.amendDds('uuid', { /* V3 statement */ });
+await submissionV3.withdrawDds('uuid');
+
+// Retrieval operations
+await retrievalV3.getDds('uuid');
+await retrievalV3.getDdsByInternalReference('INT-REF-001');
+await retrievalV3.getDdsByIdentifiers('REFERENCE-NUMBER', 'VERIFICATION-NUMBER');
+```
+
+Migration note:
+
+- Prijasnji single V3 klijent (`EudrDueDiligenceStatementClientV3`) vise nije dio javnog API-ja.
+- Zamjena je eksplicitna podjela na `EudrSubmissionClientV3` i `EudrRetrievalClientV3`.
 
 ---
 ### 📝 EudrSubmissionClient

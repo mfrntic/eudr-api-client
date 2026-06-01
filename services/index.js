@@ -11,7 +11,7 @@
  * 
  * @example
  * // Import all services
- * const { EudrEchoClient, EudrRetrievalClient, EudrRetrievalClientV2, EudrSubmissionClient, EudrSubmissionClientV2 } = require('./services');
+ * const { EudrEchoClient, EudrRetrievalClient, EudrRetrievalClientV2, EudrSubmissionClient, EudrSubmissionClientV2, EudrSubmissionClientV3, EudrRetrievalClientV3 } = require('./services');
  * 
  * // Create clients with automatic endpoint generation
  * const echoClient = new EudrEchoClient({
@@ -50,6 +50,8 @@ const EudrRetrievalClient = require('./retrieval-service');
 const EudrRetrievalClientV2 = require('./retrieval-service-v2');
 const EudrSubmissionClient = require('./submission-service');
 const EudrSubmissionClientV2 = require('./submission-service-v2');
+const EudrSubmissionClientV3 = require('./submission-service-v3');
+const EudrRetrievalClientV3 = require('./retrieval-service-v3');
 
 // Re-export endpoint utilities as config for convenience
 const { endpointUtils } = require('../utils');
@@ -61,6 +63,8 @@ module.exports = {
   EudrRetrievalClientV2,
   EudrSubmissionClient,
   EudrSubmissionClientV2,
+  EudrSubmissionClientV3,
+  EudrRetrievalClientV3,
   
   // Configuration & metadata
   config: endpointUtils

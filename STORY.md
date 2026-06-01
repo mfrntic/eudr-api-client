@@ -1,5 +1,9 @@
 # Story: Automatizacija konfiguracije endpointa za EUDR servise
 
+## Povezani backlog dokumenti
+
+- V3 migracija je razrađena kao zaseban epic u [docs/analysis/operator-api-v3-epic.md](docs/analysis/operator-api-v3-epic.md)
+
 ## Opis
 Trenutno korisnici EUDR API klijenta moraju ručno unositi kompleksne endpointove za svaki servis. Ovo je nepraktično i podložno greškama. Potrebno je implementirati automatsko generiranje endpointova na temelju `webServiceClientId` i API verzije, dok se zadržava mogućnost ručnog override-a.
 

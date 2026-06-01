@@ -12,6 +12,8 @@ describe('Services Index Integration', function() {
       expect(services).to.have.property('EudrRetrievalClient');
       expect(services).to.have.property('EudrSubmissionClient');
       expect(services).to.have.property('EudrSubmissionClientV2');
+      expect(services).to.have.property('EudrSubmissionClientV3');
+      expect(services).to.have.property('EudrRetrievalClientV3');
     });
 
     it('should export service clients as classes', function() {
@@ -19,6 +21,8 @@ describe('Services Index Integration', function() {
       expect(services.EudrRetrievalClient).to.be.a('function');
       expect(services.EudrSubmissionClient).to.be.a('function');
       expect(services.EudrSubmissionClientV2).to.be.a('function');
+      expect(services.EudrSubmissionClientV3).to.be.a('function');
+      expect(services.EudrRetrievalClientV3).to.be.a('function');
     });
   });
 
@@ -65,17 +69,23 @@ describe('Services Index Integration', function() {
     it('should return supported versions for services', function() {
       const echoVersions = services.config.getSupportedVersions('echo');
       const submissionVersions = services.config.getSupportedVersions('submission');
+      const retrievalVersions = services.config.getSupportedVersions('retrieval');
       
       expect(echoVersions).to.deep.equal(['v1', 'v2']);
-      expect(submissionVersions).to.deep.equal(['v1', 'v2']);
+      expect(submissionVersions).to.deep.equal(['v1', 'v2', 'v3']);
+      expect(retrievalVersions).to.deep.equal(['v1', 'v2', 'v3']);
     });
 
     it('should generate endpoints correctly', function() {
       const echoEndpoint = services.config.generateEndpoint('echo', 'v1', 'eudr-test');
       const submissionEndpoint = services.config.generateEndpoint('submission', 'v2', 'eudr-repository');
+      const submissionV3Endpoint = services.config.generateEndpoint('submission', 'v3', 'eudr-test');
+      const retrievalV3Endpoint = services.config.generateEndpoint('retrieval', 'v3', 'eudr-repository');
       
       expect(echoEndpoint).to.equal('https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EudrEchoService');
       expect(submissionEndpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV2');
+      expect(submissionV3Endpoint).to.equal('https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRDueDiligenceStatementServiceV3');
+      expect(retrievalV3Endpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRDueDiligenceStatementServiceV3');
     });
   });
 
@@ -121,6 +131,28 @@ describe('Services Index Integration', function() {
       });
 
       expect(client.config.endpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSubmissionServiceV2');
+      expect(client.config.webServiceClientId).to.equal('eudr-repository');
+    });
+
+    it('should create Submission Client V3 with automatic endpoint generation', function() {
+      const client = new services.EudrSubmissionClientV3({
+        username: 'testuser',
+        password: 'testpass',
+        webServiceClientId: 'eudr-test'
+      });
+
+      expect(client.config.endpoint).to.equal('https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRDueDiligenceStatementServiceV3');
+      expect(client.config.webServiceClientId).to.equal('eudr-test');
+    });
+
+    it('should create Retrieval Client V3 with automatic endpoint generation', function() {
+      const client = new services.EudrRetrievalClientV3({
+        username: 'testuser',
+        password: 'testpass',
+        webServiceClientId: 'eudr-repository'
+      });
+
+      expect(client.config.endpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRDueDiligenceStatementServiceV3');
       expect(client.config.webServiceClientId).to.equal('eudr-repository');
     });
   });
