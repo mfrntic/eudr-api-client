@@ -155,7 +155,7 @@ describe('EudrRetrievalClient V2 Tests', function () {
 
         it('should successfully call getDdsInfo with valid credentials V2', async function () {
             try {
-                const result = await service.getDdsInfo("8d2f35d0-e9bf-4f08-8659-695e1cdf3256"); //testDdsIdentifiers[0]
+                const result = await service.getDdsInfo("03028d8c-06dd-4f3f-940d-c442d71711e9",   {rawResponse: true}); //testDdsIdentifiers[0]
 
                 console.log('getDdsInfo V2 result:', JSON.stringify(result, null, 2));
 

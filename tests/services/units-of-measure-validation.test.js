@@ -469,7 +469,7 @@ describe('Units of Measure Validation', function() {
   });
 
   describe('Units of Measure Validation - Valid Cases', function() {
-    it('should pass units of measure validation for valid Import with HS code in Appendix I', async function() {
+    it('should pass units of measure validation for valid Import with HS code in Appendix I 1', async function() {
       const request = {
         operatorType: 'OPERATOR',
         statement: {
@@ -483,8 +483,8 @@ describe('Units of Measure Validation', function() {
             descriptors: {
               descriptionOfGoods: 'Test goods',
               goodsMeasure: {
-                netWeight: 10
-                // No supplementary unit needed for 4407
+                netWeight: 177,
+                percentageEstimationOrDeviation: 10 
               }
             },
             speciesInfo: {
