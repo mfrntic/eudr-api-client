@@ -14,6 +14,7 @@ describe('Services Index Integration', function() {
       expect(services).to.have.property('EudrSubmissionClientV2');
       expect(services).to.have.property('EudrSubmissionClientV3');
       expect(services).to.have.property('EudrRetrievalClientV3');
+      expect(services).to.have.property('EudrSimplifiedDeclarationClientV3');
     });
 
     it('should export service clients as classes', function() {
@@ -23,6 +24,7 @@ describe('Services Index Integration', function() {
       expect(services.EudrSubmissionClientV2).to.be.a('function');
       expect(services.EudrSubmissionClientV3).to.be.a('function');
       expect(services.EudrRetrievalClientV3).to.be.a('function');
+      expect(services.EudrSimplifiedDeclarationClientV3).to.be.a('function');
     });
   });
 
@@ -63,7 +65,7 @@ describe('Services Index Integration', function() {
 
     it('should return supported services', function() {
       const supported = services.config.getSupportedServices();
-      expect(supported).to.deep.equal(['echo', 'retrieval', 'submission']);
+      expect(supported).to.deep.equal(['echo', 'retrieval', 'submission', 'simplified-declaration']);
     });
 
     it('should return supported versions for services', function() {
@@ -154,6 +156,17 @@ describe('Services Index Integration', function() {
 
       expect(client.config.endpoint).to.equal('https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRDueDiligenceStatementServiceV3');
       expect(client.config.webServiceClientId).to.equal('eudr-repository');
+    });
+
+    it('should create Simplified Declaration Client V3 with automatic endpoint generation', function() {
+      const client = new services.EudrSimplifiedDeclarationClientV3({
+        username: 'testuser',
+        password: 'testpass',
+        webServiceClientId: 'eudr-test'
+      });
+
+      expect(client.config.endpoint).to.equal('https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3');
+      expect(client.config.webServiceClientId).to.equal('eudr-test');
     });
   });
 });

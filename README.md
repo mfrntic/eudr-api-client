@@ -59,6 +59,7 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
   - [Submission Service](#submission-service)
   - [Retrieval Service](#retrieval-service)
   - [V3 DDS Facade Clients](#v3-dds-facade-clients)
+  - [V3 Simplified Declaration Client](#v3-simplified-declaration-client)
   - [Data Types](#data-types)
   - [Advanced Usage](#advanced-usage)
 
@@ -643,15 +644,18 @@ try {
 
 **🚀 NEW: All services now support automatic endpoint generation!**
 
-| Service | Class | Automatic Endpoint | Manual Override | CF Specification |
+> ⚠️ **V1/V2 are discontinued on the live EUDR system.** As of this writing, the acceptance environment rejects V1/V2 requests with a SOAP fault: `"This API version has been discontinued. Please use the V3 API endpoints."` V1/V2 client code remains in this library for now, but **new integrations should use the V3 clients** (`EudrSubmissionClientV3`, `EudrRetrievalClientV3`, `EudrSimplifiedDeclarationClientV3`). See [V1/V2 -> V3 breaking changes](#v3-dds-facade-clients) below for migration guidance.
+
+| Service | Class | Automatic Endpoint | Manual Override | Specification |
 |---------|-------|-------------------|-----------------|------------------|
 | **Echo Service** | `EudrEchoClient` | ✅ Yes | ✅ Yes | CF1 v1.4 |
-| **Submission Service V1** | `EudrSubmissionClient` | ✅ Yes | ✅ Yes | CF2 v1.4 |
-| **Submission Service V2** | `EudrSubmissionClientV2` | ✅ Yes | ✅ Yes | CF2 v1.4 |
-| **Submission Service V3 facade** | `EudrSubmissionClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
-| **Retrieval Service V1** | `EudrRetrievalClient` | ✅ Yes | ✅ Yes | CF3 & CF7 v1.4 |
-| **Retrieval Service V2** | `EudrRetrievalClientV2` | ✅ Yes | ✅ Yes | CF3 & CF7 v1.4 |
-| **Retrieval Service V3 facade** | `EudrRetrievalClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
+| **Submission Service V1** ⚠️ discontinued | `EudrSubmissionClient` | ✅ Yes | ✅ Yes | CF2 v1.4 |
+| **Submission Service V2** ⚠️ discontinued | `EudrSubmissionClientV2` | ✅ Yes | ✅ Yes | CF2 v1.4 |
+| **DDS Submission (V3)** | `EudrSubmissionClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
+| **Retrieval Service V1** ⚠️ discontinued | `EudrRetrievalClient` | ✅ Yes | ✅ Yes | CF3 & CF7 v1.4 |
+| **Retrieval Service V2** ⚠️ discontinued | `EudrRetrievalClientV2` | ✅ Yes | ✅ Yes | CF3 & CF7 v1.4 |
+| **DDS Retrieval (V3)** | `EudrRetrievalClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
+| **Simplified Declaration (V3)** | `EudrSimplifiedDeclarationClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
 
 **Endpoint Generation Rules:**
 - **`webServiceClientId: 'eudr-repository'`** → Production environment endpoints
@@ -667,7 +671,8 @@ const {
   EudrSubmissionClientV3,
   EudrRetrievalClient,
   EudrRetrievalClientV2,
-  EudrRetrievalClientV3
+  EudrRetrievalClientV3,
+  EudrSimplifiedDeclarationClientV3
 } = require('eudr-api-client');
 
 // All services automatically generate endpoints 
@@ -697,6 +702,10 @@ const submissionV3Client = new EudrSubmissionClientV3({
 
 const retrievalV3Client = new EudrRetrievalClientV3({
   username: 'user', password: 'pass', webServiceClientId: 'eudr-repository', ssl: true
+});
+
+const simplifiedDeclarationV3Client = new EudrSimplifiedDeclarationClientV3({
+  username: 'user', password: 'pass', webServiceClientId: 'eudr-test', ssl: false
 });
 ```
 
@@ -807,10 +816,12 @@ const fullDds = await retrievalClient.getStatementByIdentifiers('25NLSN6LX69730'
 
 ### V3 DDS Facade Clients
 
-V3 koristi jedinstveni DDS backend servis, ali javni API biblioteke je namjerno podijeljen u dva facade klijenta radi konzistentnosti s dosadasnjim obrascem:
+> **V3 is a new API contract, not a "V2.1."** It is not backward compatible with V1/V2: field names, response shapes, operation names, and some business rules changed (see the breaking-changes table below). Treat migration to V3 like integrating a new API, not applying a patch.
 
-- `EudrSubmissionClientV3` za write operacije (`submitDds`, `amendDds`, `withdrawDds`)
-- `EudrRetrievalClientV3` za retrieval operacije (`getDds`, `getDdsByInternalReference`, `getDdsByIdentifiers`)
+V3 uses a single unified DDS backend service, but the library's public API is intentionally split into two facade clients for consistency with the existing pattern:
+
+- `EudrSubmissionClientV3` for write operations (`submitDds`, `amendDds`, `withdrawDds`)
+- `EudrRetrievalClientV3` for retrieval operations (`getDds`, `getDdsByInternalReference`, `getDdsByIdentifiers`)
 
 ```javascript
 const { EudrSubmissionClientV3, EudrRetrievalClientV3 } = require('eudr-api-client');
@@ -835,15 +846,143 @@ await submissionV3.amendDds('uuid', { /* V3 statement */ });
 await submissionV3.withdrawDds('uuid');
 
 // Retrieval operations
-await retrievalV3.getDds('uuid');
+await retrievalV3.getDds('uuid'); // also accepts an array of up to 100 uuids
 await retrievalV3.getDdsByInternalReference('INT-REF-001');
 await retrievalV3.getDdsByIdentifiers('REFERENCE-NUMBER', 'VERIFICATION-NUMBER');
 ```
 
+**V3 retrieval response shapes:**
+- `getDds` / `getDdsByInternalReference` return `{ httpStatus, status, ddsInfo: [...] }` — `ddsInfo` is always an array of DDS overview entries (`uuid`, `internalReferenceNumber`, `referenceNumber`, `verificationNumber`, `status`, `date`, `updatedBy`, `version`, ...).
+- `getDdsByIdentifiers` returns `{ httpStatus, status, statement: {...} }` — the full DDS statement (`activityType`, `commodities`, `geoLocationConfidential`, ...), not an overview list.
+
 Migration note:
 
-- Prijasnji single V3 klijent (`EudrDueDiligenceStatementClientV3`) vise nije dio javnog API-ja.
-- Zamjena je eksplicitna podjela na `EudrSubmissionClientV3` i `EudrRetrievalClientV3`.
+- The former single V3 client (`EudrDueDiligenceStatementClientV3`) is no longer part of the public API.
+- It has been replaced by the explicit split into `EudrSubmissionClientV3` and `EudrRetrievalClientV3`.
+
+**V1/V2 -> V3 breaking changes (no silent translation):** V3 does not accept old V1/V2 field names — the library throws a clear, tagged error instead of guessing a mapping:
+
+| Old (V1/V2) | New (V3) | If you still pass the old field |
+|---|---|---|
+| `operatorType` | `operatorRole` (`OPERATOR` \| `REPRESENTATIVE_OPERATOR`) | throws `EUDR_V3_LEGACY_OPERATOR_TYPE_FIELD` |
+| `activityType: 'TRADE'` | not supported in V3 (`DOMESTIC` \| `IMPORT` \| `EXPORT` only) | throws `EUDR_V3_ACTIVITY_TYPE_TRADE_NOT_SUPPORTED` |
+| `associatedStatements` | `groupedDeclarations: [{ groupedDeclaration: referenceNumber }]` | throws `EUDR_V3_LEGACY_ASSOCIATED_STATEMENTS_FIELD` |
+
+Note V3 grouping is not the same concept as V1/V2 referenced statements: a grouped declaration receives `GROUPED` status and can no longer be individually amended/withdrawn while the grouping declaration is active — that's why the library doesn't auto-translate `associatedStatements`.
+
+```javascript
+try {
+  await submissionV3.submitDds({ operatorType: 'TRADER', statement: { /* ... */ } });
+} catch (error) {
+  if (error.eudrErrorCode === 'EUDR_V3_LEGACY_OPERATOR_TYPE_FIELD') {
+    console.error('Use operatorRole instead of operatorType in V3:', error.message);
+  }
+}
+```
+
+**Minimal V1/V2 -> V3 migration example (DDS):**
+
+```javascript
+// V1/V2
+const client = new EudrSubmissionClient({ username, password, webServiceClientId, ssl });
+const result = await client.submitDds({
+  operatorType: 'TRADER', // renamed
+  statement: { activityType: 'TRADE', /* ... */ } // TRADE removed in V3
+});
+console.log(result.ddsIdentifier); // renamed to `uuid` in V3
+await client.retractDds(result.ddsIdentifier); // renamed to withdrawDds(uuid) in V3
+
+// V3
+const submissionV3 = new EudrSubmissionClientV3({ username, password, webServiceClientId, ssl });
+const v3Result = await submissionV3.submitDds({
+  operatorRole: 'OPERATOR',
+  statement: { activityType: 'IMPORT', /* ... */ }
+});
+console.log(v3Result.uuid);
+await submissionV3.withdrawDds(v3Result.uuid);
+
+// Retrieval: getDdsInfo -> getDds, getDdsInfoByInternalReferenceNumber -> getDdsByInternalReference,
+// getStatementByIdentifiers -> getDdsByIdentifiers. getReferencedDds (V2-only) has no V3 equivalent.
+```
+
+---
+
+### V3 Simplified Declaration Client
+
+Simplified Declaration (SD) is a **new V3-only concept** with no V1/V2 equivalent — it does not replace DDS, it's an alternative track for a specific operator category:
+
+- **Use DDS** (`EudrSubmissionClientV3` / `EudrRetrievalClientV3`) for standard, per-shipment due diligence statements.
+- **Use SD** (`EudrSimplifiedDeclarationClientV3`) if you are a **micro or small primary operator** (natural person or micro/small undertaking) established in a **low-risk country**, placing on the market or exporting products **you produced yourself**. SD is a one-time declaration covering all your relevant products, submitted once instead of per shipment.
+
+Unlike DDS, SD is exposed as a **single unified client** (no submission/retrieval split) since there's no pre-existing V1/V2 pattern to stay consistent with.
+
+```javascript
+const { EudrSimplifiedDeclarationClientV3 } = require('eudr-api-client');
+
+const sdClient = new EudrSimplifiedDeclarationClientV3({
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'eudr-test',
+  ssl: false
+});
+
+// Submit a new Simplified Declaration
+const submitResult = await sdClient.submitSd({
+  operatorRole: 'MICRO_OPERATOR', // or REPRESENTATIVE_MSPO, MEMBER_STATE
+  statement: {
+    internalReferenceNumber: 'SD-REF-001', // mandatory for SD (optional for DDS)
+    activityType: 'IMPORT', // DOMESTIC | IMPORT | EXPORT (no TRADE)
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: 'Cocoa beans',
+        goodsMeasure: { netWeight: 1000 }
+      },
+      hsHeading: '1801',
+      producers: [{
+        producerCountry: 'CI',
+        producerName: 'Producer Name',
+        producerLocation: {
+          // exactly one of: geometryGeojson | postalAddress | cadastralIdentifier
+          geometryGeojson: 'BASE64_ENCODED_GEOJSON'
+        }
+      }]
+    }],
+    geoLocationConfidential: false
+  }
+});
+console.log(submitResult.sdIdentifier); // note: submit response field is `sdIdentifier`, not `uuid`
+
+// Update / withdraw (identified by sdIdentifier)
+const updateResult = await sdClient.updateSd(submitResult.sdIdentifier, { /* updated statement */ });
+console.log(updateResult.uuid, updateResult.status); // note: update/withdraw responses use `uuid`, not `sdIdentifier`
+await sdClient.withdrawSd(submitResult.sdIdentifier);
+
+// Retrieval
+await sdClient.getSd(submitResult.sdIdentifier); // also accepts [{ uuid, version }] or an array, up to 100
+await sdClient.getSdByInternalReference('SD-REF-001');
+await sdClient.getSdByIdentifiers('DECLARATION-IDENTIFIER', 'VERIFICATION-NUMBER');
+```
+
+**Producer location alternatives (unlike DDS, GeoJSON is not mandatory for SD):** a producer's location must be provided as *exactly one* of:
+- `geometryGeojson` — base64-encoded GeoJSON (same as DDS)
+- `postalAddress` — `{ producerStreet?, producerPostalCode, producerCity }` (single object or array)
+- `cadastralIdentifier` — a land-registry identifier string (single value or array)
+
+**SD response shapes:**
+- `submitSd` returns `{ httpStatus, status, sdIdentifier }`.
+- `updateSd` / `withdrawSd` return `{ httpStatus, status, uuid, version, status: lifecycleStatus }` (same `EudrStatusType` lifecycle values as DDS: `SUBMITTED`, `AVAILABLE`, `REJECTED`, `WITHDRAWN`, `ARCHIVED`, `SUSPENDED`, `UPDATED`, `GROUPED`, `OBSOLETE`).
+- `getSd` / `getSdByInternalReference` return `{ httpStatus, status, sdInfo: [...] }` (array of SD overview entries, same shape family as DDS `ddsInfo`).
+- `getSdByIdentifiers` returns `{ httpStatus, status, statement: {...} }` — the full SD statement. Note SD commodities have **no `speciesInfo`** field (unlike DDS).
+
+**SD validation errors** (client-side, thrown before any network call — same `error.eudrErrorCode` / `error.eudrSpecific` pattern as DDS):
+
+| Error code | When it's thrown |
+|---|---|
+| `EUDR_V3_SD_OPERATOR_ROLE_INVALID` | `operatorRole` is not one of `MICRO_OPERATOR`, `REPRESENTATIVE_MSPO`, `MEMBER_STATE` |
+| `EUDR_V3_SD_INTERNAL_REFERENCE_REQUIRED` | `statement.internalReferenceNumber` is missing (mandatory for SD) |
+| `EUDR_V3_SD_ACTIVITY_TYPE_INVALID` | `statement.activityType` is not `DOMESTIC`, `IMPORT`, or `EXPORT` |
+| `EUDR_V3_SD_PRODUCER_COUNTRY_REQUIRED` | a producer is missing `producerCountry` |
+| `EUDR_V3_SD_PRODUCER_LOCATION_INVALID` | a producer's location has zero or more than one of `geometryGeojson`/`postalAddress`/`cadastralIdentifier` |
 
 ---
 ### 📝 EudrSubmissionClient
@@ -1457,6 +1596,428 @@ const devV2Client = new EudrRetrievalClientV2({
 // Manual V2 endpoint override
 const customV2Client = new EudrRetrievalClientV2({
   endpoint: 'https://custom-endpoint.com/ws/EUDRRetrievalServiceV2',
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'custom-client',
+  ssl: false
+});
+```
+
+---
+### 🚀 EudrSubmissionClientV3
+The V3 client for submitting, amending, and withdrawing DDS statements against the unified DDS V3 service. Not backward compatible with V1/V2 payloads — see the breaking-changes table in [V3 DDS Facade Clients](#v3-dds-facade-clients).
+
+#### Methods
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `submitDds(request, options)` | Submit a new DDS (V3) | `request` (Object), `options` (Object) | Promise with `uuid` |
+| `amendDds(uuid, statement, options)` | Amend an existing DDS (V3) | `uuid` (String), `statement` (Object), `options` (Object) | Promise with `uuid` + lifecycle `status` |
+| `withdrawDds(uuid, options)` | Withdraw a DDS (V3, renamed from `retractDds`) | `uuid` (String), `options` (Object) | Promise with `uuid` + lifecycle `status` |
+
+#### Options
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `rawResponse` | boolean | false | Whether to return the raw XML response instead of the parsed result |
+
+#### Detailed Method Reference
+
+**`submitDds(request, options)`**
+```javascript
+const result = await submissionV3.submitDds({
+  operatorRole: 'OPERATOR',  // 'OPERATOR' or 'REPRESENTATIVE_OPERATOR' (renamed from operatorType)
+  statement: {
+    internalReferenceNumber: 'REF-001',  // optional in V3
+    activityType: 'IMPORT',  // 'DOMESTIC' | 'IMPORT' | 'EXPORT' (TRADE removed in V3)
+    countryOfActivity: 'HR',
+    borderCrossCountry: 'HR',
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: 'Wood products',
+        goodsMeasure: { netWeight: 100 }
+      },
+      hsHeading: '4401',
+      speciesInfo: { scientificName: 'Fagus silvatica', commonName: 'Beech' },
+      producers: [{ country: 'HR', name: 'Producer Ltd.', geometryGeojson: 'BASE64_ENCODED_GEOJSON' }]
+    }],
+    geoLocationConfidential: false,
+    groupedDeclarations: [{ groupedDeclaration: '25NLSN6LX69730' }]  // optional; replaces associatedStatements
+  }
+}, {
+  rawResponse: false  // Set to true to get raw XML response
+});
+
+// Returns: { httpStatus: 200, status: 200, uuid: 'uuid-string', raw: 'xml...', parsed: {...} }
+```
+
+**`amendDds(uuid, statement, options)`**
+```javascript
+const result = await submissionV3.amendDds(
+  'existing-dds-uuid',
+  {
+    activityType: 'IMPORT',
+    commodities: [ /* ... */ ],
+    geoLocationConfidential: false
+  },
+  { rawResponse: false }
+);
+
+// Returns: { httpStatus: 200, status: 'AVAILABLE', uuid: 'existing-dds-uuid', raw: 'xml...' }
+// Note: `status` here is the DDS lifecycle status (see EudrStatusType below), not the HTTP status code.
+// The real HTTP status code is always available in `httpStatus`.
+```
+
+**`withdrawDds(uuid, options)`**
+```javascript
+const result = await submissionV3.withdrawDds(
+  'dds-uuid-to-withdraw',
+  { rawResponse: false }
+);
+
+// Returns: { httpStatus: 200, status: 'WITHDRAWN', uuid: 'dds-uuid-to-withdraw' }
+```
+
+**`EudrStatusType` lifecycle values** (returned by `amendDds`/`withdrawDds`, and inside `ddsInfo`/`statement` from the retrieval client): `SUBMITTED`, `AVAILABLE`, `REJECTED`, `WITHDRAWN`, `ARCHIVED`, `SUSPENDED` (not active yet), `UPDATED` (not active yet), `GROUPED`, `OBSOLETE`.
+
+#### Error Handling
+
+```javascript
+try {
+  const result = await submissionV3.submitDds({
+    operatorRole: 'OPERATOR',
+    statement: { activityType: 'IMPORT', /* ... */ }
+  });
+} catch (error) {
+  // Client-side validation errors, thrown before any network call (see the breaking-changes table above)
+  if (error.eudrErrorCode === 'EUDR_V3_OPERATOR_ROLE_INVALID') {
+    console.error('Invalid operatorRole:', error.message);
+  } else if (error.eudrErrorCode === 'EUDR_V3_ACTIVITY_TYPE_TRADE_NOT_SUPPORTED') {
+    console.error('TRADE is not supported in V3:', error.message);
+  } else if (error.details?.soapFault) {
+    // Server-side faults: BusinessRulesValidationException / PermissionDeniedException
+    console.error('SOAP fault:', error.details.soapFault.faultString);
+    console.error('Error details:', error.details.soapFault.errorDetails);
+  } else {
+    console.error('Unexpected error:', error.message);
+  }
+}
+```
+
+#### Configuration Examples
+
+```javascript
+// Production environment with SSL validation
+const productionV3Client = new EudrSubmissionClientV3({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-repository',
+  ssl: true,
+  timeout: 30000
+});
+
+// Development environment with relaxed SSL
+const devV3Client = new EudrSubmissionClientV3({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-test',
+  ssl: false,
+  timeout: 10000
+});
+
+// Manual endpoint override
+const customV3Client = new EudrSubmissionClientV3({
+  endpoint: 'https://custom-endpoint.com/ws/EUDRDueDiligenceStatementServiceV3',
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'custom-client',
+  ssl: false
+});
+```
+
+---
+### 🚀 EudrRetrievalClientV3 (V3)
+Retrieval facade over the unified DDS V3 service. Unlike V1/V2, retrieval and submission share the same backend service — this client exists purely to keep the library's familiar submission/retrieval split.
+
+#### Methods
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `getDds(uuids, options)` | Retrieve DDS overview by UUID(s), renamed from `getDdsInfo` | `uuids` (String or Array, max 100), `options` (Object) | Promise with `ddsInfo` array |
+| `getDdsByInternalReference(internalReferenceNumber, options)` | Retrieve DDS overview by internal reference, renamed from `getDdsInfoByInternalReferenceNumber` | `internalReferenceNumber` (String), `options` (Object) | Promise with `ddsInfo` array |
+| `getDdsByIdentifiers(referenceNumber, verificationNumber, options)` | Retrieve full DDS content, renamed from `getStatementByIdentifiers` | `referenceNumber` (String), `verificationNumber` (String), `options` (Object) | Promise with full `statement` |
+| ~~`getReferencedDds()`~~ | ❌ Not available in V3 — the spec removes this operation entirely, there is no replacement | N/A | N/A |
+
+#### Options
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `rawResponse` | boolean | false | Whether to return the raw XML response instead of the parsed result |
+
+> Note: unlike V1/V2, `decodeGeojson` auto-decoding is **not yet implemented** for V3 — `geometryGeojson` in `getDdsByIdentifiers` results comes back base64-encoded exactly as received from the server.
+
+#### Key Features
+- ✅ **Unified backend**: retrieval and submission are the same DDS V3 service under the hood
+- ✅ **Batch retrieval**: `getDds` accepts up to 100 UUIDs per call, same as V1/V2 `getDdsInfo`
+- ✅ **Full statement retrieval**: `getDdsByIdentifiers` returns the complete DDS statement, not just an overview
+- ✅ **Consistent array fields**: `ddsInfo` is always an array (even for a single overview result); `commodities`/`producers`/`speciesInfo`/`groupedDeclarations` inside a full `statement` are always arrays
+- ⚠️ **No supply chain traversal**: V2's `getReferencedDds()` has no V3 equivalent — grouping (`groupedDeclarations`) is a different concept, not a drop-in replacement
+
+#### Detailed Method Reference
+
+**`getDds(uuids, options)`**
+```javascript
+// Single UUID
+const ddsInfo = await retrievalV3.getDds('550e8400-e29b-41d4-a716-446655440000');
+
+// Multiple UUIDs (max 100 per call)
+const multipleDds = await retrievalV3.getDds([
+  '550e8400-e29b-41d4-a716-446655440000',
+  '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
+]);
+
+// Returns:
+// {
+//   httpStatus: 200,
+//   status: 200,
+//   ddsInfo: [
+//     {
+//       uuid: 'uuid-string',
+//       internalReferenceNumber: '26BEDWNW9JD1TN',
+//       referenceNumber: '26BE7XTVCZAQ2S',
+//       verificationNumber: 'SFFCB4Y3',
+//       status: 'AVAILABLE',       // EudrStatusType
+//       rejectionReason: null,
+//       communicationToOperator: null,
+//       date: '2026-05-20T09:55:01.000Z',
+//       updatedBy: 'User3 User3',
+//       version: '1'
+//     }
+//   ],
+//   raw: 'xml-response',   // if rawResponse: true
+//   parsed: { /* parsed XML object */ }
+// }
+```
+
+**`getDdsByInternalReference(internalReferenceNumber, options)`**
+```javascript
+const ddsList = await retrievalV3.getDdsByInternalReference('26BEDWNW9JD1TN');
+
+// Returns: same ddsInfo overview shape as getDds
+```
+
+**`getDdsByIdentifiers(referenceNumber, verificationNumber, options)`**
+```javascript
+const fullDds = await retrievalV3.getDdsByIdentifiers('26BE7XTVCZAQ2S', 'SFFCB4Y3');
+
+// Returns:
+// {
+//   httpStatus: 200,
+//   status: 200,
+//   statement: {
+//     activityType: 'IMPORT',
+//     commodities: [{
+//       position: '1',
+//       descriptors: { descriptionOfGoods: '...', goodsMeasure: { netWeight: '300.000000', ... } },
+//       hsHeading: '4410',
+//       speciesInfo: [{ scientificName: '...', commonName: '...' }],
+//       producers: [{ country: 'FR', geometryGeojson: 'BASE64_ENCODED_GEOJSON' }]
+//     }],
+//     geoLocationConfidential: 'false'
+//     // ... rest of the DDS statement
+//   }
+// }
+```
+
+#### Error Handling
+
+```javascript
+try {
+  const result = await retrievalV3.getDds('some-uuid');
+  console.log('Success:', result.ddsInfo);
+} catch (error) {
+  console.error(error.message);
+  // Inspect the raw SOAP fault for NotFoundException / BusinessRulesValidationException details -
+  // V3 fault-to-HTTP-status mapping in EudrErrorHandler is generic, not yet tailored per V3 fault type.
+  console.error(error.details?.soapFault);
+  if (error.eudrErrorCode) {
+    console.error('EUDR error code:', error.eudrErrorCode);
+  }
+}
+```
+
+#### Configuration Examples
+
+```javascript
+// Production environment with SSL validation
+const productionRetrievalV3Client = new EudrRetrievalClientV3({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-repository',
+  ssl: true,
+  timeout: 30000
+});
+
+// Development environment with relaxed SSL
+const devRetrievalV3Client = new EudrRetrievalClientV3({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-test',
+  ssl: false,
+  timeout: 10000
+});
+
+// Manual endpoint override
+const customRetrievalV3Client = new EudrRetrievalClientV3({
+  endpoint: 'https://custom-endpoint.com/ws/EUDRDueDiligenceStatementServiceV3',
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'custom-client',
+  ssl: false
+});
+```
+
+---
+### 🌱 EudrSimplifiedDeclarationClientV3 (V3)
+Single unified client for the new Simplified Declaration (SD) V3 service — see [V3 Simplified Declaration Client](#v3-simplified-declaration-client) for when to use SD instead of DDS.
+
+#### Methods
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `submitSd(request, options)` | Submit a new Simplified Declaration | `request` (Object), `options` (Object) | Promise with `sdIdentifier` |
+| `updateSd(sdIdentifier, statement, options)` | Update an existing SD | `sdIdentifier` (String), `statement` (Object), `options` (Object) | Promise with `uuid` + lifecycle `status` |
+| `withdrawSd(sdIdentifier, options)` | Withdraw an SD | `sdIdentifier` (String), `options` (Object) | Promise with `uuid` + lifecycle `status` |
+| `getSd(uuids, options)` | Retrieve SD overview by UUID(s)/version, max 100 | `uuids` (String, `{uuid, version}`, or Array), `options` (Object) | Promise with `sdInfo` array |
+| `getSdByInternalReference(internalReferenceNumber, options)` | Retrieve SD overview by internal reference | `internalReferenceNumber` (String), `options` (Object) | Promise with `sdInfo` array |
+| `getSdByIdentifiers(referenceNumber, verificationNumber, options)` | Retrieve full SD content | `referenceNumber` (String), `verificationNumber` (String), `options` (Object) | Promise with full `statement` |
+
+#### Options
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `rawResponse` | boolean | false | Whether to return the raw XML response instead of the parsed result |
+
+#### Key Features
+- ✅ **New V3-only concept**: no V1/V2 precedent, no legacy field name compatibility concerns
+- ✅ **Single unified client**: write and retrieval operations in one class (unlike the DDS submission/retrieval split)
+- ✅ **One-time declaration model**: `submitSd` is meant to be called once per operator, not per shipment
+- ✅ **Flexible producer location**: `geometryGeojson`, `postalAddress`, or `cadastralIdentifier` (DDS requires GeoJSON only)
+- ⚠️ **Asymmetric identifier field naming**: `submitSd` returns `sdIdentifier`; `updateSd`/`withdrawSd` return `uuid` for the same value — this mirrors the actual WSDL, not an inconsistency in this library
+
+#### Detailed Method Reference
+
+**`submitSd(request, options)`**
+```javascript
+const result = await sdClient.submitSd({
+  operatorRole: 'MICRO_OPERATOR',  // MICRO_OPERATOR | REPRESENTATIVE_MSPO | MEMBER_STATE
+  statement: {
+    internalReferenceNumber: 'SD-REF-001',  // mandatory for SD (optional for DDS)
+    activityType: 'IMPORT',  // DOMESTIC | IMPORT | EXPORT
+    commodities: [{
+      descriptors: { descriptionOfGoods: 'Cocoa beans', goodsMeasure: { netWeight: 1000 } },
+      hsHeading: '1801',
+      producers: [{
+        producerCountry: 'CI',
+        producerName: 'Producer Name',
+        producerLocation: { geometryGeojson: 'BASE64_ENCODED_GEOJSON' }  // exactly one choice
+      }]
+    }],
+    geoLocationConfidential: false
+  }
+});
+
+// Returns: { httpStatus: 200, status: 200, sdIdentifier: 'uuid-string' }
+```
+
+**`updateSd(sdIdentifier, statement, options)`**
+```javascript
+const result = await sdClient.updateSd('existing-sd-uuid', {
+  internalReferenceNumber: 'SD-REF-001',
+  activityType: 'IMPORT',
+  commodities: [ /* ... */ ],
+  geoLocationConfidential: false
+});
+
+// Returns: { httpStatus: 200, status: 'AVAILABLE', uuid: 'existing-sd-uuid', version: '2' }
+// Note: response field is `uuid`, not `sdIdentifier` (see WSDL asymmetry note above).
+```
+
+**`withdrawSd(sdIdentifier, options)`**
+```javascript
+const result = await sdClient.withdrawSd('existing-sd-uuid');
+// Returns: { httpStatus: 200, status: 'WITHDRAWN', uuid: 'existing-sd-uuid' }
+```
+
+**`getSd(uuids, options)`**
+```javascript
+// Plain uuid, or with an explicit version
+await sdClient.getSd('existing-sd-uuid');
+await sdClient.getSd({ uuid: 'existing-sd-uuid', version: 2 });
+await sdClient.getSd(['uuid-1', { uuid: 'uuid-2', version: 1 }]); // up to 100 entries
+
+// Returns: { httpStatus: 200, status: 200, sdInfo: [ { uuid, internalReferenceNumber, referenceNumber, verificationNumber, status, date, updatedBy, version, ... } ] }
+```
+
+**`getSdByInternalReference(internalReferenceNumber, options)`**
+```javascript
+const sdList = await sdClient.getSdByInternalReference('SD-REF-001');
+// Returns: same sdInfo overview shape as getSd
+```
+
+**`getSdByIdentifiers(referenceNumber, verificationNumber, options)`**
+```javascript
+const fullSd = await sdClient.getSdByIdentifiers('S26BECB39D2GRX', 'H6ORMNTX');
+
+// Returns:
+// {
+//   httpStatus: 200,
+//   status: 200,
+//   statement: {
+//     activityType: 'IMPORT',
+//     commodities: [{ descriptors: { descriptionOfGoods: '...' }, hsHeading: '1801', producers: [{ producerCountry: 'CI' }] }],
+//     geoLocationConfidential: 'false'
+//     // Note: no speciesInfo field on SD commodities (unlike DDS)
+//   }
+// }
+```
+
+#### Error Handling
+
+```javascript
+try {
+  await sdClient.submitSd({ operatorRole: 'OPERATOR', statement: { /* ... */ } });
+} catch (error) {
+  if (error.eudrErrorCode === 'EUDR_V3_SD_OPERATOR_ROLE_INVALID') {
+    console.error('Invalid SD operatorRole:', error.message);
+  } else if (error.eudrErrorCode === 'EUDR_V3_SD_PRODUCER_LOCATION_INVALID') {
+    console.error('Producer location must be exactly one of geometryGeojson/postalAddress/cadastralIdentifier:', error.message);
+  } else if (error.details?.soapFault) {
+    console.error('SOAP fault:', error.details.soapFault.faultString);
+  }
+}
+```
+
+See the [SD validation errors table](#v3-simplified-declaration-client) above for the full list of `EUDR_V3_SD_*` codes.
+
+#### Configuration Examples
+
+```javascript
+// Production environment with SSL validation
+const productionSdClient = new EudrSimplifiedDeclarationClientV3({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-repository',
+  ssl: true,
+  timeout: 30000
+});
+
+// Development environment with relaxed SSL
+const devSdClient = new EudrSimplifiedDeclarationClientV3({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-test',
+  ssl: false,
+  timeout: 10000
+});
+
+// Manual endpoint override
+const customSdClient = new EudrSimplifiedDeclarationClientV3({
+  endpoint: 'https://custom-endpoint.com/ws/EUDRSimplifiedDeclarationServiceV3',
   username: 'user',
   password: 'pass',
   webServiceClientId: 'custom-client',

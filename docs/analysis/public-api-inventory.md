@@ -1,10 +1,10 @@
 # Story 1 Artifact: Public API Inventory
 
-## Svrha
-Ovaj dokument zakljucava trenutni javni API biblioteke prije V3 migracije.
-Koristi se kao baseline za compatibility contract testove.
+## Purpose
+This document locks down the library's current public API before the V3 migration.
+It is used as the baseline for compatibility contract tests.
 
-## Izvori
+## Sources
 - [README.md](README.md)
 - [index.js](index.js)
 - [services/index.js](services/index.js)
@@ -19,27 +19,28 @@ Koristi se kao baseline za compatibility contract testove.
 - [tests/services/index.test.js](tests/services/index.test.js)
 
 ## Top-level exports
-Iz [index.js](index.js):
+From [index.js](index.js):
 
-| Export | Tip | Napomena |
+| Export | Type | Note |
 |---|---|---|
-| EudrEchoClient | class | javni klijent |
-| EudrRetrievalClient | class | javni klijent |
-| EudrRetrievalClientV2 | class | javni klijent |
-| EudrSubmissionClient | class | javni klijent |
-| EudrSubmissionClientV2 | class | javni klijent |
-| EudrSubmissionClientV3 | class | javni V3 facade klijent |
-| EudrRetrievalClientV3 | class | javni V3 facade klijent |
-| EudrErrorHandler | utility | javni helper |
-| logger | utility | javni logger |
-| createLogger | utility | javni logger factory |
-| createChildLogger | utility | javni logger helper |
+| EudrEchoClient | class | public client |
+| EudrRetrievalClient | class | public client |
+| EudrRetrievalClientV2 | class | public client |
+| EudrSubmissionClient | class | public client |
+| EudrSubmissionClientV2 | class | public client |
+| EudrSubmissionClientV3 | class | public V3 facade client |
+| EudrRetrievalClientV3 | class | public V3 facade client |
+| EudrSimplifiedDeclarationClientV3 | class | public V3 SD client (unified, no submission/retrieval split) |
+| EudrErrorHandler | utility | public helper |
+| logger | utility | public logger |
+| createLogger | utility | public logger factory |
+| createChildLogger | utility | public logger helper |
 | config | object | endpoint/config API (endpointUtils) |
 
 ## Service-level exports
-Iz [services/index.js](services/index.js):
+From [services/index.js](services/index.js):
 
-| Export | Tip |
+| Export | Type |
 |---|---|
 | EudrEchoClient | class |
 | EudrRetrievalClient | class |
@@ -48,48 +49,49 @@ Iz [services/index.js](services/index.js):
 | EudrSubmissionClientV2 | class |
 | EudrSubmissionClientV3 | class |
 | EudrRetrievalClientV3 | class |
+| EudrSimplifiedDeclarationClientV3 | class |
 | config | object |
 
-## Javne metode po klasi
+## Public methods per class
 
 ### EudrEchoClient
-Definicija: [services/echo-service.js](services/echo-service.js)
+Definition: [services/echo-service.js](services/echo-service.js)
 
-| Metoda | Potpis |
+| Method | Signature |
 |---|---|
 | echo | async echo(message, options = {}) |
 
 ### EudrSubmissionClient
-Definicija: [services/submission-service.js](services/submission-service.js)
+Definition: [services/submission-service.js](services/submission-service.js)
 
-| Metoda | Potpis |
+| Method | Signature |
 |---|---|
 | submitDds | async submitDds(request, options = {}) |
 | amendDds | async amendDds(ddsIdentifier, statement, options = {}) |
 | retractDds | async retractDds(ddsIdentifier, options = {}) |
 
 ### EudrSubmissionClientV2
-Definicija: [services/submission-service-v2.js](services/submission-service-v2.js)
+Definition: [services/submission-service-v2.js](services/submission-service-v2.js)
 
-| Metoda | Potpis |
+| Method | Signature |
 |---|---|
 | submitDds | async submitDds(request, options = {}) |
 | amendDds | async amendDds(ddsIdentifier, statement, options = {}) |
 | retractDds | async retractDds(ddsIdentifier, options = {}) |
 
 ### EudrRetrievalClient
-Definicija: [services/retrieval-service.js](services/retrieval-service.js)
+Definition: [services/retrieval-service.js](services/retrieval-service.js)
 
-| Metoda | Potpis |
+| Method | Signature |
 |---|---|
 | getDdsInfo | async getDdsInfo(uuids, options = {}) |
 | getDdsInfoByInternalReferenceNumber | async getDdsInfoByInternalReferenceNumber(internalReferenceNumber, options = {}) |
 | getStatementByIdentifiers | async getStatementByIdentifiers(referenceNumber, verificationNumber, options = {}) |
 
 ### EudrRetrievalClientV2
-Definicija: [services/retrieval-service-v2.js](services/retrieval-service-v2.js)
+Definition: [services/retrieval-service-v2.js](services/retrieval-service-v2.js)
 
-| Metoda | Potpis |
+| Method | Signature |
 |---|---|
 | getDdsInfo | async getDdsInfo(uuids, options = {}) |
 | getDdsInfoByInternalReferenceNumber | async getDdsInfoByInternalReferenceNumber(internalReferenceNumber, options = {}) |
@@ -97,27 +99,41 @@ Definicija: [services/retrieval-service-v2.js](services/retrieval-service-v2.js)
 | getReferencedDds | async getReferencedDds(referenceNumber, securityNumber, options = {}) |
 
 ### EudrSubmissionClientV3
-Definicija: [services/submission-service-v3.js](services/submission-service-v3.js)
+Definition: [services/submission-service-v3.js](services/submission-service-v3.js)
 
-| Metoda | Potpis |
+| Method | Signature |
 |---|---|
 | submitDds | async submitDds(request, options = {}) |
 | amendDds | async amendDds(uuid, statement, options = {}) |
 | withdrawDds | async withdrawDds(uuid, options = {}) |
 
 ### EudrRetrievalClientV3
-Definicija: [services/retrieval-service-v3.js](services/retrieval-service-v3.js)
+Definition: [services/retrieval-service-v3.js](services/retrieval-service-v3.js)
 
-| Metoda | Potpis |
+| Method | Signature |
 |---|---|
 | getDds | async getDds(uuid, options = {}) |
 | getDdsByInternalReference | async getDdsByInternalReference(internalReferenceNumber, options = {}) |
 | getDdsByIdentifiers | async getDdsByIdentifiers(referenceNumber, verificationNumber, options = {}) |
 
-## Config contract (config export)
-Definicija: [utils/endpoint-utils.js](utils/endpoint-utils.js)
+### EudrSimplifiedDeclarationClientV3
+Definition: [services/simplified-declaration-service-v3.js](services/simplified-declaration-service-v3.js)
 
-| API | Tip |
+New V3-only service (no V1/V2 precedent), a single unified client with no submission/retrieval split.
+
+| Method | Signature |
+|---|---|
+| submitSd | async submitSd(request, options = {}) |
+| updateSd | async updateSd(sdIdentifier, statement, options = {}) |
+| withdrawSd | async withdrawSd(sdIdentifier, options = {}) |
+| getSd | async getSd(uuids, options = {}) |
+| getSdByInternalReference | async getSdByInternalReference(internalReferenceNumber, options = {}) |
+| getSdByIdentifiers | async getSdByIdentifiers(referenceNumber, verificationNumber, options = {}) |
+
+## Config contract (config export)
+Definition: [utils/endpoint-utils.js](utils/endpoint-utils.js)
+
+| API | Type |
 |---|---|
 | getSupportedClientIds | function |
 | getSupportedServices | function |
@@ -129,10 +145,10 @@ Definicija: [utils/endpoint-utils.js](utils/endpoint-utils.js)
 | SERVICE_PATHS | const export |
 | SOAP_ACTIONS | const export |
 
-## Dokumentirani response baseline (README-driven)
-Dokumentirano u [README.md](README.md):
+## Documented response baseline (README-driven)
+Documented in [README.md](README.md):
 
-| Operacija | Ocekivani baseline shape |
+| Operation | Expected baseline shape |
 |---|---|
 | submitDds | httpStatus, status, ddsIdentifier, raw? |
 | amendDds | httpStatus, status, success, message |
@@ -140,17 +156,17 @@ Dokumentirano u [README.md](README.md):
 | getDdsInfo | httpStatus, status, ddsInfo[] |
 | getDdsInfoByInternalReferenceNumber | httpStatus, status, ddsInfo[] |
 | getStatementByIdentifiers | httpStatus, status, ddsInfo[] |
-| getReferencedDds (V2) | httpStatus, status, ddsInfo[] ili ekvivalent retrieval payload |
-| echo | status/response payload za connectivity check |
+| getReferencedDds (V2) | httpStatus, status, ddsInfo[] or equivalent retrieval payload |
+| echo | status/response payload for connectivity check |
 
-## Kriticne tocke za kompatibilnost
-1. retractDds mora ostati javna metoda iako V3 koristi withdrawDds.
-2. getReferencedDds je V2-only i nema V3 ekvivalent; treba controlled error policy.
-3. operatorType i TRADE scenariji su rizicni u V3.
-4. ddsIdentifier mora ostati prema van gdje ga danas koriste korisnici.
-5. V3 javni API mora ostati podijeljen na submission i retrieval facade klijente.
+## Critical points for compatibility
+1. retractDds must remain a public method even though V3 uses withdrawDds.
+2. getReferencedDds is V2-only and has no V3 equivalent; needs a controlled error policy.
+3. operatorType and TRADE scenarios are risky in V3.
+4. ddsIdentifier must remain exposed wherever users currently rely on it.
+5. The V3 public API must remain split into submission and retrieval facade clients.
 
-## Story 1 izlaz
-- Inventory je zakljucan u ovom dokumentu.
-- Ovaj dokument je ulaz za [docs/analysis/compatibility-contract-matrix.md](docs/analysis/compatibility-contract-matrix.md).
-- Ovaj dokument je ulaz za [docs/analysis/contract-test-plan-v3-migration.md](docs/analysis/contract-test-plan-v3-migration.md).
+## Story 1 output
+- The inventory is locked down in this document.
+- This document is an input for [docs/analysis/compatibility-contract-matrix.md](docs/analysis/compatibility-contract-matrix.md).
+- This document is an input for [docs/analysis/contract-test-plan-v3-migration.md](docs/analysis/contract-test-plan-v3-migration.md).

@@ -17,6 +17,8 @@ const EudrErrorHandler = require('../utils/error-handler');
 const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
 
+const DDS_V3_NAMESPACE = 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3';
+
 class EudrDueDiligenceStatementServiceV3Transport {
   /**
    * @param {Object} config
@@ -63,6 +65,16 @@ class EudrDueDiligenceStatementServiceV3Transport {
    */
   static createEndpointFromBaseUrl(baseUrl, serviceName = 'EUDRDueDiligenceStatementServiceV3') {
     return `${baseUrl}/tracesnt/ws/${serviceName}`;
+  }
+
+  /**
+   * Build the operation-specific SOAPAction per the published WSDL, e.g.
+   * "http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/submitDds".
+   * @param {string} operationName
+   * @returns {string}
+   */
+  soapActionFor(operationName) {
+    return `${DDS_V3_NAMESPACE}/${operationName}`;
   }
 
   generateNonce() {
@@ -154,6 +166,22 @@ ${bodyXml}
     if (!statement.activityType) {
       throw new Error('statement.activityType is required for V3 operations');
     }
+    if (statement.activityType === 'TRADE') {
+      const error = new Error(
+        "V3 DDS does not support activityType 'TRADE'. Only DOMESTIC, IMPORT, EXPORT are allowed."
+      );
+      error.eudrErrorCode = 'EUDR_V3_ACTIVITY_TYPE_TRADE_NOT_SUPPORTED';
+      error.eudrSpecific = true;
+      throw error;
+    }
+    if (!['DOMESTIC', 'IMPORT', 'EXPORT'].includes(statement.activityType)) {
+      const error = new Error(
+        `Invalid activityType '${statement.activityType}'. V3 only allows: DOMESTIC, IMPORT, EXPORT.`
+      );
+      error.eudrErrorCode = 'EUDR_V3_ACTIVITY_TYPE_INVALID';
+      error.eudrSpecific = true;
+      throw error;
+    }
     xml += `<dds:activityType>${this.escapeXml(statement.activityType)}</dds:activityType>`;
 
     if (statement.representedOperator) {
@@ -201,6 +229,16 @@ ${bodyXml}
 
     xml += `<dds:geoLocationConfidential>${statement.geoLocationConfidential === true ? 'true' : 'false'}</dds:geoLocationConfidential>`;
 
+    if (statement.associatedStatements !== undefined) {
+      const error = new Error(
+        "V3 does not use 'associatedStatements'. Use 'groupedDeclarations' instead (an array of { groupedDeclaration: referenceNumber }). " +
+        'Note: V3 grouping semantics differ from V1/V2 referenced statements — grouped declarations receive GROUPED status and cannot be individually amended/withdrawn.'
+      );
+      error.eudrErrorCode = 'EUDR_V3_LEGACY_ASSOCIATED_STATEMENTS_FIELD';
+      error.eudrSpecific = true;
+      throw error;
+    }
+
     if (statement.groupedDeclarations) {
       const groupedDeclarations = Array.isArray(statement.groupedDeclarations)
         ? statement.groupedDeclarations
@@ -232,6 +270,9 @@ ${bodyXml}
       if (commodity.descriptors.goodsMeasure) {
         const measure = commodity.descriptors.goodsMeasure;
         xml += '<eudrCommon:goodsMeasure>';
+        if (measure.percentageEstimationOrDeviation !== undefined) {
+          xml += `<eudrCommon:percentageEstimationOrDeviation>${this.escapeXml(measure.percentageEstimationOrDeviation)}</eudrCommon:percentageEstimationOrDeviation>`;
+        }
         if (measure.netWeight !== undefined) {
           xml += `<eudrCommon:netWeight>${this.escapeXml(measure.netWeight)}</eudrCommon:netWeight>`;
         }
@@ -291,8 +332,24 @@ ${bodyXml}
     if (!request || !request.statement) {
       throw new Error('submitDds requires request.statement');
     }
+    if (request.operatorType !== undefined) {
+      const error = new Error(
+        "V3 does not use 'operatorType'. Use 'operatorRole' instead, with one of: OPERATOR, REPRESENTATIVE_OPERATOR."
+      );
+      error.eudrErrorCode = 'EUDR_V3_LEGACY_OPERATOR_TYPE_FIELD';
+      error.eudrSpecific = true;
+      throw error;
+    }
     if (!request.operatorRole) {
       throw new Error('submitDds requires operatorRole (V3)');
+    }
+    if (!['OPERATOR', 'REPRESENTATIVE_OPERATOR'].includes(request.operatorRole)) {
+      const error = new Error(
+        `Invalid operatorRole '${request.operatorRole}'. V3 only allows: OPERATOR, REPRESENTATIVE_OPERATOR.`
+      );
+      error.eudrErrorCode = 'EUDR_V3_OPERATOR_ROLE_INVALID';
+      error.eudrSpecific = true;
+      throw error;
     }
 
     const bodyXml = `        <dds:SubmitDdsRequest>
@@ -331,6 +388,53 @@ ${bodyXml}
     const bodyXml = `        <dds:WithdrawDdsRequest>
             <dds:uuid>${this.escapeXml(uuid)}</dds:uuid>
         </dds:WithdrawDdsRequest>`;
+
+    return this.createSoapEnvelope(bodyXml);
+  }
+
+  createGetDdsSoapEnvelope(uuids) {
+    const uuidList = Array.isArray(uuids) ? uuids : [uuids];
+    if (uuidList.length === 0 || !uuidList[0]) {
+      throw new Error('getDds requires at least one uuid');
+    }
+    if (uuidList.length > 100) {
+      throw new Error('getDds accepts a maximum of 100 uuids per call');
+    }
+
+    const uuidListXml = uuidList
+      .map((uuid) => `<dds:uuidList>${this.escapeXml(uuid)}</dds:uuidList>`)
+      .join('');
+
+    const bodyXml = `        <dds:GetDdsRequest>
+            ${uuidListXml}
+        </dds:GetDdsRequest>`;
+
+    return this.createSoapEnvelope(bodyXml);
+  }
+
+  createGetDdsByInternalReferenceSoapEnvelope(internalReferenceNumber) {
+    if (!internalReferenceNumber) {
+      throw new Error('getDdsByInternalReference requires internalReferenceNumber');
+    }
+
+    const bodyXml = `        <dds:GetDdsByInternalReferenceRequest>
+            <dds:internalReference>${this.escapeXml(internalReferenceNumber)}</dds:internalReference>
+        </dds:GetDdsByInternalReferenceRequest>`;
+
+    return this.createSoapEnvelope(bodyXml);
+  }
+
+  createGetDdsByIdentifiersSoapEnvelope(referenceNumber, verificationNumber) {
+    if (!referenceNumber || !verificationNumber) {
+      throw new Error('getDdsByIdentifiers requires referenceNumber and verificationNumber');
+    }
+
+    const bodyXml = `        <dds:GetDdsByIdentifiersRequest>
+            <dds:referenceAndVerificationNumber>
+                <eudrCommon:referenceNumber>${this.escapeXml(referenceNumber)}</eudrCommon:referenceNumber>
+                <eudrCommon:verificationNumber>${this.escapeXml(verificationNumber)}</eudrCommon:verificationNumber>
+            </dds:referenceAndVerificationNumber>
+        </dds:GetDdsByIdentifiersRequest>`;
 
     return this.createSoapEnvelope(bodyXml);
   }
@@ -392,6 +496,110 @@ ${bodyXml}
     });
   }
 
+  /**
+   * Flatten a single ddsOverviewList item (OverviewType) into a plain object,
+   * stripping the eudrCommon/dds namespace prefixes from keys.
+   */
+  mapOverviewItem(item) {
+    const mapped = {};
+    for (const [key, value] of Object.entries(item || {})) {
+      mapped[key.split(':').pop()] = value;
+    }
+    return mapped;
+  }
+
+  /**
+   * Shared parser for getDds/getDdsByInternalReference, both of which return
+   * a ddsOverviewList (DdsOverviewResponseType) under a different response element.
+   */
+  parseOverviewResponse(xmlResponse, responseElementName) {
+    return new Promise((resolve, reject) => {
+      parseString(xmlResponse, { explicitArray: false }, (err, result) => {
+        if (err) {
+          reject(new Error(`Failed to parse V3 ${responseElementName} response: ${err.message}`));
+          return;
+        }
+
+        try {
+          const envelope = result['S:Envelope'] || result['soapenv:Envelope'] || result['SOAP-ENV:Envelope'];
+          const body = envelope['S:Body'] || envelope['soapenv:Body'] || envelope['SOAP-ENV:Body'];
+          const responseKey = Object.keys(body).find((key) => key.endsWith(`:${responseElementName}`));
+          const response = responseKey ? body[responseKey] : null;
+          const listKey = response ? Object.keys(response).find((key) => key.endsWith(':ddsOverviewList')) : null;
+          const rawList = listKey ? response[listKey] : null;
+          const overviewList = Array.isArray(rawList) ? rawList : (rawList ? [rawList] : []);
+
+          resolve({
+            raw: xmlResponse,
+            parsed: result,
+            ddsInfo: overviewList.map((item) => this.mapOverviewItem(item))
+          });
+        } catch (error) {
+          reject(new Error(`Failed to extract V3 ${responseElementName} payload: ${error.message}`));
+        }
+      });
+    });
+  }
+
+  /**
+   * Recursively strip namespace prefixes and normalize repeatable DDS statement
+   * fields (commodities/producers/speciesInfo/groupedDeclarations) to arrays.
+   */
+  normalizeStatement(obj) {
+    if (!obj || typeof obj !== 'object') {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map((item) => this.normalizeStatement(item));
+    }
+
+    const normalized = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const propertyName = key.split(':').pop();
+
+      if (['commodities', 'producers', 'speciesInfo', 'groupedDeclarations'].includes(propertyName)) {
+        const arrayValue = Array.isArray(value) ? value : (value ? [value] : []);
+        normalized[propertyName] = arrayValue.map((item) => this.normalizeStatement(item));
+      } else {
+        normalized[propertyName] = this.normalizeStatement(value);
+      }
+    }
+    return normalized;
+  }
+
+  /**
+   * Parser for getDdsByIdentifiers, which returns the full DDS statement
+   * (DueDiligenceStatementBaseType) rather than a ddsOverviewList.
+   */
+  parseStatementResponse(xmlResponse) {
+    return new Promise((resolve, reject) => {
+      parseString(xmlResponse, { explicitArray: false }, (err, result) => {
+        if (err) {
+          reject(new Error(`Failed to parse V3 getDdsByIdentifiers response: ${err.message}`));
+          return;
+        }
+
+        try {
+          const envelope = result['S:Envelope'] || result['soapenv:Envelope'] || result['SOAP-ENV:Envelope'];
+          const body = envelope['S:Body'] || envelope['soapenv:Body'] || envelope['SOAP-ENV:Body'];
+          const responseKey = Object.keys(body).find((key) => key.endsWith(':GetDdsByIdentifiersResponse'));
+          const response = responseKey ? body[responseKey] : null;
+          const statementKey = response ? Object.keys(response).find((key) => key.endsWith(':statement')) : null;
+          const rawStatement = statementKey ? response[statementKey] : null;
+
+          resolve({
+            raw: xmlResponse,
+            parsed: result,
+            statement: rawStatement ? this.normalizeStatement(rawStatement) : null
+          });
+        } catch (error) {
+          reject(new Error(`Failed to extract V3 getDdsByIdentifiers payload: ${error.message}`));
+        }
+      });
+    });
+  }
+
   async sendSoapRequest(soapEnvelope, soapAction) {
     return axios({
       method: 'post',
@@ -413,7 +621,7 @@ ${bodyXml}
       const soapEnvelope = this.createSubmitSoapEnvelope(request);
       const response = await this.sendSoapRequest(
         soapEnvelope,
-        'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3'
+        this.soapActionFor('submitDds')
       );
 
       if (options.rawResponse) {
@@ -441,7 +649,7 @@ ${bodyXml}
       const soapEnvelope = this.createAmendSoapEnvelope(uuid, statement);
       const response = await this.sendSoapRequest(
         soapEnvelope,
-        'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3#amendDds'
+        this.soapActionFor('amendDds')
       );
 
       if (options.rawResponse) {
@@ -469,7 +677,7 @@ ${bodyXml}
       const soapEnvelope = this.createWithdrawSoapEnvelope(uuid);
       const response = await this.sendSoapRequest(
         soapEnvelope,
-        'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3#withdrawDds'
+        this.soapActionFor('withdrawDds')
       );
 
       if (options.rawResponse) {
@@ -492,16 +700,79 @@ ${bodyXml}
     }
   }
 
-  async getDds() {
-    throw new Error('getDds is not implemented yet. Planned in Story 4.');
+  async getDds(uuids, options = {}) {
+    try {
+      const soapEnvelope = this.createGetDdsSoapEnvelope(uuids);
+      const response = await this.sendSoapRequest(soapEnvelope, this.soapActionFor('getDds'));
+
+      if (options.rawResponse) {
+        return {
+          httpStatus: response.status,
+          status: response.status,
+          data: response.data
+        };
+      }
+
+      const parsedResponse = await this.parseOverviewResponse(response.data, 'GetDdsResponse');
+      return {
+        httpStatus: response.status,
+        status: response.status,
+        ...parsedResponse
+      };
+    } catch (error) {
+      logger.debug({ error }, 'Error in V3 getDds');
+      throw EudrErrorHandler.handleError(error);
+    }
   }
 
-  async getDdsByInternalReference() {
-    throw new Error('getDdsByInternalReference is not implemented yet. Planned in Story 4.');
+  async getDdsByInternalReference(internalReferenceNumber, options = {}) {
+    try {
+      const soapEnvelope = this.createGetDdsByInternalReferenceSoapEnvelope(internalReferenceNumber);
+      const response = await this.sendSoapRequest(soapEnvelope, this.soapActionFor('getDdsByInternalReference'));
+
+      if (options.rawResponse) {
+        return {
+          httpStatus: response.status,
+          status: response.status,
+          data: response.data
+        };
+      }
+
+      const parsedResponse = await this.parseOverviewResponse(response.data, 'GetDdsByInternalReferenceResponse');
+      return {
+        httpStatus: response.status,
+        status: response.status,
+        ...parsedResponse
+      };
+    } catch (error) {
+      logger.debug({ error }, 'Error in V3 getDdsByInternalReference');
+      throw EudrErrorHandler.handleError(error);
+    }
   }
 
-  async getDdsByIdentifiers() {
-    throw new Error('getDdsByIdentifiers is not implemented yet. Planned in Story 4.');
+  async getDdsByIdentifiers(referenceNumber, verificationNumber, options = {}) {
+    try {
+      const soapEnvelope = this.createGetDdsByIdentifiersSoapEnvelope(referenceNumber, verificationNumber);
+      const response = await this.sendSoapRequest(soapEnvelope, this.soapActionFor('getDdsByIdentifiers'));
+
+      if (options.rawResponse) {
+        return {
+          httpStatus: response.status,
+          status: response.status,
+          data: response.data
+        };
+      }
+
+      const parsedResponse = await this.parseStatementResponse(response.data);
+      return {
+        httpStatus: response.status,
+        status: response.status,
+        ...parsedResponse
+      };
+    } catch (error) {
+      logger.debug({ error }, 'Error in V3 getDdsByIdentifiers');
+      throw EudrErrorHandler.handleError(error);
+    }
   }
 }
 

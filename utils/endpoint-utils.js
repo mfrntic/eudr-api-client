@@ -35,6 +35,9 @@ const SERVICE_PATHS = {
     'v1': '/EUDRSubmissionServiceV1',
     'v2': '/EUDRSubmissionServiceV2',
     'v3': '/EUDRDueDiligenceStatementServiceV3'
+  },
+  'simplified-declaration': {
+    'v3': '/EUDRSimplifiedDeclarationServiceV3'
   }
 };
 
@@ -55,6 +58,9 @@ const SOAP_ACTIONS = {
     'v1': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1',
     'v2': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v2',
     'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3'
+  },
+  'simplified-declaration': {
+    'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3'
   }
 };
 

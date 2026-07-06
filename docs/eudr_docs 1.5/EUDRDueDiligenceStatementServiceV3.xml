@@ -1,0 +1,285 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:base="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:dds="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3" targetNamespace="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3">
+
+	<wsp:Policy xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+		<sp:TransportBinding>
+			<wsp:Policy>
+				<sp:TransportToken>
+					<wsp:Policy>
+						<sp:HttpsToken/>
+					</wsp:Policy>
+				</sp:TransportToken>
+				<sp:AlgorithmSuite>
+					<wsp:Policy>
+						<sp:Basic256/>
+					</wsp:Policy>
+				</sp:AlgorithmSuite>
+				<sp:Layout>
+					<wsp:Policy>
+						<sp:Lax/>
+					</wsp:Policy>
+				</sp:Layout>
+				<sp:IncludeTimestamp/>
+			</wsp:Policy>
+		</sp:TransportBinding>
+		<sp:SupportingTokens>
+			<wsp:Policy>
+				<sp:UsernameToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+					<wsp:Policy>
+						<sp:HashPassword/>
+						<sp:WssUsernameToken10/>
+					</wsp:Policy>
+				</sp:UsernameToken>
+			</wsp:Policy>
+		</sp:SupportingTokens>
+	</wsp:Policy>
+
+	<wsdl:import location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRDueDiligenceStatementServiceV3?wsdl=1" namespace="http://ec.europa.eu/sanco/tracesnt/base/v4"/>
+
+	<wsdl:types>
+		<xs:schema>
+			<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRDueDiligenceStatementServiceV3?xsd=2" namespace="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3"/>
+			<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRDueDiligenceStatementServiceV3?xsd=3" namespace="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3"/>
+		</xs:schema>
+	</wsdl:types>
+
+	<!-- Messages -->
+	<wsdl:message name="SubmitDdsRequest">
+		<wsdl:part name="statement" element="dds:SubmitDdsRequest"/>
+	</wsdl:message>
+	<wsdl:message name="SubmitDdsResponse">
+		<wsdl:part name="uuid" element="dds:SubmitDdsResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="AmendDdsRequest">
+		<wsdl:part name="statement" element="dds:AmendDdsRequest"/>
+	</wsdl:message>
+	<wsdl:message name="AmendDdsResponse">
+		<wsdl:part name="response" element="dds:AmendDdsResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="WithdrawDdsRequest">
+		<wsdl:part name="uuid" element="dds:WithdrawDdsRequest"/>
+	</wsdl:message>
+	<wsdl:message name="WithdrawDdsResponse">
+		<wsdl:part name="response" element="dds:WithdrawDdsResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetDdsRequest">
+		<wsdl:part name="uuid" element="dds:GetDdsRequest"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetDdsResponse">
+		<wsdl:part name="response" element="dds:GetDdsResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetDdsByInternalReferenceRequest">
+		<wsdl:part name="internalReference" element="dds:GetDdsByInternalReferenceRequest"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetDdsByInternalReferenceResponse">
+		<wsdl:part name="response" element="dds:GetDdsByInternalReferenceResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetDdsByIdentifiersRequest">
+		<wsdl:part name="internalReference" element="dds:GetDdsByIdentifiersRequest"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetDdsByIdentifiersResponse">
+		<wsdl:part name="response" element="dds:GetDdsByIdentifiersResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="BusinessRulesValidationExceptionMessage">
+		<wsdl:part name="fault" element="dds:BusinessRulesValidationException"/>
+	</wsdl:message>
+	<wsdl:message name="PermissionDeniedExceptionMessage">
+		<wsdl:part name="fault" element="dds:PermissionDeniedException"/>
+	</wsdl:message>
+	<wsdl:message name="NotFoundExceptionMessage">
+		<wsdl:part name="fault" element="dds:NotFoundException"/>
+	</wsdl:message>
+
+	<!-- Port Type -->
+	<wsdl:portType name="EUDRDueDiligenceStatementPort">
+		<wsdl:documentation>
+			EUDR Due Diligence Statement (DDS) service for operators pursuant to Regulation.
+			A Due Diligence Statement is submitted by an Information System user
+			prior to placing relevant products on the market or exporting them.
+			The due diligence process comprises three steps: information gathering,
+			risk assessment, and risk mitigation.
+			An operator is any natural or legal person who, in the course of a commercial activity, places relevant products on the market or exports them.
+			The Information System assigns a reference number and a verification
+			number to each submitted DDS.
+		</wsdl:documentation>
+
+		<wsdl:operation name="submitDds">
+			<wsdl:documentation>
+				Submit a new Due Diligence Statement.
+				The operator or authorised representative submits a DDS prior to
+				placing relevant products on the Union market or exporting them.
+				Accepts optional references for grouping: the voluntary act of creating a
+				new DDS that references previously submitted DDS or SD declarations via their reference numbers.
+				Referenced declarations receive GROUPED status and cannot be individually
+				withdrawn or amended while the referencing grouped declaration is active.
+				Blocked if any referenced statement is not in available status.
+				Role: OPERATOR or REPRESENTATIVE_OPERATOR.
+				Returns the UUID assigned by the Information System.
+			</wsdl:documentation>
+			<wsdl:input message="dds:SubmitDdsRequest" name="SubmitDdsRequest"/>
+			<wsdl:output message="dds:SubmitDdsResponse" name="SubmitDdsResponse"/>
+			<wsdl:fault name="BusinessRulesValidationException" message="dds:BusinessRulesValidationExceptionMessage"/>
+			<wsdl:fault name="PermissionDeniedException" message="dds:PermissionDeniedExceptionMessage"/>
+		</wsdl:operation>
+
+		<wsdl:operation name="amendDds">
+			<wsdl:documentation>
+				Amend an existing Due Diligence Statement within the 72-hour amendment window.
+				The 72-hour window starts from submission and allows the operator to amend the declaration
+				while retaining the same reference number. After this window closes,
+				amendments result in a new submission with a new identifier.
+				Re-triggers risk profiling — the identification of risks of non-compliance
+				based on risk criteria for the purpose of assigning a risk status to the DDS.
+				Blocked if the DDS is not in available status or is subject to a customs lock — the immutability constraint applied once the DDS has been used for
+				customs clearance (release for free circulation or export).
+			</wsdl:documentation>
+			<wsdl:input message="dds:AmendDdsRequest" name="AmendDdsRequest"/>
+			<wsdl:output message="dds:AmendDdsResponse" name="AmendDdsResponse"/>
+			<wsdl:fault name="BusinessRulesValidationException" message="dds:BusinessRulesValidationExceptionMessage"/>
+			<wsdl:fault name="PermissionDeniedException" message="dds:PermissionDeniedExceptionMessage"/>
+		</wsdl:operation>
+
+		<wsdl:operation name="withdrawDds">
+			<wsdl:documentation>
+				Withdraw a Due Diligence Statement within the 72-hour amendment window.
+				Blocked if the DDS has GROUPED status — a lifecycle state assigned
+				when the DDS has been associated to a grouped declaration.
+				Also blocked if the DDS is under active checks by competent authorities or is subject to a customs lock.
+			</wsdl:documentation>
+			<wsdl:input message="dds:WithdrawDdsRequest" name="WithdrawDdsRequest"/>
+			<wsdl:output message="dds:WithdrawDdsResponse" name="WithdrawDdsResponse"/>
+			<wsdl:fault name="BusinessRulesValidationException" message="dds:BusinessRulesValidationExceptionMessage"/>
+			<wsdl:fault name="PermissionDeniedException" message="dds:PermissionDeniedExceptionMessage"/>
+		</wsdl:operation>
+
+		<wsdl:operation name="getDds">
+			<wsdl:documentation>
+				Retrieve DDS overview (status, reference number, and verification number) by providing the UUID assigned by the Information System.
+			</wsdl:documentation>
+			<wsdl:input message="dds:GetDdsRequest"/>
+			<wsdl:output message="dds:GetDdsResponse"/>
+			<wsdl:fault name="NotFoundException" message="dds:NotFoundExceptionMessage"/>
+		</wsdl:operation>
+
+		<wsdl:operation name="getDdsByInternalReference">
+			<wsdl:documentation>
+				Retrieve DDS overview (status, reference number, and verification number) by providing the internal reference number assigned by the operator's
+				own system.
+			</wsdl:documentation>
+			<wsdl:input message="dds:GetDdsByInternalReferenceRequest"/>
+			<wsdl:output message="dds:GetDdsByInternalReferenceResponse"/>
+			<wsdl:fault name="NotFoundException" message="dds:NotFoundExceptionMessage"/>
+		</wsdl:operation>
+
+		<wsdl:operation name="getDdsByIdentifiers">
+			<wsdl:documentation>
+				Retrieve full DDS content by providing the reference number and
+				verification number. The verification number is a security number
+				assigned by the Information System to ensure additional security of data.
+			</wsdl:documentation>
+			<wsdl:input message="dds:GetDdsByIdentifiersRequest"/>
+			<wsdl:output message="dds:GetDdsByIdentifiersResponse"/>
+			<wsdl:fault name="NotFoundException" message="dds:NotFoundExceptionMessage"/>
+		</wsdl:operation>
+	</wsdl:portType>
+
+	<!-- Binding -->
+
+	<wsdl:binding name="EUDRDueDiligenceStatementSoapBinding" type="dds:EUDRDueDiligenceStatementPort">
+
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+
+		<wsdl:operation name="submitDds">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/submitDds"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+			<wsdl:fault name="BusinessRulesValidationException">
+				<soap:fault name="BusinessRulesValidationException" use="literal"/>
+			</wsdl:fault>
+			<wsdl:fault name="PermissionDeniedException">
+				<soap:fault name="PermissionDeniedException" use="literal"/>
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="amendDds">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/amendDds"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+			<wsdl:fault name="BusinessRulesValidationException">
+				<soap:fault name="BusinessRulesValidationException" use="literal"/>
+			</wsdl:fault>
+			<wsdl:fault name="PermissionDeniedException">
+				<soap:fault name="PermissionDeniedException" use="literal"/>
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="withdrawDds">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/withdrawDds"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+			<wsdl:fault name="BusinessRulesValidationException">
+				<soap:fault name="BusinessRulesValidationException" use="literal"/>
+			</wsdl:fault>
+			<wsdl:fault name="PermissionDeniedException">
+				<soap:fault name="PermissionDeniedException" use="literal"/>
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="getDds">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/getDds"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output><soap:body use="literal"/></wsdl:output>
+		</wsdl:operation>
+
+		<wsdl:operation name="getDdsByInternalReference">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/getDdsByInternalReference"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output><soap:body use="literal"/></wsdl:output>
+		</wsdl:operation>
+
+		<wsdl:operation name="getDdsByIdentifiers">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/getDdsByIdentifiers"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output><soap:body use="literal"/></wsdl:output>
+		</wsdl:operation>
+	</wsdl:binding>
+
+	<!-- Service -->
+	<wsdl:service name="EUDRDueDiligenceStatementServiceV3">
+		<wsdl:port name="EUDRDueDiligenceStatementServiceV3Endpoint" binding="dds:EUDRDueDiligenceStatementSoapBinding">
+			<soap:address location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRDueDiligenceStatementServiceV3"/>
+		</wsdl:port>
+	</wsdl:service>
+</wsdl:definitions>
