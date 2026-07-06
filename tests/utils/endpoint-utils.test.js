@@ -54,9 +54,13 @@ describe('Endpoint Utils', function() {
       expect(endpointUtils.getServicePath('simplified-declaration', 'v3')).to.equal('/EUDRSimplifiedDeclarationServiceV3');
     });
 
+    it('should return correct service path for verification service', function() {
+      expect(endpointUtils.getServicePath('verification', 'v3')).to.equal('/EUDRVerifyDeclarationServiceV3');
+    });
+
     it('should throw error for unknown service', function() {
       expect(() => endpointUtils.getServicePath('unknown', 'v1')).to.throw(
-        'Unknown service: unknown. Supported services: echo, retrieval, submission, simplified-declaration'
+        'Unknown service: unknown. Supported services: echo, retrieval, submission, simplified-declaration, verification'
       );
     });
 
@@ -101,6 +105,15 @@ describe('Endpoint Utils', function() {
       );
       expect(endpointUtils.generateEndpoint('simplified-declaration', 'v3', 'eudr-test')).to.equal(
         'https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3'
+      );
+    });
+
+    it('should generate correct endpoints for verification service V3', function() {
+      expect(endpointUtils.generateEndpoint('verification', 'v3', 'eudr-repository')).to.equal(
+        'https://eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRVerifyDeclarationServiceV3'
+      );
+      expect(endpointUtils.generateEndpoint('verification', 'v3', 'eudr-test')).to.equal(
+        'https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRVerifyDeclarationServiceV3'
       );
     });
   });
@@ -166,7 +179,7 @@ describe('Endpoint Utils', function() {
   describe('getSupportedServices', function() {
     it('should return all supported services', function() {
       const supported = endpointUtils.getSupportedServices();
-      expect(supported).to.deep.equal(['echo', 'retrieval', 'submission', 'simplified-declaration']);
+      expect(supported).to.deep.equal(['echo', 'retrieval', 'submission', 'simplified-declaration', 'verification']);
     });
   });
 
@@ -188,6 +201,11 @@ describe('Endpoint Utils', function() {
 
     it('should return supported versions for simplified-declaration service', function() {
       const versions = endpointUtils.getSupportedVersions('simplified-declaration');
+      expect(versions).to.deep.equal(['v3']);
+    });
+
+    it('should return supported versions for verification service', function() {
+      const versions = endpointUtils.getSupportedVersions('verification');
       expect(versions).to.deep.equal(['v3']);
     });
 
@@ -214,6 +232,7 @@ describe('Endpoint Utils', function() {
       expect(endpointUtils.SERVICE_PATHS).to.have.property('retrieval');
       expect(endpointUtils.SERVICE_PATHS).to.have.property('submission');
       expect(endpointUtils.SERVICE_PATHS).to.have.property('simplified-declaration');
+      expect(endpointUtils.SERVICE_PATHS).to.have.property('verification');
     });
 
     it('should export SOAP_ACTIONS', function() {
@@ -221,6 +240,7 @@ describe('Endpoint Utils', function() {
       expect(endpointUtils.SOAP_ACTIONS).to.have.property('retrieval');
       expect(endpointUtils.SOAP_ACTIONS).to.have.property('submission');
       expect(endpointUtils.SOAP_ACTIONS).to.have.property('simplified-declaration');
+      expect(endpointUtils.SOAP_ACTIONS).to.have.property('verification');
     });
   });
 });

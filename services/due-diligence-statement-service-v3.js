@@ -635,7 +635,6 @@ ${bodyXml}
       const parsedResponse = await this.parseSubmitResponse(response.data);
       return {
         httpStatus: response.status,
-        status: response.status,
         ...parsedResponse
       };
     } catch (error) {

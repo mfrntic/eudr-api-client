@@ -14,6 +14,10 @@
     "test:retrieval": "mocha --grep \"EudrRetrievalService - Integration Tests\" --timeout 60000 | pino-pretty",
     "test:submission": "mocha --grep \"EudrSubmissionClient - Integration Tests\" --timeout 120000 | pino-pretty",
     "test:submission:v2": "mocha --grep \"EudrSubmissionClientV2 - Integration Tests\" --timeout 120000 | pino-pretty",
+    "test:submission:v3": "mocha --grep \"EudrSubmissionClientV3 - Integration Tests\" --timeout 120000 | pino-pretty",
+    "test:retrieval:v3": "mocha --grep \"EudrRetrievalClientV3 - Integration Tests\" --timeout 120000 | pino-pretty",
+    "test:sd:v3": "mocha --grep \"EudrSimplifiedDeclarationClientV3 - Integration Tests\" --timeout 120000 | pino-pretty",
+    "test:verification:v3": "mocha tests/services/verification-service-v3.integration.test.js --timeout 120000 | pino-pretty",
     "test:watch": "mocha \"tests/logger.test.js\" \"tests/**/*.integration.test.js\" --watch",
     "test:coverage": "mocha \"tests/logger.test.js\" \"tests/**/*.integration.test.js\" --reporter spec",
     "start": "node index.js"

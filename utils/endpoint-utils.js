@@ -38,6 +38,9 @@ const SERVICE_PATHS = {
   },
   'simplified-declaration': {
     'v3': '/EUDRSimplifiedDeclarationServiceV3'
+  },
+  'verification': {
+    'v3': '/EUDRVerifyDeclarationServiceV3'
   }
 };
 
@@ -61,6 +64,9 @@ const SOAP_ACTIONS = {
   },
   'simplified-declaration': {
     'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3'
+  },
+  'verification': {
+    'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/verification/v3/verify-declaration'
   }
 };
 

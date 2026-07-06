@@ -187,6 +187,24 @@ class EudrErrorHandler {
       return result;
     }
 
+    // Fallback: some V3 services (e.g. verifyDeclaration) report BusinessRulesValidationException
+    // errors without an error code, using a lowercase <errors><error><field>/<message> shape instead
+    // of the <ns:Error><ns:ID>/<ns:Message> shape handled above.
+    const fieldErrorRegex = /<(?:ns\d+:)?error>[\s\S]*?<(?:ns\d+:)?field[^>]*>(.*?)<\/(?:ns\d+:)?field>[\s\S]*?<(?:ns\d+:)?message[^>]*>(.*?)<\/(?:ns\d+:)?message>[\s\S]*?<\/(?:ns\d+:)?error>/g;
+    let fieldErrorMatch;
+
+    while ((fieldErrorMatch = fieldErrorRegex.exec(xmlResponse)) !== null) {
+      foundErrors = true;
+      result.errorDetails.push({
+        field: fieldErrorMatch[1],
+        message: fieldErrorMatch[2]
+      });
+    }
+
+    if (foundErrors) {
+      return result;
+    }
+
     // If no BusinessRulesValidationException found, check for EUDR specific error codes in the response
     for (const errorCode of Object.keys(EUDR_ERROR_CODES)) {
       if (xmlResponse.includes(errorCode)) {

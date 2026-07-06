@@ -115,6 +115,41 @@ describe('EudrSubmissionClientV3', function() {
     expect(parsed.ddsIdentifier).to.be.undefined;
   });
 
+  it('should return only httpStatus and uuid from submitDds, without a lifecycle status field', async function() {
+    const client = new EudrSubmissionClientV3(baseConfig);
+    client.transport.sendSoapRequest = async () => ({
+      status: 200,
+      data: `
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <ns5:SubmitDdsResponse xmlns:ns5="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3">
+      <ns5:uuid>071874bd-8c62-4cac-8eb6-b2fbe003410c</ns5:uuid>
+    </ns5:SubmitDdsResponse>
+  </S:Body>
+</S:Envelope>`
+    });
+
+    const result = await client.submitDds({
+      operatorRole: 'OPERATOR',
+      statement: {
+        internalReferenceNumber: 'INT-REF-1',
+        activityType: 'IMPORT',
+        commodities: [{
+          descriptors: {
+            descriptionOfGoods: 'Test goods',
+            goodsMeasure: { netWeight: 100 }
+          },
+          hsHeading: '1801'
+        }],
+        geoLocationConfidential: false
+      }
+    });
+
+    expect(result.httpStatus).to.equal(200);
+    expect(result.uuid).to.equal('071874bd-8c62-4cac-8eb6-b2fbe003410c');
+    expect(result).to.not.have.property('status');
+  });
+
   it('should parse amend response and extract uuid and status', async function() {
     const client = new EudrSubmissionClientV3(baseConfig);
     const xmlResponse = `

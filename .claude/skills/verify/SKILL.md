@@ -5,6 +5,14 @@ description: How to manually verify changes to the eudr-api-client library end-t
 
 # Verifying eudr-api-client changes
 
+**A permanent live (no-mock) test suite now exists** — prefer it over a new throwaway script:
+`tests/services/{submission,retrieval,simplified-declaration}-service-v3.integration.test.js`
+(`npm run test:submission:v3` / `test:retrieval:v3` / `test:sd:v3`). See
+[docs/analysis/v3-live-test-plan.md](../../../docs/analysis/v3-live-test-plan.md) for the coverage matrix
+and known limitations (amend never succeeds live yet, grouped declarations can't complete within the 20s
+poll window, SD write lifecycle is skip-gated pending an MSPO test account). Only write a new throwaway
+script (as described below) for something these don't already cover.
+
 This is a library with no CLI/server/UI of its own. The surface is the **package boundary** — require the
 public entry point the way a real consumer would, and drive it against the real EUDR acceptance (training)
 environment. Real, working credentials for that environment are already in `.env` at the repo root

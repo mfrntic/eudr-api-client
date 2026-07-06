@@ -60,6 +60,7 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
   - [Retrieval Service](#retrieval-service)
   - [V3 DDS Facade Clients](#v3-dds-facade-clients)
   - [V3 Simplified Declaration Client](#v3-simplified-declaration-client)
+  - [V3 Verify Declaration Client](#v3-verify-declaration-client)
   - [Data Types](#data-types)
   - [Advanced Usage](#advanced-usage)
 
@@ -656,6 +657,7 @@ try {
 | **Retrieval Service V2** ⚠️ discontinued | `EudrRetrievalClientV2` | ✅ Yes | ✅ Yes | CF3 & CF7 v1.4 |
 | **DDS Retrieval (V3)** | `EudrRetrievalClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
 | **Simplified Declaration (V3)** | `EudrSimplifiedDeclarationClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
+| **Verify Declaration (V3)** | `EudrVerifyDeclarationClientV3` | ✅ Yes | ✅ Yes | Downstream Operator & Trader API v1.0 |
 
 **Endpoint Generation Rules:**
 - **`webServiceClientId: 'eudr-repository'`** → Production environment endpoints
@@ -672,7 +674,8 @@ const {
   EudrRetrievalClient,
   EudrRetrievalClientV2,
   EudrRetrievalClientV3,
-  EudrSimplifiedDeclarationClientV3
+  EudrSimplifiedDeclarationClientV3,
+  EudrVerifyDeclarationClientV3
 } = require('eudr-api-client');
 
 // All services automatically generate endpoints 
@@ -705,6 +708,10 @@ const retrievalV3Client = new EudrRetrievalClientV3({
 });
 
 const simplifiedDeclarationV3Client = new EudrSimplifiedDeclarationClientV3({
+  username: 'user', password: 'pass', webServiceClientId: 'eudr-test', ssl: false
+});
+
+const verifyDeclarationV3Client = new EudrVerifyDeclarationClientV3({
   username: 'user', password: 'pass', webServiceClientId: 'eudr-test', ssl: false
 });
 ```
@@ -2018,6 +2025,93 @@ const devSdClient = new EudrSimplifiedDeclarationClientV3({
 // Manual endpoint override
 const customSdClient = new EudrSimplifiedDeclarationClientV3({
   endpoint: 'https://custom-endpoint.com/ws/EUDRSimplifiedDeclarationServiceV3',
+  username: 'user',
+  password: 'pass',
+  webServiceClientId: 'custom-client',
+  ssl: false
+});
+```
+
+### 🔍 EudrVerifyDeclarationClientV3 (V3)
+Client for the `EUDRVerifyDeclarationServiceV3` service — lets any party in the supply chain (not just the
+submitting operator) confirm that a DDS or SD declaration is authentic and in a usable status, given only its
+reference number and verification number. Specified in "EUDR Downstream Operator and Trader API Reference
+v1.0" §4.1 (not the main Operator API Reference, which only lists this service in its summary table).
+
+#### Methods
+| Method | Description | Parameters | Returns |
+|--------|-------------|------------|---------|
+| `verifyDeclaration(referenceNumber, verificationNumber, options)` | Verify a DDS or SD by reference + verification number | `referenceNumber` (String), `verificationNumber` (String), `options` (Object) | Promise with `result`, `status`, `dateTime` |
+
+#### Options
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `rawResponse` | boolean | false | Whether to return the raw XML response instead of the parsed result |
+
+#### Key Features
+- ✅ **Single-operation client**: only `verifyDeclaration`, no submission/retrieval split
+- ✅ **Role-agnostic**: usable by Operators, Authorised Representatives, and SME/Non-SME Downstream Operators or Traders alike — unlike DDS submission, which is operator-only
+- ✅ **Works for both DDS and SD**: the same `referenceNumber`/`verificationNumber` pair works regardless of which service originally issued the declaration
+- ✅ **Three-way result**: `EXISTING_USABLE`, `EXISTING_NON_USABLE`, or `NON_EXISTENT` — `status` (the underlying `EudrStatusType`) is only present for the two `EXISTING_*` outcomes
+
+#### Detailed Method Reference
+
+**`verifyDeclaration(referenceNumber, verificationNumber, options)`**
+```javascript
+// Declaration exists and is in a usable status (e.g. AVAILABLE)
+const usable = await verifyDeclarationV3Client.verifyDeclaration('EUDR00000001BE', 'VN-2025-ABC12');
+// Returns: { httpStatus: 200, result: 'EXISTING_USABLE', status: 'AVAILABLE', dateTime: '2026-05-20T10:00:00.000Z' }
+
+// Declaration exists but is not in a usable status (e.g. WITHDRAWN, REJECTED, SUSPENDED)
+const nonUsable = await verifyDeclarationV3Client.verifyDeclaration('EUDR00000002BE', 'VN-2025-XYZ99');
+// Returns: { httpStatus: 200, result: 'EXISTING_NON_USABLE', status: 'WITHDRAWN', dateTime: '2026-05-20T10:00:00.000Z' }
+
+// No declaration matches the reference/verification number combination
+const missing = await verifyDeclarationV3Client.verifyDeclaration('EUDR99999999BE', 'VN-0000-NOPE1');
+// Returns: { httpStatus: 200, result: 'NON_EXISTENT', status: null, dateTime: '2026-05-20T10:00:00.000Z' }
+```
+
+#### Error Handling
+
+```javascript
+try {
+  await verifyDeclarationV3Client.verifyDeclaration('BAD-REF', 'BAD-VN');
+} catch (error) {
+  if (error.eudrErrors?.length > 0) {
+    // BusinessRulesValidationException for this service reports { field, message } without an error code
+    error.eudrErrors.forEach(e => console.error(`${e.field}: ${e.message}`));
+  } else if (error.httpStatus === 403) {
+    console.error('Permission denied - role not authorized to verify declarations:', error.message);
+  } else if (error.details?.soapFault) {
+    console.error('SOAP fault:', error.details.soapFault.faultString);
+  }
+}
+```
+
+#### Configuration Examples
+
+```javascript
+// Production environment with SSL validation
+const productionVerifyClient = new EudrVerifyDeclarationClientV3({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-repository',
+  ssl: true,
+  timeout: 30000
+});
+
+// Development environment with relaxed SSL
+const devVerifyClient = new EudrVerifyDeclarationClientV3({
+  username: process.env.EUDR_USERNAME,
+  password: process.env.EUDR_PASSWORD,
+  webServiceClientId: 'eudr-test',
+  ssl: false,
+  timeout: 10000
+});
+
+// Manual endpoint override
+const customVerifyClient = new EudrVerifyDeclarationClientV3({
+  endpoint: 'https://custom-endpoint.com/ws/EUDRVerifyDeclarationServiceV3',
   username: 'user',
   password: 'pass',
   webServiceClientId: 'custom-client',
