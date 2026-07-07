@@ -87,20 +87,32 @@ network call), that would be new work, not covered by this plan.
    object. The raw SOAP fault is still captured in `error.details.soapFault` for inspection; this is a
    pre-existing characteristic of `EudrErrorHandler`'s generic fault parsing, not something introduced by
    this test plan.
-6. **`getDdsByIdentifiers` fails with `NotFoundException` ("Data not found.") for one specific real,
-   pre-existing DDS** (`uuid: 5e5ad1ff-a735-4eec-8588-b164a79738d1`, `referenceNumber: 25HR3TXDB21346`,
-   `verificationNumber: EIBEAESE`, submitted 2025-12-02), even though `getDds(uuid)` and
-   `getDdsByInternalReference` both successfully return this exact same DDS with `status: AVAILABLE` and the
-   exact same reference/verification numbers (byte-for-byte confirmed, no hidden whitespace/encoding issue).
-   The generated request XML was independently confirmed well-formed and correct against the WSDL. Working
-   hypothesis (per the repo owner, unconfirmed): this DDS predates the V3 rollout, and `getDdsByIdentifiers`
-   may not work for pre-V3 legacy records the same way `getDds`/`getDdsByInternalReference` do. Needs
-   cross-checking against a DDS created natively under V3 to confirm — blocked for now because every DDS
-   this session's tests submitted-then-withdrew shows up in the TRACES NT portal UI as "Cancelled" status
-   (the portal's display label for the API's `WITHDRAWN`, presumably — unconfirmed) rather than remaining in
-   a queryable state. Deliberately left unresolved per the repo owner ("ostavi ovako" / leave as-is for now)
-   — the `known existing DDS` test in `retrieval-service-v3.integration.test.js` is intentionally left
-   failing on this one assertion so the anomaly stays visible rather than being silently softened.
+6. **`getDdsByIdentifiers` fails with `NotFoundException` ("Data not found.") even for DDS records created
+   natively under V3 — confirmed to be a real EUDR acceptance-server bug, not a client issue or a pre-V3
+   legacy-record artifact.** Originally seen on one pre-existing DDS (`uuid: 5e5ad1ff-a735-4eec-8588-b164a79738d1`,
+   `referenceNumber: 25HR3TXDB21346`, `verificationNumber: EIBEAESE`, submitted 2025-12-02), with the working
+   hypothesis at the time (unconfirmed) that it predated the V3 rollout. That hypothesis is now **disproven**:
+   on 2026-07-07, the same failure was reproduced on `uuid: 64d46f0a-d5a3-422f-a7bc-fb9cbf6bff2e`,
+   `referenceNumber: 26HRBELAQMZQ9C`, `verificationNumber: 7QSWSSRD` — a DDS submitted natively via this V3
+   client (`internalReferenceNumber: V3-TEST-1783418508508`) minutes before the check. For this DDS:
+   - `getDds(uuid)` → 200, `status: AVAILABLE`, returns this exact `referenceNumber`/`verificationNumber`.
+   - `verifyDeclaration(referenceNumber, verificationNumber)` (the separate `EUDRVerifyDeclarationServiceV3`)
+     → 200, `result: EXISTING_USABLE`, `status: AVAILABLE` — confirms the pair is valid and the DDS is usable.
+   - `getDdsByIdentifiers(referenceNumber, verificationNumber)` → SOAP fault `NotFoundException` /
+     `faultstring: "Data not found."`, using the exact same, byte-for-byte-verified reference/verification
+     numbers as the two calls above.
+
+   The request XML matches the WSDL and the documented sample exactly (`dds:GetDdsByIdentifiersRequest` >
+   `dds:referenceAndVerificationNumber` > `eudrCommon:referenceNumber`/`verificationNumber`), and the
+   SOAPAction header matches the WSDL's `soap:operation` value. Since a different operation
+   (`verifyDeclaration`) with the identical input succeeds and confirms the record's existence/validity in the
+   same moment, this rules out client-side request malformation, stale/incorrect identifiers, and legacy-record
+   theories. `getDdsByIdentifiers` appears to be broken server-side on the EUDR acceptance environment for this
+   account — worth reporting to the EUDR helpdesk with this exact request/reference/verification/uuid trio as
+   reproduction evidence. Deliberately left unresolved in the client code per the repo owner ("ostavi ovako" /
+   leave as-is for now) — the `known existing DDS` test in `retrieval-service-v3.integration.test.js` is
+   intentionally left failing on this one assertion so the anomaly stays visible rather than being silently
+   softened.
 
 ## Out of scope (per agreement)
 
