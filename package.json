@@ -97,7 +97,7 @@
     "services/",
     "utils/",
     "README.md",
-    "LICENSE.md"
+    "LICENCE.md"
   ],
   "directories": {
     "lib": "services"
