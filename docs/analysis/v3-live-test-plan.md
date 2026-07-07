@@ -16,6 +16,7 @@ kinds of test never get confused with each other.
 | `tests/services/submission-service-v3.integration.test.js` | `EudrSubmissionClientV3`: submit/amend/withdraw, business-rule regression, grouped declarations | `npm run test:submission:v3` |
 | `tests/services/retrieval-service-v3.integration.test.js` | `EudrRetrievalClientV3`: getDds/getDdsByInternalReference/getDdsByIdentifiers | `npm run test:retrieval:v3` |
 | `tests/services/simplified-declaration-service-v3.integration.test.js` | `EudrSimplifiedDeclarationClientV3`: all 6 operations | `npm run test:sd:v3` |
+| `tests/services/verification-service-v3.integration.test.js` | `EudrVerifyDeclarationClientV3`: verifyDeclaration (only operation) | `npm run test:verification:v3` |
 | `tests/helpers/wait.js` | Shared `delay()` / `pollUntil()` helpers for async-processing timing | (not a test file) |
 
 All three are also picked up automatically by the existing glob-based `npm run test:integration`, alongside
@@ -42,6 +43,11 @@ Requires real credentials in `.env` at the repo root (`EUDR_TRACES_USERNAME`, `E
 | `submitSd` | Blocked by account role | Permission-check test (no MSPO required) | ✅ Pass — cleanly surfaces `EUDR_WEBSERVICE_USER_ACTIVITY_NOT_ALLOWED` |
 | `submitSd`/`updateSd`/`withdrawSd`/`getSd*` success paths | Never tested (blocked) | Skip-gated write-lifecycle tests | ⏸ Skipped — test account has no MICRO_OPERATOR/MSPO role in TRACES NT (see Known Limitations) |
 | `getSd`/`getSdByInternalReference`/`getSdByIdentifiers` not-found paths | Never tested | Not-found tests (no MSPO role required) | ✅ Pass |
+| `verifyDeclaration` — known AVAILABLE DDS | Never tested | Stable known-DDS test (same reference/verification used as `KNOWN_DDS` in retrieval-v3 suite) | ✅ Pass — `EXISTING_USABLE` / `AVAILABLE` |
+| `verifyDeclaration` — bogus reference/verification pair | Never tested | Not-found test | ✅ Pass — confirms **HTTP 200 + `NON_EXISTENT`**, not a fault (see Known Limitations #7) |
+| `verifyDeclaration` — schema-length violations (`referenceNumber` >14 chars, `verificationNumber` <5 chars) | Never tested | Two schema-validation tests | ✅ Pass — confirms real server behavior differs from the docs' fault sample (see Known Limitations #8) |
+| `verifyDeclaration` — freshly submitted DDS | Never tested | Poll + self-skip test | ⚠️ Self-skips: reference/verification numbers did not appear within 30s (same timing limitation as #3) |
+| `verifyDeclaration` — withdrawn DDS | Never tested | Poll + self-skip test | ⚠️ Self-skips — and surfaced a new server-side bug in `getDds` while polling (see Known Limitations #9) |
 
 ## Units-of-measure business rules on V3 (server-enforced, not client-validated)
 
@@ -87,32 +93,74 @@ network call), that would be new work, not covered by this plan.
    object. The raw SOAP fault is still captured in `error.details.soapFault` for inspection; this is a
    pre-existing characteristic of `EudrErrorHandler`'s generic fault parsing, not something introduced by
    this test plan.
-6. **`getDdsByIdentifiers` fails with `NotFoundException` ("Data not found.") even for DDS records created
-   natively under V3 — confirmed to be a real EUDR acceptance-server bug, not a client issue or a pre-V3
-   legacy-record artifact.** Originally seen on one pre-existing DDS (`uuid: 5e5ad1ff-a735-4eec-8588-b164a79738d1`,
-   `referenceNumber: 25HR3TXDB21346`, `verificationNumber: EIBEAESE`, submitted 2025-12-02), with the working
-   hypothesis at the time (unconfirmed) that it predated the V3 rollout. That hypothesis is now **disproven**:
-   on 2026-07-07, the same failure was reproduced on `uuid: 64d46f0a-d5a3-422f-a7bc-fb9cbf6bff2e`,
-   `referenceNumber: 26HRBELAQMZQ9C`, `verificationNumber: 7QSWSSRD` — a DDS submitted natively via this V3
-   client (`internalReferenceNumber: V3-TEST-1783418508508`) minutes before the check. For this DDS:
-   - `getDds(uuid)` → 200, `status: AVAILABLE`, returns this exact `referenceNumber`/`verificationNumber`.
-   - `verifyDeclaration(referenceNumber, verificationNumber)` (the separate `EUDRVerifyDeclarationServiceV3`)
-     → 200, `result: EXISTING_USABLE`, `status: AVAILABLE` — confirms the pair is valid and the DDS is usable.
-   - `getDdsByIdentifiers(referenceNumber, verificationNumber)` → SOAP fault `NotFoundException` /
-     `faultstring: "Data not found."`, using the exact same, byte-for-byte-verified reference/verification
-     numbers as the two calls above.
-
-   The request XML matches the WSDL and the documented sample exactly (`dds:GetDdsByIdentifiersRequest` >
-   `dds:referenceAndVerificationNumber` > `eudrCommon:referenceNumber`/`verificationNumber`), and the
-   SOAPAction header matches the WSDL's `soap:operation` value. Since a different operation
-   (`verifyDeclaration`) with the identical input succeeds and confirms the record's existence/validity in the
-   same moment, this rules out client-side request malformation, stale/incorrect identifiers, and legacy-record
-   theories. `getDdsByIdentifiers` appears to be broken server-side on the EUDR acceptance environment for this
-   account — worth reporting to the EUDR helpdesk with this exact request/reference/verification/uuid trio as
-   reproduction evidence. Deliberately left unresolved in the client code per the repo owner ("ostavi ovako" /
-   leave as-is for now) — the `known existing DDS` test in `retrieval-service-v3.integration.test.js` is
-   intentionally left failing on this one assertion so the anomaly stays visible rather than being silently
-   softened.
+6. **`getDdsByIdentifiers` fails with `NotFoundException` ("Data not found.") for real, pre-existing DDS
+   records, even when reference/verification numbers are confirmed correct** — and the "pre-V3 legacy
+   record" hypothesis below is now disproven by a second data point on a natively-V3 record:
+   - First observed on `uuid: 5e5ad1ff-a735-4eec-8588-b164a79738d1`, `referenceNumber: 25HR3TXDB21346`,
+     `verificationNumber: EIBEAESE`, submitted 2025-12-02.
+   - **Update (2026-07-07):** reproduced again on a different, much more recent DDS —
+     `uuid: c138d609-11b2-4e14-ba8b-bbf7a6173b2e`, `referenceNumber: 26HRWQZJPVEUPV`,
+     `verificationNumber: VUXHBASA`, submitted 2026-07-06 (`internalReferenceNumber:
+     V3-VERIFY-1783371470850`) — i.e. a native V3 record, not a legacy pre-V3 one. This is the DDS
+     currently hardcoded as `KNOWN_DDS` in `retrieval-service-v3.integration.test.js`. Diagnostic script
+     called `getDdsByIdentifiers` with `{ rawResponse: true }`-style inspection of `error.details.soapFault`
+     and confirmed the exact same fault: `faultcode: S:Client`, `faultstring: "Data not found."`. Also
+     re-confirmed via `getDds(uuid)` that the server's own `referenceNumber`/`verificationNumber` for this
+     record match byte-for-byte what's passed to `getDdsByIdentifiers`.
+   - In both cases `getDds(uuid)` and `getDdsByInternalReference` succeed and return `status: AVAILABLE`
+     with the exact same reference/verification numbers that `getDdsByIdentifiers` rejects as not found.
+     The generated request XML was independently confirmed well-formed and correct against the live WSDL/XSD
+     (`?xsd=2`/`?xsd=3` from the acceptance server): namespaces, `SOAPAction`, and the
+     `referenceAndVerificationNumber` wrapper all match the schema exactly.
+   - Since the hypothesis "only affects pre-V3 legacy records" is now falsified by the second (native V3)
+     data point, the more likely explanation is a genuine server-side quirk/bug in `getDdsByIdentifiers` on
+     the acceptance environment, unrelated to record age. Deliberately left unresolved per the repo owner
+     ("ostavi ovako" / leave as-is for now) — the `known existing DDS` test in
+     `retrieval-service-v3.integration.test.js` is intentionally left failing on this one assertion so the
+     anomaly stays visible rather than being silently softened.
+7. **`verifyDeclaration` returns a normal HTTP 200 with `result: NON_EXISTENT` for a bogus
+   reference/verification pair — it does not throw a fault.** This is a meaningful behavioral
+   difference from `getDdsByIdentifiers`/`getSdByIdentifiers`, which throw a `NotFoundException`
+   (surfaced as a generic HTTP 500) for the same kind of unmatched pair. Confirmed live and matches
+   the docs (`EUDR Downstream Operator and Trader API Reference v1.0.md` §5.1.4) exactly. Also
+   notable: calling `verifyDeclaration` with the exact reference/verification pair from Known
+   Limitation #6 above (the DDS that `getDdsByIdentifiers` insists is "Data not found.") correctly
+   returns `EXISTING_USABLE` / `AVAILABLE` — independent confirmation that #6 is isolated to
+   `getDdsByIdentifiers` itself, not a problem with those reference/verification numbers or this
+   account's data.
+8. **`verifyDeclaration` does not pre-validate `referenceNumber`/`verificationNumber` length
+   client-side** (only presence, matching the rest of the V3 clients' philosophy of leaning on the
+   server for business/schema rules). Confirmed live: violating the server's XSD constraints
+   (`ReferenceNumberType` maxLength 14, `VerificationNumberType` minLength 5/maxLength 35) returns a
+   raw JAX-WS `SAXParseException` fault (`cvc-minLength-valid`/`cvc-maxLength-valid`), which
+   `EudrErrorHandler` maps to `eudrErrors[0].code === 'XML_VALIDATION_ERROR'` with `httpStatus 400`.
+   This is a different fault shape than the `BusinessRulesValidationException` sample shown in the
+   docs (§5.1.5, `<errors><error><field>/<message></error></errors>`) — that sample appears to be a
+   generic example shared across services rather than what this operation actually returns for
+   length violations. The client's existing `cvc-` handling in `error-handler.js` already covers
+   this correctly; no code change was needed, just live confirmation.
+9. **New: `getDds(uuid)` can throw a raw `InternalSystemException` (HTTP 500, `faultCode:
+   env:Server`) for a DDS that was just withdrawn, instead of either an empty array or a
+   `WITHDRAWN` overview.** Discovered while writing the `verifyDeclaration` withdrawn-DDS test
+   (`verification-service-v3.integration.test.js`). Reproduced twice independently:
+   - Submit → `withdrawDds` (confirmed to return `httpStatus: 200`/`status: WITHDRAWN`
+     immediately, consistent with existing `withdrawDds` tests) → `getDds(uuid)` returns `[]` on
+     the very next call, then starts throwing `InternalSystemException` on subsequent calls.
+   - This is **not a brief blip**: in one diagnostic run it persisted continuously across ~15
+     polling attempts spanning roughly 3 minutes (some at 3s, some at 15s intervals) with no
+     recovery observed in that window. A separate uuid from an earlier failed test run was
+     re-checked several minutes later (well outside the test's own polling window) and was still
+     throwing the same fault.
+   - Impact: any consumer that withdraws a DDS and then immediately checks its status via `getDds`
+     — e.g. to confirm the withdrawal took effect, or to build a `verifyDeclaration`-style flow
+     manually via retrieval instead of the dedicated verification service — can hit a hard 500
+     instead of a clean `WITHDRAWN` overview. `verifyDeclaration` itself only reads risk-profiled
+     projections (see #7) so it isn't directly affected, but retrieval-based status checks are.
+   - The withdrawn-DDS integration test treats a thrown `getDds` error as "not ready yet" during
+     polling (rather than crashing) and self-skips its final assertion if the record never
+     stabilizes within 30s, consistent with the self-skip convention used elsewhere in this suite
+     for timing-dependent assertions. The anomaly is still logged loudly on every occurrence so it
+     stays visible.
 
 ## Out of scope (per agreement)
 

@@ -163,6 +163,58 @@ ${bodyXml}
 </soapenv:Envelope>`;
   }
 
+  /**
+   * Build an EconomicOperatorIdentificationType element body (used for representedOperator).
+   * Per the V3 schema: operatorReferenceNumber is a structured {identifierType, identifierValue}
+   * pair, operatorAddress is a structured AddressType, and operatorName is mandatory.
+   */
+  generateEconomicOperatorXml(operator) {
+    if (!operator.operatorName) {
+      throw new Error('representedOperator.operatorName is required');
+    }
+
+    let xml = '';
+
+    if (operator.operatorReferenceNumber) {
+      const ref = operator.operatorReferenceNumber;
+      if (!ref.identifierType || !ref.identifierValue) {
+        throw new Error('representedOperator.operatorReferenceNumber requires identifierType and identifierValue');
+      }
+      xml += '<eudrCommon:operatorReferenceNumber>';
+      xml += `<eudrCommon:identifierType>${this.escapeXml(ref.identifierType)}</eudrCommon:identifierType>`;
+      xml += `<eudrCommon:identifierValue>${this.escapeXml(ref.identifierValue)}</eudrCommon:identifierValue>`;
+      xml += '</eudrCommon:operatorReferenceNumber>';
+    }
+
+    if (operator.operatorAddress) {
+      const address = operator.operatorAddress;
+      if (!address.country || !address.street || !address.postalCode || !address.city) {
+        throw new Error('representedOperator.operatorAddress requires country, street, postalCode and city');
+      }
+      xml += '<eudrCommon:operatorAddress>';
+      xml += `<eudrCommon:country>${this.escapeXml(address.country)}</eudrCommon:country>`;
+      xml += `<eudrCommon:street>${this.escapeXml(address.street)}</eudrCommon:street>`;
+      xml += `<eudrCommon:postalCode>${this.escapeXml(address.postalCode)}</eudrCommon:postalCode>`;
+      xml += `<eudrCommon:city>${this.escapeXml(address.city)}</eudrCommon:city>`;
+      if (address.fullAddress) {
+        xml += `<eudrCommon:fullAddress>${this.escapeXml(address.fullAddress)}</eudrCommon:fullAddress>`;
+      }
+      xml += '</eudrCommon:operatorAddress>';
+    }
+
+    if (operator.operatorEmail) {
+      xml += `<eudrCommon:operatorEmail>${this.escapeXml(operator.operatorEmail)}</eudrCommon:operatorEmail>`;
+    }
+
+    if (operator.operatorPhone) {
+      xml += `<eudrCommon:operatorPhone>${this.escapeXml(operator.operatorPhone)}</eudrCommon:operatorPhone>`;
+    }
+
+    xml += `<eudrCommon:operatorName>${this.escapeXml(operator.operatorName)}</eudrCommon:operatorName>`;
+
+    return xml;
+  }
+
   generateSdStatementXml(statement) {
     let xml = '';
 
@@ -188,23 +240,7 @@ ${bodyXml}
     xml += `<sd:activityType>${this.escapeXml(statement.activityType)}</sd:activityType>`;
 
     if (statement.representedOperator) {
-      xml += '<sd:representedOperator>';
-      if (statement.representedOperator.operatorReferenceNumber) {
-        xml += `<eudrCommon:operatorReferenceNumber>${this.escapeXml(statement.representedOperator.operatorReferenceNumber)}</eudrCommon:operatorReferenceNumber>`;
-      }
-      if (statement.representedOperator.address) {
-        xml += `<eudrCommon:address>${this.escapeXml(statement.representedOperator.address)}</eudrCommon:address>`;
-      }
-      if (statement.representedOperator.email) {
-        xml += `<eudrCommon:email>${this.escapeXml(statement.representedOperator.email)}</eudrCommon:email>`;
-      }
-      if (statement.representedOperator.name) {
-        xml += `<eudrCommon:name>${this.escapeXml(statement.representedOperator.name)}</eudrCommon:name>`;
-      }
-      if (statement.representedOperator.phone) {
-        xml += `<eudrCommon:phone>${this.escapeXml(statement.representedOperator.phone)}</eudrCommon:phone>`;
-      }
-      xml += '</sd:representedOperator>';
+      xml += `<sd:representedOperator>${this.generateEconomicOperatorXml(statement.representedOperator)}</sd:representedOperator>`;
     }
 
     if (statement.countryOfActivity) {
