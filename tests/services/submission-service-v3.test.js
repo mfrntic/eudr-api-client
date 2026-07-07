@@ -314,6 +314,95 @@ describe('EudrSubmissionClientV3', function() {
     });
   });
 
+  describe('representedOperator', function() {
+    const baseStatement = {
+      activityType: 'IMPORT',
+      commodities: [{
+        descriptors: {
+          descriptionOfGoods: 'Test goods',
+          goodsMeasure: { netWeight: 100 }
+        },
+        hsHeading: '1801'
+      }],
+      geoLocationConfidential: false
+    };
+
+    it('should generate the structured EconomicOperatorIdentificationType shape', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+      const soapEnvelope = client.transport.createSubmitSoapEnvelope({
+        operatorRole: 'REPRESENTATIVE_OPERATOR',
+        statement: {
+          ...baseStatement,
+          representedOperator: {
+            operatorReferenceNumber: { identifierType: 'vat', identifierValue: 'BE0123456789' },
+            operatorAddress: { country: 'BE', street: 'Rue Test 1', postalCode: '1000', city: 'Brussels' },
+            operatorEmail: 'operator@example.com',
+            operatorPhone: '+32123456',
+            operatorName: 'Test Operator'
+          }
+        }
+      });
+
+      expect(soapEnvelope).to.include('<dds:representedOperator>');
+      expect(soapEnvelope).to.include(
+        '<eudrCommon:operatorReferenceNumber><eudrCommon:identifierType>vat</eudrCommon:identifierType>' +
+        '<eudrCommon:identifierValue>BE0123456789</eudrCommon:identifierValue></eudrCommon:operatorReferenceNumber>'
+      );
+      expect(soapEnvelope).to.include(
+        '<eudrCommon:operatorAddress><eudrCommon:country>BE</eudrCommon:country>' +
+        '<eudrCommon:street>Rue Test 1</eudrCommon:street><eudrCommon:postalCode>1000</eudrCommon:postalCode>' +
+        '<eudrCommon:city>Brussels</eudrCommon:city></eudrCommon:operatorAddress>'
+      );
+      expect(soapEnvelope).to.include('<eudrCommon:operatorEmail>operator@example.com</eudrCommon:operatorEmail>');
+      expect(soapEnvelope).to.include('<eudrCommon:operatorPhone>+32123456</eudrCommon:operatorPhone>');
+      expect(soapEnvelope).to.include('<eudrCommon:operatorName>Test Operator</eudrCommon:operatorName>');
+      expect(soapEnvelope).to.not.include('<eudrCommon:address>');
+      expect(soapEnvelope).to.not.include('<eudrCommon:name>');
+    });
+
+    it('should require operatorName', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+
+      expect(() => client.transport.createSubmitSoapEnvelope({
+        operatorRole: 'REPRESENTATIVE_OPERATOR',
+        statement: {
+          ...baseStatement,
+          representedOperator: { operatorEmail: 'operator@example.com' }
+        }
+      })).to.throw('representedOperator.operatorName is required');
+    });
+
+    it('should require identifierType and identifierValue on operatorReferenceNumber', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+
+      expect(() => client.transport.createSubmitSoapEnvelope({
+        operatorRole: 'REPRESENTATIVE_OPERATOR',
+        statement: {
+          ...baseStatement,
+          representedOperator: {
+            operatorName: 'Test Operator',
+            operatorReferenceNumber: { identifierType: 'vat' }
+          }
+        }
+      })).to.throw('representedOperator.operatorReferenceNumber requires identifierType and identifierValue');
+    });
+
+    it('should require country, street, postalCode and city on operatorAddress', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+
+      expect(() => client.transport.createSubmitSoapEnvelope({
+        operatorRole: 'REPRESENTATIVE_OPERATOR',
+        statement: {
+          ...baseStatement,
+          representedOperator: {
+            operatorName: 'Test Operator',
+            operatorAddress: { country: 'BE' }
+          }
+        }
+      })).to.throw('representedOperator.operatorAddress requires country, street, postalCode and city');
+    });
+  });
+
   describe('SOAPAction', function() {
     it('should build operation-specific SOAPAction values per the WSDL', function() {
       const client = new EudrSubmissionClientV3(baseConfig);

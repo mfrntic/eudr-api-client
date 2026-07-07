@@ -237,6 +237,66 @@ describe('EudrSimplifiedDeclarationClientV3', function() {
 
       expect(soapEnvelope).to.include('<eudrCommon:groupedDeclaration>26FRYUI34JTQKB</eudrCommon:groupedDeclaration>');
     });
+
+    it('should generate the structured EconomicOperatorIdentificationType shape for representedOperator', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      const soapEnvelope = client.createSubmitSoapEnvelope({
+        operatorRole: 'REPRESENTATIVE_MSPO',
+        statement: {
+          ...validStatement,
+          representedOperator: {
+            operatorReferenceNumber: { identifierType: 'vat', identifierValue: 'BE0123456789' },
+            operatorAddress: { country: 'BE', street: 'Rue Test 1', postalCode: '1000', city: 'Brussels' },
+            operatorEmail: 'operator@example.com',
+            operatorPhone: '+32123456',
+            operatorName: 'Test Operator'
+          }
+        }
+      });
+
+      expect(soapEnvelope).to.include('<sd:representedOperator>');
+      expect(soapEnvelope).to.include(
+        '<eudrCommon:operatorReferenceNumber><eudrCommon:identifierType>vat</eudrCommon:identifierType>' +
+        '<eudrCommon:identifierValue>BE0123456789</eudrCommon:identifierValue></eudrCommon:operatorReferenceNumber>'
+      );
+      expect(soapEnvelope).to.include(
+        '<eudrCommon:operatorAddress><eudrCommon:country>BE</eudrCommon:country>' +
+        '<eudrCommon:street>Rue Test 1</eudrCommon:street><eudrCommon:postalCode>1000</eudrCommon:postalCode>' +
+        '<eudrCommon:city>Brussels</eudrCommon:city></eudrCommon:operatorAddress>'
+      );
+      expect(soapEnvelope).to.include('<eudrCommon:operatorEmail>operator@example.com</eudrCommon:operatorEmail>');
+      expect(soapEnvelope).to.include('<eudrCommon:operatorPhone>+32123456</eudrCommon:operatorPhone>');
+      expect(soapEnvelope).to.include('<eudrCommon:operatorName>Test Operator</eudrCommon:operatorName>');
+      expect(soapEnvelope).to.not.include('<eudrCommon:address>');
+      expect(soapEnvelope).to.not.include('<eudrCommon:name>');
+    });
+
+    it('should require operatorName on representedOperator', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+
+      expect(() => client.createSubmitSoapEnvelope({
+        operatorRole: 'REPRESENTATIVE_MSPO',
+        statement: {
+          ...validStatement,
+          representedOperator: { operatorEmail: 'operator@example.com' }
+        }
+      })).to.throw('representedOperator.operatorName is required');
+    });
+
+    it('should require country, street, postalCode and city on operatorAddress', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+
+      expect(() => client.createSubmitSoapEnvelope({
+        operatorRole: 'REPRESENTATIVE_MSPO',
+        statement: {
+          ...validStatement,
+          representedOperator: {
+            operatorName: 'Test Operator',
+            operatorAddress: { country: 'BE' }
+          }
+        }
+      })).to.throw('representedOperator.operatorAddress requires country, street, postalCode and city');
+    });
   });
 
   describe('validation', function() {
