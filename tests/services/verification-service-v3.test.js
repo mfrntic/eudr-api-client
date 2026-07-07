@@ -55,6 +55,25 @@ describe('EudrVerifyDeclarationClientV3', function() {
     expect(parsed.dateTime).to.equal('2026-05-20T10:00:00.000Z');
   });
 
+  it('should parse EXISTING_NON_USABLE verify response', async function() {
+    const client = new EudrVerifyDeclarationClientV3(baseConfig);
+    const xmlResponse = `
+<S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/">
+  <S:Body>
+    <ns5:VerifyDeclarationResponse xmlns:ns5="http://ec.europa.eu/tracesnt/certificate/eudr/verify-declaration/v3">
+      <ns5:result>EXISTING_NON_USABLE</ns5:result>
+      <ns5:status>WITHDRAWN</ns5:status>
+      <ns5:dateTime>2026-05-20T10:00:00.000Z</ns5:dateTime>
+    </ns5:VerifyDeclarationResponse>
+  </S:Body>
+</S:Envelope>`;
+
+    const parsed = await client.parseVerifyDeclarationResponse(xmlResponse);
+    expect(parsed.result).to.equal('EXISTING_NON_USABLE');
+    expect(parsed.status).to.equal('WITHDRAWN');
+    expect(parsed.dateTime).to.equal('2026-05-20T10:00:00.000Z');
+  });
+
   it('should parse NON_EXISTENT verify response without status', async function() {
     const client = new EudrVerifyDeclarationClientV3(baseConfig);
     const xmlResponse = `

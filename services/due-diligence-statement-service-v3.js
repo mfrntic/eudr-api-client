@@ -429,7 +429,7 @@ ${bodyXml}
       throw new Error('getDdsByIdentifiers requires referenceNumber and verificationNumber');
     }
 
-    const bodyXml = `        <dds:GetDdsByIdentifiersRequest>
+    const bodyXml = `<dds:GetDdsByIdentifiersRequest>
             <dds:referenceAndVerificationNumber>
                 <eudrCommon:referenceNumber>${this.escapeXml(referenceNumber)}</eudrCommon:referenceNumber>
                 <eudrCommon:verificationNumber>${this.escapeXml(verificationNumber)}</eudrCommon:verificationNumber>

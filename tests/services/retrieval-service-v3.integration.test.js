@@ -121,7 +121,8 @@ describe('EudrRetrievalClientV3 - Integration Tests', function() {
 
     it('getDdsByIdentifiers(referenceNumber, verificationNumber) should return the full statement for the same DDS', async function() {
       const result = await retrievalClient.getDdsByIdentifiers(KNOWN_DDS.referenceNumber, KNOWN_DDS.verificationNumber);
-      console.log(`[known DDS] getDdsByIdentifiers statement: ${JSON.stringify(result.statement)}`);
+      console.log("KNOWN_DDS params: ", KNOWN_DDS.referenceNumber, KNOWN_DDS.verificationNumber);
+      console.log(`[known DDS] getDdsByIdentifiers statement: ${JSON.stringify(result)}`);
 
       expect(result.httpStatus).to.equal(200);
       expect(result.statement).to.be.an('object');
