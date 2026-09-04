@@ -4,20 +4,45 @@ This directory contains comprehensive tests for the EUDR API Client library, inc
 
 ## Test Types
 
-### Integration Tests
-Integration tests make real API calls to the EUDR system and test actual functionality. These tests require valid credentials and network connectivity.
+Every file matching `*.integration.test.js` makes real network calls; everything else runs offline.
+`npm run test:unit` selects by test name (`--grep "Integration Tests" --invert`), not by filename.
 
-**Files:**
-- `echo-service.integration.test.js` - Tests the Echo Service with real API calls
-- `retrieval-service.integration.test.js` - Tests the Retrieval Service with real API calls
-- `submission-service.integration.test.js` - Tests the Submission Service V1 with real API calls
-- `submission-service-v2.integration.test.js` - Tests the Submission Service V2 with real API calls
+### Integration Tests
+Integration tests make real API calls to the EUDR acceptance environment. They require valid
+credentials in `.env` and network connectivity.
+
+**V3 (current API):**
+- `services/submission-service-v3.integration.test.js` - `EudrSubmissionClientV3`: submit/amend/withdraw, grouped declarations
+- `services/retrieval-service-v3.integration.test.js` - `EudrRetrievalClientV3`: getDds / getDdsByInternalReference / getDdsByIdentifiers
+- `services/simplified-declaration-service-v3.integration.test.js` - `EudrSimplifiedDeclarationClientV3`: all 6 SD operations
+- `services/verification-service-v3.integration.test.js` - `EudrVerifyDeclarationClientV3`: verifyDeclaration
+
+See [../docs/analysis/v3-live-test-plan.md](../docs/analysis/v3-live-test-plan.md) for the coverage
+matrix and the known limitations behind the tests that self-skip or fail by design.
+
+**Echo:**
+- `services/echo-service.integration.test.js` - Echo Service connectivity and WS-Security
+
+**Legacy V1/V2 (reference only):**
+- `services/submission-service.integration.test.js`, `services/submission-service-v2.integration.test.js`
+- `services/retrieval-service.integration.test.js`, `services/retrieval-service-v2.integration.test.js`
+- `services/units-of-measure-validation.integration.test.js`
+
+> The V1/V2 blocks that make live calls are `describe.skip`-ped: the acceptance endpoint no longer
+> accepts V1/V2 requests, so they could only ever fail. Their configuration/validation blocks still run.
 
 ### Unit Tests
-Unit tests test individual components in isolation without external dependencies.
+Unit tests exercise envelope builders, parsers and helpers against hand-crafted XML fixtures - no
+network, no credentials needed.
 
 **Files:**
-- Currently no unit tests (all tests are integration tests)
+- `utils/error-handler.test.js` - SOAP fault classification, and the fault contract documented in the main README
+- `utils/endpoint-utils.test.js` - endpoint generation and resolution
+- `services/submission-service-v3.test.js`, `services/retrieval-service-v3.test.js` - V3 DDS envelopes and parsing
+- `services/simplified-declaration-service-v3.test.js`, `services/verification-service-v3.test.js` - V3 SD and verification
+- `services/*.endpoint.test.js` - per-client endpoint logic (V1/V2/echo)
+- `services/units-of-measure-validation.test.js` - legacy V2 client-side units-of-measure rules
+- `services/index.test.js`, `logger.test.js`, `integration.test.js` - package exports and logging
 
 ## Setup
 
@@ -26,15 +51,18 @@ Create a `.env` file in the project root with your EUDR API credentials:
 
 ```bash
 # EUDR API Configuration
-EUDR_WEB_CLIENT_ID=acceptance
 EUDR_TRACES_USERNAME=your_username_here
 EUDR_TRACES_PASSWORD=your_password_here
-EUDR_TRACES_TIMEOUT=30000
 EUDR_TRACES_BASE_URL=https://acceptance.eudr.webcloud.ec.europa.eu
 EUDR_WEB_SERVICE_CLIENT_ID=eudr-test
+EUDR_TRACES_TIMEOUT=30000
 
 # Test Configuration
 NODE_ENV=test
+
+# Set to 1 to have the V3 submission suite withdraw the DDS records it created.
+# Defaults to off, so test data stays inspectable in TRACES NT after a run.
+EUDR_RUN_CLEANUP=0
 
 # Integration Test Configuration (optional)
 TEST_DDS_UUID=your_test_dds_uuid_here
@@ -50,8 +78,15 @@ npm install
 ## Running Tests
 
 ### All Tests
+Runs every file under `tests/`, unit and integration alike - so it needs credentials and network.
 ```bash
 npm test
+```
+
+### Unit Tests Only
+No credentials or network required. This is what CI runs before publishing.
+```bash
+npm run test:unit
 ```
 
 ### Integration Tests Only
@@ -59,23 +94,20 @@ npm test
 npm run test:integration
 ```
 
-### Unit Tests Only
-```bash
-npm run test:unit
-```
-
 ### Specific Service Tests
 ```bash
-# Echo Service tests
+# --- V3 (current API) ---
+npm run test:submission:v3
+npm run test:retrieval:v3
+npm run test:sd:v3
+npm run test:verification:v3
+
+# --- Echo ---
 npm run test:echo
 
-# Retrieval Service tests
+# --- Legacy V1/V2 ---
 npm run test:retrieval
-
-# Submission Service V1 tests
 npm run test:submission
-
-# Submission Service V2 tests
 npm run test:submission:v2
 ```
 
@@ -113,9 +145,9 @@ Tests verify WSSE security implementation:
 ## Test Timeouts
 
 - **Echo Service**: 60 seconds
-- **Retrieval Service**: 60 seconds  
-- **Submission Service V1**: 120 seconds (longer due to complex operations)
-- **Submission Service V2**: 120 seconds (longer due to complex operations)
+- **All V3 suites**: 120 seconds (submissions and the polling helpers need the headroom)
+- **Legacy V1/V2 retrieval**: 60 seconds
+- **Legacy V1/V2 submission**: 120 seconds
 
 ## Expected Behavior
 
@@ -125,19 +157,34 @@ Tests verify WSSE security implementation:
 - Should return both parsed and raw XML responses
 - Should respect timeout configurations
 
-### Retrieval Service
+### V3 DDS (submission + retrieval)
+- Should submit DOMESTIC and IMPORT declarations and return a uuid
+- Should surface server business-rule violations as typed `EUDR_*` errors
+- Should tolerate the async-indexing window after a write: a retrieval issued immediately after
+  `submitDds` may answer with an empty overview array **or** a `NotFoundException` - both are correct
+- Should reject V1/V2 field names (`operatorType`, `associatedStatements`, `activityType: 'TRADE'`)
+
+### V3 Simplified Declaration
+- Should cleanly surface `EUDR_WEBSERVICE_USER_ACTIVITY_NOT_ALLOWED` when the account has no MSPO role
+- Write-lifecycle tests self-skip unless the account is registered as MICRO_OPERATOR/MSPO
+
+### V3 Verify Declaration
+- Should return HTTP 200 with a `result` value (including `NON_EXISTENT`) rather than throwing a fault
+- Should not send a `BodyIdentity` header - the Verify WSDL does not declare one
+
+### Retrieval Service (legacy V1/V2)
 - Should handle invalid reference numbers gracefully
 - Should validate UUID formats
 - Should process verification numbers correctly
 - Should return proper error responses for invalid data
 
-### Submission Service V1
+### Submission Service V1 (legacy)
 - Should validate submission data structure
 - Should handle missing required fields
 - Should validate country codes and HS headings
 - Should process commodity information correctly
 
-### Submission Service V2
+### Submission Service V2 (legacy)
 - Should validate V2 specific data structures
 - Should handle V2 address format (street, city, postalCode, country)
 - Should process V2 goods measure (without volume field)

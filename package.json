@@ -4,7 +4,7 @@
   "description": "Enterprise-grade Node.js library for the EU Deforestation Regulation (EUDR) TRACES system. Provides full V3 API integration: Due Diligence Statements (DDS), Simplified Declarations (SD), and Declaration Verification. Legacy V1/V2 API clients are retained for reference but are no longer functional against the live EUDR system.",
   "main": "index.js",
   "scripts": {
-    "test": "powershell -Command \"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; mocha 'tests/logger.test.js' 'tests/**/*.integration.test.js' --timeout 120000\"",
+    "test": "powershell -Command \"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; mocha 'tests/**/*.test.js' --timeout 120000\"",
     "test:runner": "node tests/run-tests.js",
     "test:logger": "mocha tests/logger.test.js --grep \"Logger System Tests\" --timeout 30000 | pino-pretty",
     "test:integration": "mocha \"tests/**/*.integration.test.js\" --timeout 120000 | pino-pretty",

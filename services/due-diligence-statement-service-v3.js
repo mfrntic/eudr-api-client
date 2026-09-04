@@ -31,7 +31,7 @@ class EudrDueDiligenceStatementServiceV3Transport {
    * @param {string|Object} [config.bodyIdentity] Multi-operator BodyIdentity header (release 8.2.1).
    *        A plain string is shorthand for OperatorAccessIdentifier; an object accepts exactly one of
    *        operatorAccessIdentifier, authorityActivityAccessIdentifier,
-   *        organicControlBodyAccessIdentifier, otherBodyAccessIdentifier. Max 16 characters.
+   *        organicControlBodyAccessIdentifier, otherBodyAccessIdentifier. Max 16 characters (32 for otherBodyAccessIdentifier).
    *        Every operation also accepts a per-call `options.bodyIdentity` override.
    * @param {number} [config.timestampValidity=60]
    * @param {number} [config.timeout=10000]

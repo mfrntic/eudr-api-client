@@ -42,4 +42,31 @@ async function pollUntil(fn, isReady, options = {}) {
   return { ready: false, result: lastResult };
 }
 
-module.exports = { delay, pollUntil };
+
+/**
+ * Tolerate the retrieval race that follows every write. A DDS/SD is not queryable the instant it
+ * is accepted, and in that window the server legitimately answers a retrieval in one of two ways:
+ * an overview array (possibly empty), or a NotFoundException. Asserting only the first makes a live
+ * test race the server's own indexing - see Known Limitations #3 in docs/analysis/v3-live-test-plan.md.
+ *
+ * Returns the result when one came back, or null when the server answered with a not-found fault.
+ * The fault is asserted to be properly typed before being swallowed, so a malformed one still fails.
+ *
+ * @param {Promise} retrieval - the in-flight retrieval call
+ * @param {string} label - short description used in the console trace and assertion messages
+ * @param {Function} expect - the caller's chai `expect` (this module stays assertion-library free)
+ * @returns {Promise<Object|null>}
+ */
+async function resolveOrCleanNotFound(retrieval, label, expect) {
+  try {
+    return await retrieval;
+  } catch (error) {
+    console.log(`[${label}] not-found fault this soon after the write (${error.eudrErrorCode})`);
+    expect(error.notFound, `${label}: a fault this soon after a write must be a clean NotFoundException`).to.be.true;
+    expect(error.httpStatus).to.equal(404);
+    expect(error.eudrErrorCode).to.equal('EUDR_NOT_FOUND');
+    return null;
+  }
+}
+
+module.exports = { delay, pollUntil, resolveOrCleanNotFound };

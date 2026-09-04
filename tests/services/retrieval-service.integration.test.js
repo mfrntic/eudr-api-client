@@ -74,7 +74,10 @@ describe('EudrRetrievalClient V1 Tests', function () {
     });
   });
 
-  describe('🌐 Connection & Authentication', function () {
+  // Skipped: the V1 API is no longer functional against the live EUDR system. The V1/V2
+  // clients are retained for reference only (see the package description); these blocks make
+  // real network calls that the acceptance endpoint now rejects outright.
+  describe.skip('🌐 Connection & Authentication', function () {
     it('should successfully connect to EUDR Retrieval API', async function () {
       try {
 
@@ -90,7 +93,10 @@ describe('EudrRetrievalClient V1 Tests', function () {
     });
   });
 
-  describe('Real retrieval tests', function () {
+  // Skipped: the V1 API is no longer functional against the live EUDR system. The V1/V2
+  // clients are retained for reference only (see the package description); these blocks make
+  // real network calls that the acceptance endpoint now rejects outright.
+  describe.skip('Real retrieval tests', function () {
     describe('getDdsInfoByInternalReferenceNumber', function () {
       it('should retrieve DDS by internal reference number', async function () {
         try {

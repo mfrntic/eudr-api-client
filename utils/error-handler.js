@@ -104,7 +104,18 @@ class EudrErrorHandler {
 
     // NotFoundException is declared as an explicit fault on every V3 get* operation since
     // release 8.2.1. Flag it up front so it survives whichever return path is taken below.
-    if (/NotFoundException/.test(xmlResponse) || /Data not found/i.test(xmlResponse)) {
+    //
+    // Scope the match to the fault itself rather than the whole body: SAXParse and cvc-* faults
+    // quote the offending user value back, so a declaration whose text happens to contain
+    // "Data not found" would otherwise be reported as a 404 instead of a validation error.
+    const detailMatch = xmlResponse.match(/<(?:\w+:)?detail\b[^>]*>([\s\S]*?)<\/(?:\w+:)?detail>/i);
+    const faultStringForType = xmlResponse.match(/<faultstring[^>]*>([\s\S]*?)<\/faultstring>/i);
+    const faultDetail = detailMatch ? detailMatch[1] : '';
+    const faultSummary = `${faultDetail} ${faultStringForType ? faultStringForType[1] : ''}`;
+
+    // The exception name is a reliable signal anywhere in the fault; the loose "Data not found"
+    // phrase is only trusted inside <detail>, where user content is never echoed.
+    if (/NotFoundException/.test(faultSummary) || /Data not found/i.test(faultDetail)) {
       result.faultType = 'NotFoundException';
     }
 
@@ -133,8 +144,10 @@ class EudrErrorHandler {
           return result;
         }
 
-        // Extract the actual validation error message, handling both formats
-        const saxMatch = result.faultString.match(/(?:SAXParseException[^;]*;\s*org\.xml\.sax\.SAXException:\s*(?:org\.xml\.sax\.SAXParseException;\s*)?|^)(cvc-.*?)(?:\n|$)/);
+        // Extract the actual validation error message. The EUDR system reports these with a
+        // varying number of nested `org.xml.sax.SAXException:` wrappers, so anchor on the `cvc-`
+        // rule name itself rather than on one specific nesting depth.
+        const saxMatch = result.faultString.match(/(cvc-.*?)(?:\n|$)/);
         if (saxMatch) {
           const errorMessage = saxMatch[1].trim();
           const errorDetail = {
@@ -206,6 +219,9 @@ class EudrErrorHandler {
     while ((fieldErrorMatch = fieldErrorRegex.exec(xmlResponse)) !== null) {
       foundErrors = true;
       result.errorDetails.push({
+        // This shape carries no error code; report it explicitly as null so consumers always
+        // see the documented { code, message, field } triple.
+        errorCode: null,
         field: fieldErrorMatch[1],
         message: fieldErrorMatch[2]
       });
@@ -318,7 +334,14 @@ class EudrErrorHandler {
             soapFault.faultString.includes('You are not authorized')
           )) {
             errorResponse.httpStatus = 403; // Forbidden - authenticated but not authorized
-          } else if (soapFault.faultCode === 'S:Client' && soapFault.faultString) {
+          } else if (soapFault.faultString && (
+            // BusinessRulesValidationException is a client-side rejection, but the EUDR system
+            // reports it with a *Server* faultcode, so it has to be matched by name.
+            soapFault.faultString.includes('BusinessRulesValidationException') ||
+            // The envelope prefix varies across the V3 services (S:, soapenv:, env:, SOAP-ENV:),
+            // so match the faultcode's local name rather than one hard-coded prefix.
+            /(^|:)Client$/.test(soapFault.faultCode || '')
+          )) {
             // For other client-side errors, use 400 Bad Request
             errorResponse.httpStatus = 400;
           }
@@ -338,16 +361,11 @@ class EudrErrorHandler {
             errorResponse.eudrSpecific = true;
             errorResponse.wellKnownError = true;
 
-            const alreadyReported = (soapFault.errorDetails || []).some(
-              (detail) => detail.errorCode === 'EUDR_NOT_FOUND'
-            );
-            if (!alreadyReported) {
-              errorResponse.eudrErrors.push({
-                code: 'EUDR_NOT_FOUND',
-                message: soapFault.faultString || EUDR_ERROR_CODES.EUDR_NOT_FOUND,
-                field: null
-              });
-            }
+            errorResponse.eudrErrors.push({
+              code: 'EUDR_NOT_FOUND',
+              message: soapFault.faultString || EUDR_ERROR_CODES.EUDR_NOT_FOUND,
+              field: null
+            });
           }
 
           if (soapFault.errorDetails && soapFault.errorDetails.length > 0) {
@@ -360,14 +378,20 @@ class EudrErrorHandler {
                   errorDetail.message?.includes('not authorized') ||
                   errorDetail.message?.includes('not allowed') ||
                   errorDetail.message?.includes('role')) {
-                errorResponse.httpStatus = 403; // Forbidden
+                // A confirmed NotFoundException keeps its 404; the caller contract documented in
+                // the README is `if (error.notFound)`, which must not disagree with httpStatus.
+                if (!errorResponse.notFound) {
+                  errorResponse.httpStatus = 403; // Forbidden
+                }
               }
 
               // Handle data type validation errors specially
               if (errorDetail.errorCode === 'EUDR_DATA_TYPE_VALIDATION_ERROR') {
                 errorResponse.eudrSpecific = true;
                 errorResponse.wellKnownError = true;
-                errorResponse.httpStatus = 400; // Bad Request for validation errors
+                if (!errorResponse.notFound) {
+                  errorResponse.httpStatus = 400; // Bad Request for validation errors
+                }
 
                 // Add to the array of EUDR errors with user-friendly message
                 errorResponse.eudrErrors.push({
@@ -400,12 +424,20 @@ class EudrErrorHandler {
               else if (errorResponse.details?.soapFault?.errorDetails?.length > 0) {
                 errorResponse.eudrSpecific = true;
                 errorResponse.wellKnownError = false;
-                // Add to the array of EUDR errors
-                errorResponse.eudrErrors = errorResponse.details.soapFault.errorDetails.map(errorDetail => ({
-                  code: errorDetail.errorCode,
+                // Add to the array of EUDR errors. This reassigns the whole array rather than
+                // appending — and runs once per error detail — so rebuild it from scratch each
+                // time, keeping the EUDR_NOT_FOUND entry the NotFoundException branch pushed above.
+                const mapped = errorResponse.details.soapFault.errorDetails.map(errorDetail => ({
+                  code: errorDetail.errorCode ?? null,
                   message: errorDetail.message,
                   field: errorDetail.field || null
                 }));
+                const preserved = errorResponse.notFound
+                  ? errorResponse.eudrErrors.filter(entry => entry.code === 'EUDR_NOT_FOUND').slice(0, 1)
+                  : [];
+                errorResponse.eudrErrors = preserved.concat(
+                  mapped.filter(entry => entry.code !== 'EUDR_NOT_FOUND' || preserved.length === 0)
+                );
               }
             });
 

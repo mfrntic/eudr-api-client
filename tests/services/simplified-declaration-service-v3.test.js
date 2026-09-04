@@ -578,11 +578,33 @@ describe('EudrSimplifiedDeclarationClientV3', function() {
       expect(client.createGetSdSoapEnvelope('uuid-1', null)).to.not.include('BodyIdentity');
     });
 
-    it('should reject an identifier longer than 16 characters', function() {
+    it('should reject a 16-char-capped identifier longer than 16 characters', function() {
       const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
 
       try {
         client.createGetSdSoapEnvelope('uuid-1', 'A'.repeat(17));
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_BODY_IDENTITY_TOO_LONG');
+      }
+    });
+
+    // OtherBodyAccessIdentifierType is maxLength 32 in xsd2-body-v3.xsd, unlike the other three.
+    it('should accept an otherBodyAccessIdentifier of up to 32 characters', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+
+      for (const length of [17, 32]) {
+        const value = 'A'.repeat(length);
+        expect(client.createGetSdSoapEnvelope('uuid-1', { otherBodyAccessIdentifier: value }))
+          .to.include(`<OtherBodyAccessIdentifier>${value}</OtherBodyAccessIdentifier>`);
+      }
+    });
+
+    it('should reject an otherBodyAccessIdentifier longer than 32 characters', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+
+      try {
+        client.createGetSdSoapEnvelope('uuid-1', { otherBodyAccessIdentifier: 'A'.repeat(33) });
         throw new Error('Expected a validation error');
       } catch (error) {
         expect(error.eudrErrorCode).to.equal('EUDR_V3_BODY_IDENTITY_TOO_LONG');

@@ -15,6 +15,9 @@ jobs:
           node-version: '22' # Možemo prilagoditi verziju ako je potrebno
           registry-url: 'https://registry.npmjs.org'
       - run: npm ci
+      # This workflow fires on every push to master, so gate the publish on the unit suite
+      # rather than shipping an unverified build.
+      - run: npm run test:unit
       - run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

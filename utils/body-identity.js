@@ -13,10 +13,25 @@
  *       <OperatorAccessIdentifier>ABC123</OperatorAccessIdentifier>
  *   </body:BodyIdentity>
  *
- * `BodyIdentityType` is a choice of exactly one identifier, each an xs:token of max length 16.
+ * `BodyIdentityType` is a choice of exactly one identifier, each an xs:token. The maximum length
+ * differs per identifier: 16 characters for the operator, authority-activity and organic-control-body
+ * identifiers, and 32 for `OtherBodyAccessIdentifier` (the national-customs-system case).
  */
 
 const BODY_IDENTITY_NAMESPACE = 'http://ec.europa.eu/tracesnt/body/v3';
+
+/**
+ * Per-element `xs:maxLength` from xsd2-body-v3.xsd. `OtherBodyAccessIdentifierType` allows 32;
+ * the other three allow 16.
+ */
+const BODY_IDENTITY_MAX_LENGTHS = {
+  AuthorityActivityAccessIdentifier: 16,
+  OperatorAccessIdentifier: 16,
+  OrganicControlBodyAccessIdentifier: 16,
+  OtherBodyAccessIdentifier: 32
+};
+
+/** @deprecated Use BODY_IDENTITY_MAX_LENGTHS - the cap is per identifier kind, not global. */
 const BODY_IDENTITY_MAX_LENGTH = 16;
 
 /**
@@ -107,9 +122,10 @@ function normalizeBodyIdentity(bodyIdentity) {
   if (!value) {
     throw invalid('bodyIdentity value must be a non-empty string.');
   }
-  if (value.length > BODY_IDENTITY_MAX_LENGTH) {
+  const maxLength = BODY_IDENTITY_MAX_LENGTHS[element];
+  if (value.length > maxLength) {
     const error = new Error(
-      `bodyIdentity value '${value}' is ${value.length} characters; the EUDR schema allows a maximum of ${BODY_IDENTITY_MAX_LENGTH}.`
+      `bodyIdentity value '${value}' is ${value.length} characters; the EUDR schema allows a maximum of ${maxLength} for ${element}.`
     );
     error.eudrErrorCode = 'EUDR_V3_BODY_IDENTITY_TOO_LONG';
     error.eudrSpecific = true;
@@ -142,6 +158,7 @@ function buildBodyIdentityHeaderXml(bodyIdentity) {
 module.exports = {
   BODY_IDENTITY_NAMESPACE,
   BODY_IDENTITY_MAX_LENGTH,
+  BODY_IDENTITY_MAX_LENGTHS,
   BODY_IDENTITY_ELEMENTS,
   normalizeBodyIdentity,
   buildBodyIdentityHeaderXml

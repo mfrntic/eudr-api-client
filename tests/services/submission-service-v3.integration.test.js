@@ -8,7 +8,7 @@ const { expect } = require('chai');
 const EudrSubmissionClientV3 = require('../../services/submission-service-v3');
 const EudrRetrievalClientV3 = require('../../services/retrieval-service-v3');
 const { logger } = require('../../utils/logger');
-const { delay, pollUntil } = require('../helpers/wait');
+const { delay, pollUntil, resolveOrCleanNotFound } = require('../helpers/wait');
 
 function makeGeojsonBase64() {
   const geojson = {
@@ -182,7 +182,13 @@ describe('EudrSubmissionClientV3 - Integration Tests', function() {
       });
       createdUuids.push(submitResult.uuid);
 
-      const overview = await retrievalClient.getDds(submitResult.uuid);
+      const overview = await resolveOrCleanNotFound(
+        retrievalClient.getDds(submitResult.uuid),
+        'getDds immediately after submit',
+        expect
+      );
+      if (!overview) return;
+
       console.log(`[timing] getDds immediately after submit: ${JSON.stringify(overview.ddsInfo)}`);
       // Documented EUDR behavior: this may legitimately be an empty array right after submit.
       expect(overview.ddsInfo).to.be.an('array');
@@ -220,8 +226,13 @@ describe('EudrSubmissionClientV3 - Integration Tests', function() {
       });
       createdUuids.push(submitA.uuid);
 
+      // pollUntil expects its probe to resolve rather than throw, but in this window getDds can
+      // answer with a NotFoundException instead of an empty array - treat that as "not ready yet".
       const poll = await pollUntil(
-        () => retrievalClient.getDds(submitA.uuid),
+        () => retrievalClient.getDds(submitA.uuid).catch((error) => {
+          if (error.notFound) return { ddsInfo: [] };
+          throw error;
+        }),
         (result) => Boolean(result.ddsInfo && result.ddsInfo.length > 0 && result.ddsInfo[0].referenceNumber),
         { intervalMs: 3000, timeoutMs: 20000 }
       );
@@ -245,7 +256,16 @@ describe('EudrSubmissionClientV3 - Integration Tests', function() {
 
       await delay(15000);
 
-      const overviewA = await retrievalClient.getDds(submitA.uuid);
+      const overviewA = await resolveOrCleanNotFound(
+        retrievalClient.getDds(submitA.uuid),
+        'grouping: getDds for DDS A',
+        expect
+      );
+      if (!overviewA) {
+        this.skip();
+        return;
+      }
+
       console.log(`[grouping] DDS A status after grouping attempt: ${JSON.stringify(overviewA.ddsInfo)}`);
 
       if (overviewA.ddsInfo[0] && overviewA.ddsInfo[0].status === 'GROUPED') {

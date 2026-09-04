@@ -468,7 +468,9 @@ describe('Units of Measure Validation', function() {
     });
   });
 
-  describe('Units of Measure Validation - Valid Cases', function() {
+  // Skipped: these cases submit through EudrSubmissionClientV2 against the live acceptance
+  // endpoint, which no longer accepts V1/V2 requests. The V2 client is reference-only.
+  describe.skip('Units of Measure Validation - Valid Cases', function() {
     it('should pass units of measure validation for valid Import with HS code in Appendix I 1', async function() {
       const request = {
         operatorType: 'OPERATOR',

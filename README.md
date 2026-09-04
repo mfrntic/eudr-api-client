@@ -149,19 +149,30 @@ console.log('✅ DDS Submitted. UUID:', result.uuid);
 
 ### Environment Variables
 
-Create a `.env` file in your project root:
+> **The library reads only `EUDR_LOG_LEVEL` from the environment.** Credentials are **not** picked up
+> automatically — pass them to the client constructor yourself. The variable names below are a
+> suggested convention, not something the package resolves on your behalf.
 
 ```bash
-# EUDR API Credentials
+# Read by the library
+EUDR_LOG_LEVEL=info  # trace, debug, info, warn, error, fatal
+
+# Your own convention - you wire these into the client config (see below)
 EUDR_TRACES_USERNAME=your-username
 EUDR_TRACES_PASSWORD=your-password
 EUDR_WEB_SERVICE_CLIENT_ID=eudr-test
-
-# Optional: SSL Configuration
 EUDR_SSL_ENABLED=false  # true for production (secure), false for development
+```
 
-# Optional: Logging
-EUDR_LOG_LEVEL=info  # trace, debug, info, warn, error, fatal
+```javascript
+require('dotenv').config();
+
+const client = new EudrSubmissionClientV3({
+  username: process.env.EUDR_TRACES_USERNAME,
+  password: process.env.EUDR_TRACES_PASSWORD,
+  webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID,
+  ssl: process.env.EUDR_SSL_ENABLED === 'true'
+});
 ```
 
 ### Configuration Options
@@ -210,7 +221,7 @@ belong to a single operator, and calls from a multi-operator user were rejected 
 `EUDR_WEBSERVICE_USER_FROM_MANY_OPERATOR`.
 
 The value is the operator's **Web Service Identifier**, assigned by the Commission when the operator
-requests API access (max 16 characters).
+requests API access (max 16 characters; 32 for `otherBodyAccessIdentifier`).
 
 ```javascript
 // Configure a default identity for every call from this client
@@ -242,7 +253,7 @@ Bodies other than operators use the object form, which accepts exactly one ident
 | **Supported clients** | `EudrSubmissionClientV3`, `EudrRetrievalClientV3`, `EudrSimplifiedDeclarationClientV3` (all 12 DDS + SD operations) |
 | **Not supported** | `EudrVerifyDeclarationClientV3` — the Verify Declaration WSDL does not declare the header |
 | **When omitted** | No header is sent and the request is byte-identical to previous library versions — single-operator users need to change nothing |
-| **Validation** | Exactly one identifier kind (`EUDR_V3_BODY_IDENTITY_INVALID`), at most 16 characters (`EUDR_V3_BODY_IDENTITY_TOO_LONG`) |
+| **Validation** | Exactly one identifier kind (`EUDR_V3_BODY_IDENTITY_INVALID`), at most 16 characters — 32 for `otherBodyAccessIdentifier` (`EUDR_V3_BODY_IDENTITY_TOO_LONG`) |
 | **Rejected identity** | An identifier the account may not act as comes back as `UnauthenticatedException` — surfaced as `error.httpStatus === 401` |
 
 ### Configuration Priority
@@ -552,7 +563,7 @@ All of these are thrown **before any network call**, carry `error.eudrSpecific =
 | `EUDR_V3_OPERATOR_REFERENCE_NUMBER_LIMIT` | more than 12 `operatorReferenceNumber` entries |
 | `EUDR_V3_GROUPED_DECLARATIONS_LIMIT` | more than 2000 `groupedDeclarations` references |
 | `EUDR_V3_BODY_IDENTITY_INVALID` | `bodyIdentity` has zero, several, or unknown identifier fields |
-| `EUDR_V3_BODY_IDENTITY_TOO_LONG` | a `bodyIdentity` value longer than 16 characters |
+| `EUDR_V3_BODY_IDENTITY_TOO_LONG` | a `bodyIdentity` value longer than its schema limit (16 characters; 32 for `otherBodyAccessIdentifier`) |
 | `EUDR_V3_SD_*` | SD-only rules — see the [SD validation errors table](#v3-simplified-declaration-client) |
 
 #### How server faults are surfaced
@@ -564,10 +575,12 @@ All of these are thrown **before any network call**, carry `error.eudrSpecific =
 | `NotFoundException` (V3 `get*` operations) | `404` | `error.notFound === true`, `eudrErrorCode: 'EUDR_NOT_FOUND'` |
 | `UnauthenticatedException` | `401` | — (wrong credentials, or a `bodyIdentity` the account may not act as) |
 | `PermissionDeniedException` / "not authorized" faults | `403` | — |
-| `BusinessRulesValidationException` | `400` | `error.eudrErrors[]` with `{ code, message, field }` |
+| `BusinessRulesValidationException` | `400` | `error.eudrErrors[]` with `{ code, message, field }` — `code` is `null` when the server reports no error code (the `{ field, message }` fault shape used by Verify Declaration) |
 | XSD validation (`SAXParseException` / `cvc-*`) | `400` | `eudrErrors[0].code === 'XML_VALIDATION_ERROR'` |
 
 > `NotFoundException` became an explicitly declared fault on the V3 `get*` operations with EUDR release 8.2.1; before that it surfaced as a generic 500.
+>
+> The faultcode prefix varies across the V3 services (`S:`, `soapenv:`, `env:`, `SOAP-ENV:`); the mapping above is prefix-agnostic. `BusinessRulesValidationException` is mapped by name because the EUDR system reports it with a `Server` faultcode.
 
 See each V3 client's **Error Handling** subsection below for worked examples.
 
@@ -951,6 +964,13 @@ Retrieval facade over the unified DDS V3 service. Unlike V1/V2, retrieval and su
 |--------|------|---------|-------------|
 | `rawResponse` | boolean | false | Whether to return the raw XML response instead of the parsed result |
 | `bodyIdentity` | string\|Object | - | Operator identity for this call ([multi-operator authentication](#multi-operator-authentication)); overrides the configured value, `null` suppresses it |
+
+> ⚠️ **`getDdsByIdentifiers` is restricted by operator class.** The V3 WSDL states the operation is
+> available only to non-SME operators (standard operators and authorised representatives) — SME downstream
+> operators have no access to it. A rejected call comes back as a `NotFoundException`
+> (`error.notFound === true`, HTTP 404) with the message *"You are not authorized to view this DDS."*,
+> deliberately indistinguishable from a genuinely missing record. Use `getDds`/`getDdsByInternalReference`
+> for your own declarations — those are owner-scoped and not subject to this restriction.
 
 > Note: unlike V1/V2, `decodeGeojson` auto-decoding is **not yet implemented** for V3 — `geometryGeojson` in `getDdsByIdentifiers` results comes back base64-encoded exactly as received from the server.
 

@@ -292,7 +292,7 @@ for capabilities the library already had.
       override. Not added to the Verify Declaration client, whose WSDL does not declare the header.
 - [x] With no `bodyIdentity` configured, the generated envelope is byte-identical to the pre-8.2.1
       output (the namespace is declared inline on the header element, not on the envelope).
-- [x] Input validation matching the XSD choice: exactly one identifier kind, max 16 characters
+- [x] Input validation matching the XSD choice: exactly one identifier kind, max 16 characters (32 for otherBodyAccessIdentifier)
       (`EUDR_V3_BODY_IDENTITY_INVALID`, `EUDR_V3_BODY_IDENTITY_TOO_LONG`).
 - [x] `NotFoundException`, newly declared as a fault on the `get*` operations, is classified by
       `EudrErrorHandler` as `httpStatus: 404` / `notFound: true` / `EUDR_NOT_FOUND` instead of

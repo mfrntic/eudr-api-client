@@ -12,7 +12,7 @@
 const { expect } = require('chai');
 const EudrSimplifiedDeclarationClientV3 = require('../../services/simplified-declaration-service-v3');
 const { logger } = require('../../utils/logger');
-const { pollUntil } = require('../helpers/wait');
+const { pollUntil, resolveOrCleanNotFound } = require('../helpers/wait');
 
 function makeGeojsonBase64() {
   const geojson = {
@@ -200,8 +200,13 @@ describe('EudrSimplifiedDeclarationClientV3 - Integration Tests', function() {
       // Server processes a freshly submitted SD asynchronously (status starts as SUBMITTED);
       // updateSd is only accepted once it reaches AVAILABLE - see EUDR_API_AMEND_NOT_ALLOWED_FOR_STATUS
       // in docs/analysis/v3-live-test-plan.md (same known async-delay limitation as amendDds).
+      // pollUntil expects its probe to resolve rather than throw, but in this window getSd can
+      // answer with a NotFoundException instead of an empty array - treat that as "not ready yet".
       const poll = await pollUntil(
-        () => sdClient.getSd(submitResult.sdIdentifier),
+        () => sdClient.getSd(submitResult.sdIdentifier).catch((error) => {
+          if (error.notFound) return { sdInfo: [] };
+          throw error;
+        }),
         (result) => Boolean(result.sdInfo && result.sdInfo[0] && result.sdInfo[0].status === 'AVAILABLE'),
         { intervalMs: 3000, timeoutMs: 30000 }
       );
@@ -244,11 +249,26 @@ describe('EudrSimplifiedDeclarationClientV3 - Integration Tests', function() {
       });
       createdSdIdentifiers.push(submitResult.sdIdentifier);
 
-      const byUuid = await sdClient.getSd(submitResult.sdIdentifier);
+      const byUuid = await resolveOrCleanNotFound(
+        sdClient.getSd(submitResult.sdIdentifier),
+        'getSd immediately after submit',
+        expect
+      );
+      if (!byUuid) {
+        this.skip();
+        return;
+      }
+
       console.log(`[getSd] ${JSON.stringify(byUuid.sdInfo)}`);
       expect(byUuid.sdInfo).to.be.an('array');
 
-      const byRef = await sdClient.getSdByInternalReference(internalRef);
+      const byRef = await resolveOrCleanNotFound(
+        sdClient.getSdByInternalReference(internalRef),
+        'getSdByInternalReference immediately after submit',
+        expect
+      );
+      if (!byRef) return;
+
       console.log(`[getSdByInternalReference] ${JSON.stringify(byRef.sdInfo)}`);
       expect(byRef.sdInfo).to.be.an('array');
     });

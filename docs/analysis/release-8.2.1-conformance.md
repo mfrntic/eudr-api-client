@@ -82,7 +82,7 @@ unqualified):
 
 `BodyIdentityType` is a choice of exactly one of `AuthorityActivityAccessIdentifier`,
 `OperatorAccessIdentifier`, `OrganicControlBodyAccessIdentifier`, `OtherBodyAccessIdentifier`, each
-an `xs:token` of at most 16 characters.
+an `xs:token`. `OtherBodyAccessIdentifier` allows at most 32 characters; the other three allow 16.
 
 Note that this contradicts the vendored v1.5 reference doc, which states twice that "Web Service
 users cannot belong to more than one Operator entity" — that restriction is what 8.2.1 lifts.

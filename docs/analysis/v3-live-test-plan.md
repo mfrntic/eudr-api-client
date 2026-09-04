@@ -34,10 +34,10 @@ Requires real credentials in `.env` at the repo root (`EUDR_TRACES_USERNAME`, `E
 | `submitDds` business rule (`percentageEstimationOrDeviation`) | Bug found & fixed (prior session) | Regression guard test | ✅ Pass (server still rejects if missing, as expected) |
 | `amendDds` | Attempted, blocked by status, never succeeded | 15s-wait test | ⚠️ Still fails with `EUDR_API_AMEND_NOT_ALLOWED_FOR_STATUS` — 15s is not enough (see Known Limitations) |
 | `withdrawDds` | Confirmed working | Immediate-withdraw test | ✅ Pass |
-| `getDds` (single) | Returned empty immediately after submit | Immediate + not-found tests | ✅ Pass (empty result is the expected/documented outcome, not a failure) |
+| `getDds` (single) | Returned empty immediately after submit | Immediate + not-found tests | ✅ Pass — right after submit the server answers with either an empty array or a `NotFoundException`; both are accepted (see Known Limitations #3) |
 | `getDds` (batch) | Never tested | Batch test (2 real uuids) | ✅ Pass (result contents vary run-to-run — see Known Limitations) |
 | `getDdsByInternalReference` | Returned empty immediately after submit | Immediate test | ✅ Pass (empty is expected this soon after submit) |
-| `getDdsByIdentifiers` | Never tested | Not-found test + known-DDS test | ✅ Pass (not-found case) / ⚠️ Fails for one specific real, pre-existing DDS (see Known Limitations #6) |
+| `getDdsByIdentifiers` | Never tested | Not-found test + known-DDS test | ✅ Pass (not-found case) / ⚠️ Known-DDS test fails by design — the operation is restricted to non-SME operators and the test account is not one (see Known Limitations #6) |
 | Grouped declarations (DDS A referenced by DDS B, A → `GROUPED`) | Never tested at all | Full lifecycle test | ⚠️ Self-skips: DDS A's `referenceNumber` did not appear within 20s, so grouping could not be attempted (see Known Limitations) |
 | `getDds`/`getDdsByInternalReference` against a real, pre-existing DDS | Never tested with genuinely populated data | "known existing DDS" test group in `retrieval-service-v3.integration.test.js` | ✅ Pass — first confirmed case of a fully populated, matching result (`status: AVAILABLE`, matching reference/verification/internal-reference numbers) |
 | `submitSd` | Blocked by account role | Permission-check test (no MSPO required) | ✅ Pass — cleanly surfaces `EUDR_WEBSERVICE_USER_ACTIVITY_NOT_ALLOWED` |
@@ -83,6 +83,13 @@ network call), that would be new work, not covered by this plan.
    run, an equivalent immediate call returned an empty array. Don't assume either a fixed "always empty
    immediately" or "always available immediately" rule — the server's indexing/timing is not fully
    predictable at short delays.
+   - **Update (2026-09-04): there is a third possible answer — a `NotFoundException` fault.** A `getDds`
+     issued immediately after a successful `submitDds` (uuid returned, `httpStatus: 200`) came back with
+     `faultcode: S:Client`, `faultstring: "Statement not found."`, surfaced by the library as
+     `httpStatus: 404` / `notFound: true` / `eudrErrorCode: 'EUDR_NOT_FOUND'`. The same test had passed with
+     an empty array on the immediately preceding run, so this is a genuine race against the server's
+     indexing rather than a permanent change. The immediate-availability test now accepts either answer;
+     consumers polling right after submit must handle the fault as well as the empty array.
 4. **SD write lifecycle (`submitSd` success, `updateSd`, `withdrawSd`, `getSd*` with real data) is entirely
    untested live**, because the `.env` test account (`n00ihxdy`) is not registered as MICRO_OPERATOR/MSPO in
    TRACES NT — confirmed via `EUDR_WEBSERVICE_USER_ACTIVITY_NOT_ALLOWED`. The tests are written and will run
@@ -118,6 +125,26 @@ network call), that would be new work, not covered by this plan.
      ("ostavi ovako" / leave as-is for now) — the `known existing DDS` test in
      `retrieval-service-v3.integration.test.js` is intentionally left failing on this one assertion so the
      anomaly stays visible rather than being silently softened.
+   - **Update (2026-09-04) — very likely resolved, and it is not a server bug.** Two new data points:
+     1. The fault string has changed. The same call on the same `KNOWN_DDS` now returns
+        `faultstring: "You are not authorized to view this DDS."` (still `faultcode: S:Client`, still a
+        `NotFoundException` detail element) instead of the previous `"Data not found."`. EUDR deliberately
+        conflates "does not exist" and "you may not see it" into one fault so the operation cannot be used
+        to probe for the existence of other operators' DDS records.
+     2. The 8.2.1 WSDL documents an access restriction the 1.5 reference docs never mentioned
+        (`docs/eudr_docs 8.2.1/EUDRDueDiligenceStatementServiceV3/EUDRDueDiligenceStatementServiceV3.wsdl`,
+        `getDdsByIdentifiers`): *"This operation is available only to non-SME operators (standard operators
+        and authorised representatives). SME downstream operators do not have access to this operation."*
+
+     Together these explain every observation, including why `getDds(uuid)` and
+     `getDdsByInternalReference` succeed on the exact same record: those are owner-scoped lookups, whereas
+     `getDdsByIdentifiers` is gated on the account's operator class. The test account is not a non-SME
+     operator, so this call can never succeed with these credentials — the same category of account
+     limitation as the MSPO/SD one in item 4, not a library defect and not fixture rot (the server's own
+     `referenceNumber`/`verificationNumber` were re-confirmed to match byte-for-byte on 2026-09-04).
+
+     The test is still left failing on purpose, per the standing instruction above. To make it pass, run it
+     with credentials for a standard operator or authorised representative account.
 7. **`verifyDeclaration` returns a normal HTTP 200 with `result: NON_EXISTENT` for a bogus
    reference/verification pair — it does not throw a fault.** This is a meaningful behavioral
    difference from `getDdsByIdentifiers`/`getSdByIdentifiers`, which throw a `NotFoundException`

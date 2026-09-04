@@ -9,6 +9,7 @@ const { v4: uuidv4 } = require('uuid');
 const EudrSubmissionClientV3 = require('../../services/submission-service-v3');
 const EudrRetrievalClientV3 = require('../../services/retrieval-service-v3');
 const { logger } = require('../../utils/logger');
+const { resolveOrCleanNotFound } = require('../helpers/wait');
 
 function makeGeojsonBase64() {
   const geojson = {
@@ -120,14 +121,13 @@ describe('EudrRetrievalClientV3 - Integration Tests', function () {
     });
 
     it('getDdsByIdentifiers(referenceNumber, verificationNumber) should return the full statement for the same DDS', async function () {
-      console.log("KNOWN_DDS params:", KNOWN_DDS.referenceNumber, KNOWN_DDS.verificationNumber);
-      try {
-        const result = await retrievalClient.getDdsByIdentifiers(KNOWN_DDS.referenceNumber, KNOWN_DDS.verificationNumber);
-        console.log("[known DDS] getDdsByIdentifiers statement:", JSON.stringify(result));
-      } catch (error) {
-        console.log("[known DDS] getDdsByIdentifiers error:", error.message, error.eudrErrorCode);
-        throw error;
-      }
+      const result = await retrievalClient.getDdsByIdentifiers(KNOWN_DDS.referenceNumber, KNOWN_DDS.verificationNumber);
+      console.log(`[known DDS] getDdsByIdentifiers: ${JSON.stringify(result.statement)}`);
+
+      expect(result.httpStatus).to.equal(200);
+      expect(result.statement).to.be.an('object');
+      expect(result.statement.activityType).to.be.a('string');
+      expect(result.statement.commodities).to.exist;
     });
   });
 
@@ -140,7 +140,13 @@ describe('EudrRetrievalClientV3 - Integration Tests', function () {
       });
       createdUuids.push(submitResult.uuid);
 
-      const result = await retrievalClient.getDds(submitResult.uuid);
+      const result = await resolveOrCleanNotFound(
+        retrievalClient.getDds(submitResult.uuid),
+        'getDds immediately after submit',
+        expect
+      );
+      if (!result) return;
+
       console.log(`[getDds] immediately after submit: ${JSON.stringify(result.ddsInfo)}`);
       expect(result.httpStatus).to.equal(200);
       expect(result.ddsInfo).to.be.an('array');
@@ -157,7 +163,13 @@ describe('EudrRetrievalClientV3 - Integration Tests', function () {
       });
       createdUuids.push(submitOne.uuid, submitTwo.uuid);
 
-      const result = await retrievalClient.getDds([submitOne.uuid, submitTwo.uuid]);
+      const result = await resolveOrCleanNotFound(
+        retrievalClient.getDds([submitOne.uuid, submitTwo.uuid]),
+        'getDds batch',
+        expect
+      );
+      if (!result) return;
+
       console.log(`[getDds batch] result: ${JSON.stringify(result.ddsInfo)}`);
       expect(result.httpStatus).to.equal(200);
       expect(result.ddsInfo).to.be.an('array');
@@ -185,7 +197,13 @@ describe('EudrRetrievalClientV3 - Integration Tests', function () {
       });
       createdUuids.push(submitResult.uuid);
 
-      const result = await retrievalClient.getDdsByInternalReference(internalRef);
+      const result = await resolveOrCleanNotFound(
+        retrievalClient.getDdsByInternalReference(internalRef),
+        'getDdsByInternalReference immediately after submit',
+        expect
+      );
+      if (!result) return;
+
       console.log(`[getDdsByInternalReference] immediately after submit: ${JSON.stringify(result.ddsInfo)}`);
       expect(result.httpStatus).to.equal(200);
       expect(result.ddsInfo).to.be.an('array');
