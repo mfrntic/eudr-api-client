@@ -12,6 +12,7 @@
 const { expect } = require('chai');
 const EudrSimplifiedDeclarationClientV3 = require('../../services/simplified-declaration-service-v3');
 const { logger } = require('../../utils/logger');
+const { pollUntil } = require('../helpers/wait');
 
 function makeGeojsonBase64() {
   const geojson = {
@@ -195,6 +196,21 @@ describe('EudrSimplifiedDeclarationClientV3 - Integration Tests', function() {
         statement: buildSdStatement(shortRef('UPD'))
       });
       createdSdIdentifiers.push(submitResult.sdIdentifier);
+
+      // Server processes a freshly submitted SD asynchronously (status starts as SUBMITTED);
+      // updateSd is only accepted once it reaches AVAILABLE - see EUDR_API_AMEND_NOT_ALLOWED_FOR_STATUS
+      // in docs/analysis/v3-live-test-plan.md (same known async-delay limitation as amendDds).
+      const poll = await pollUntil(
+        () => sdClient.getSd(submitResult.sdIdentifier),
+        (result) => Boolean(result.sdInfo && result.sdInfo[0] && result.sdInfo[0].status === 'AVAILABLE'),
+        { intervalMs: 3000, timeoutMs: 30000 }
+      );
+
+      if (!poll.ready) {
+        console.log('[updateSd] SD did not reach AVAILABLE status within 30s - skipping update assertion (known async-delay limitation).');
+        this.skip();
+        return;
+      }
 
       const updateResult = await sdClient.updateSd(submitResult.sdIdentifier, buildSdStatement(shortRef('UPD')));
       expect(updateResult.uuid).to.equal(submitResult.sdIdentifier);
