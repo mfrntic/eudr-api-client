@@ -5,6 +5,7 @@
 
 const { expect } = require('chai');
 const EudrSubmissionClientV2 = require('../../services/submission-service-v2');
+const { skipWithoutCredentials } = require('../helpers/credentials');
 
 describe('Units of Measure Validation', function() {
   let client;
@@ -19,10 +20,7 @@ describe('Units of Measure Validation', function() {
       'EUDR_TRACES_PASSWORD'
     ];
 
-    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-    if (missingVars.length > 0) {
-      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
-    }
+    if (skipWithoutCredentials(this, requiredEnvVars)) return;
 
     // Initialize V2 client with real credentials
     client = new EudrSubmissionClientV2({

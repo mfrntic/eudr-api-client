@@ -10,6 +10,7 @@ const EudrSubmissionClientV3 = require('../../services/submission-service-v3');
 const EudrRetrievalClientV3 = require('../../services/retrieval-service-v3');
 const { logger } = require('../../utils/logger');
 const { resolveOrCleanNotFound } = require('../helpers/wait');
+const { skipWithoutCredentials } = require('../helpers/credentials');
 
 function makeGeojsonBase64() {
   const geojson = {
@@ -64,10 +65,7 @@ describe('EudrRetrievalClientV3 - Integration Tests', function () {
     require('dotenv').config();
 
     const requiredEnvVars = ['EUDR_TRACES_USERNAME', 'EUDR_TRACES_PASSWORD', 'EUDR_TRACES_BASE_URL'];
-    const missing = requiredEnvVars.filter((name) => !process.env[name]);
-    if (missing.length > 0) {
-      throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
-    }
+    if (skipWithoutCredentials(this, requiredEnvVars)) return;
 
     const baseConfig = {
       username: process.env.EUDR_TRACES_USERNAME,

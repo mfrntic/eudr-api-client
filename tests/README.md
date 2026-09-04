@@ -111,6 +111,16 @@ npm run test:submission
 npm run test:submission:v2
 ```
 
+### Running without credentials
+
+Every live suite gates itself on `EUDR_TRACES_USERNAME` / `EUDR_TRACES_PASSWORD` /
+`EUDR_TRACES_BASE_URL` through `helpers/credentials.js`. When any of them is missing the suite is
+marked **pending** and prints why - it does not fail. A missing `.env` is a missing prerequisite,
+not a defect in the code under test, so CI and a fresh clone both stay green.
+
+That is what makes `npm run test:unit` safe to run anywhere: with credentials it runs ~326 tests,
+without them ~265, and the remainder report as pending.
+
 ### Watch Mode
 ```bash
 npm run test:watch

@@ -2,6 +2,7 @@ const { expect } = require('chai');
 const EudrSubmissionClientV2 = require('../../services/submission-service-v2');
 const scenariosV2 = require('../../services/scenarios-v2');
 const { logger } = require('../../utils/logger');
+const { skipWithoutCredentials } = require('../helpers/credentials');
 
 
 describe('EudrSubmissionClientV2 - Integration Tests', function () {
@@ -27,10 +28,7 @@ describe('EudrSubmissionClientV2 - Integration Tests', function () {
       'EUDR_TRACES_BASE_URL'
     ];
 
-    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-    if (missingVars.length > 0) {
-      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
-    }
+    if (skipWithoutCredentials(this, requiredEnvVars)) return;
 
     console.log("------------------------------------------------------------------------------------------------");
 

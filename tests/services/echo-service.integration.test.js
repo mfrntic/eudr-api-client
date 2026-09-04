@@ -5,6 +5,7 @@ const {
   cleanupTestData
 } = require('../test-setup');
 const { EudrEchoClient } = require('../../services');
+const { skipWithoutCredentials } = require('../helpers/credentials');
 
 describe('EudrEchoClient - Integration Tests', function () {
   let echoClient;
@@ -14,6 +15,9 @@ describe('EudrEchoClient - Integration Tests', function () {
   this.timeout(60000);
 
   before(function () {
+    // Skip rather than let validateEnvironment's process.exit(1) kill the whole mocha run.
+    if (skipWithoutCredentials(this)) return;
+
     // Validate environment before running tests
     validateEnvironment();
     console.log("------------------------------------------------------------------------------------------------");    

@@ -12,6 +12,7 @@ const EudrSubmissionClientV3 = require('../../services/submission-service-v3');
 const EudrRetrievalClientV3 = require('../../services/retrieval-service-v3');
 const { logger } = require('../../utils/logger');
 const { delay, pollUntil } = require('../helpers/wait');
+const { skipWithoutCredentials } = require('../helpers/credentials');
 
 // Known, pre-existing V3 DDS (status AVAILABLE) - see docs/analysis/v3-live-test-plan.md.
 // uuid 64d46f0a-d5a3-422f-a7bc-fb9cbf6bff2e
@@ -75,10 +76,7 @@ describe('EudrVerifyDeclarationClientV3 - Integration Tests', function() {
     require('dotenv').config();
 
     const requiredEnvVars = ['EUDR_TRACES_USERNAME', 'EUDR_TRACES_PASSWORD', 'EUDR_TRACES_BASE_URL'];
-    const missing = requiredEnvVars.filter((name) => !process.env[name]);
-    if (missing.length > 0) {
-      throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
-    }
+    if (skipWithoutCredentials(this, requiredEnvVars)) return;
 
     verifyClient = new EudrVerifyDeclarationClientV3({
       username: process.env.EUDR_TRACES_USERNAME,

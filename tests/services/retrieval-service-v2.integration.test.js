@@ -20,6 +20,7 @@ process.stderr.setEncoding('utf8');
 
 const { expect } = require('chai');
 const EudrRetrievalClientV2 = require('../../services/retrieval-service-v2');
+const { skipWithoutCredentials } = require('../helpers/credentials');
 
 describe('EudrRetrievalClient V2 Tests', function () {
     this.timeout(30000); // 30 second timeout for network operations
@@ -146,6 +147,11 @@ describe('EudrRetrievalClient V2 Tests', function () {
         let service;
 
         before(function () {
+            require('dotenv').config();
+            // Without credentials the constructor throws on the missing username, which would fail
+            // the build rather than reporting the real situation: this suite cannot run here.
+            if (skipWithoutCredentials(this, ['EUDR_TRACES_USERNAME', 'EUDR_TRACES_PASSWORD'])) return;
+
             service = new EudrRetrievalClientV2({
                 username: process.env.EUDR_TRACES_USERNAME,
                 password: process.env.EUDR_TRACES_PASSWORD,

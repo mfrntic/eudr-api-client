@@ -1,5 +1,6 @@
 const { expect } = require('chai');
 const { EudrRetrievalClient } = require('../../services');
+const { skipWithoutCredentials } = require('../helpers/credentials');
 
 describe('EudrRetrievalClient V1 Tests', function () {
   let retrievalClient;
@@ -25,10 +26,7 @@ describe('EudrRetrievalClient V1 Tests', function () {
       'EUDR_TRACES_BASE_URL'
     ];
 
-    const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-    if (missingVars.length > 0) {
-      throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
-    }
+    if (skipWithoutCredentials(this, requiredEnvVars)) return;
 
     console.log("------------------------------------------------------------------------------------------------");
     // Initialize retrieval service with test configuration

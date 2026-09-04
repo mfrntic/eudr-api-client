@@ -1,10 +1,15 @@
 const { validateEnvironment } = require('./test-setup');
+const { skipWithoutCredentials } = require('./helpers/credentials');
 
 describe('EUDR API Client - Integration Test Suite', function() {
   // Increase timeout for full integration test suite
   this.timeout(300000); // 5 minutes total
   
-  before(function() {   
+  before(function() {
+    // Skip rather than let validateEnvironment's process.exit(1) kill the whole mocha run:
+    // absent credentials mean this live suite cannot run here, not that anything is broken.
+    if (skipWithoutCredentials(this)) return;
+
     // Validate environment before running any tests
     validateEnvironment();
   });
