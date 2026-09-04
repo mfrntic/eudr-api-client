@@ -1,0 +1,631 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:eudrCommon="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3" targetNamespace="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3" elementFormDefault="qualified">
+
+    <xs:simpleType name="EudrStatusType">
+        <xs:annotation>
+            <xs:documentation>Universal lifecycle status for EUDR documents</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="SUBMITTED"/>
+            <xs:enumeration value="AVAILABLE"/>
+            <xs:enumeration value="REJECTED"/>
+            <xs:enumeration value="WITHDRAWN"/>
+            <xs:enumeration value="ARCHIVED"/>
+            <xs:enumeration value="SUSPENDED">
+                <xs:annotation>
+                    <xs:documentation>Not active in current release</xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="UPDATED">
+                <xs:annotation>
+                    <xs:documentation>Not active in current release</xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="GROUPED"/>
+            <xs:enumeration value="OBSOLETE"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="ReferenceNumberType">
+        <xs:restriction base="xs:string">
+            <xs:maxLength value="14"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="InternalReferenceNumberType">
+        <xs:restriction base="xs:string">
+            <xs:maxLength value="50"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="CountryType">
+        <xs:annotation>
+            <xs:documentation>ISO 3166-1 alpha-2 codes</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[a-zA-Z]{2}"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="StreetAndNumberType">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+            <xs:maxLength value="300"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="NonStructuredAddressType">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+            <xs:maxLength value="250"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="UuidType">
+        <xs:annotation>
+            <xs:documentation>Universally unique identifier (UUID).</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="VerificationNumberType">
+        <xs:annotation>
+            <xs:documentation>Verification number</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:minLength value="5"/>
+            <xs:maxLength value="35"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="ActivityType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="DOMESTIC"/>
+            <xs:enumeration value="IMPORT"/>
+            <xs:enumeration value="EXPORT"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:complexType name="UuidAndVersionNumberType">
+        <xs:sequence>
+            <xs:element name="uuid" type="eudrCommon:UuidType"/>
+            <xs:element name="versionNumber" type="xs:integer" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="AddressType">
+        <xs:sequence>
+            <xs:element name="country" type="eudrCommon:CountryType"/>
+            <xs:element name="street" type="eudrCommon:StreetAndNumberType"/>
+            <xs:element name="postalCode" type="eudrCommon:PostalCodeType"/>
+            <xs:element name="city" type="eudrCommon:CityType"/>
+            <xs:element name="fullAddress" type="eudrCommon:NonStructuredAddressType" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:simpleType name="PostalCodeType">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+            <xs:maxLength value="80"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="CityType">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+            <xs:maxLength value="200"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="EmailType">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"/>
+            <xs:maxLength value="200"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="PhoneType">
+        <xs:restriction base="xs:string">
+            <xs:maxLength value="50"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:complexType name="EconomicOperatorIdentificationType">
+
+        <xs:sequence>
+            <xs:element name="operatorReferenceNumber" type="eudrCommon:EconomicOperatorReferenceNumberType" minOccurs="0" maxOccurs="12"/>
+            <xs:element name="operatorAddress" type="eudrCommon:AddressType" minOccurs="0"/>
+            <xs:element name="operatorEmail" type="eudrCommon:EmailType" minOccurs="0"/>
+            <xs:element name="operatorPhone" type="eudrCommon:PhoneType" minOccurs="0"/>
+            <xs:element name="operatorName">
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:minLength value="1"/>
+                        <xs:maxLength value="200"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="EconomicOperatorReferenceNumberType">
+        <xs:sequence>
+            <xs:element name="identifierType" type="eudrCommon:IdentifierTypeType"/>
+            <xs:element name="identifierValue" type="eudrCommon:IdentifierValueType"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:simpleType name="EditorialCommentType">
+        <xs:annotation>
+            <xs:documentation>
+                A version of a SD may have an editorial comment associated to it,
+                with an explanation for the CA  (Box 5)
+            </xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:maxLength value="2000"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:complexType name="GroupedDeclarationsType">
+        <xs:sequence>
+            <xs:element name="groupedDeclaration" type="eudrCommon:ReferenceNumberType"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="ReferenceAndVerificationNumberType">
+        <xs:sequence>
+            <xs:element name="referenceNumber" type="eudrCommon:ReferenceNumberType"/>
+            <xs:element name="verificationNumber" type="eudrCommon:VerificationNumberType"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="OverviewType">
+        <xs:sequence>
+            <xs:element name="uuid" type="eudrCommon:UuidType"/>
+            <xs:element name="internalReferenceNumber" type="eudrCommon:InternalReferenceNumberType"/>
+            <xs:element name="referenceNumber" type="eudrCommon:ReferenceNumberType" minOccurs="0"/>
+            <xs:element name="verificationNumber" type="eudrCommon:VerificationNumberType" minOccurs="0"/>
+            <xs:element name="status" type="eudrCommon:EudrStatusType"/>
+            <xs:element name="rejectionReason" type="eudrCommon:RejectionReasonType" minOccurs="0"/>
+            <xs:element name="communicationToOperator" type="eudrCommon:CommunicationToOperatorType" minOccurs="0"/>
+            <xs:element name="date" type="xs:dateTime" minOccurs="0"/>
+            <xs:element name="updatedBy" type="eudrCommon:UpdatedByType" minOccurs="0"/>
+            <xs:element name="version" type="xs:integer" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:simpleType name="UpdatedByType">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+            <xs:maxLength value="200"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="RejectionReasonType">
+        <xs:annotation>
+            <xs:documentation>Rejection reason of the DDS</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:minLength value="0"/>
+            <xs:maxLength value="1000"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:complexType name="CommunicationToOperatorType">
+        <xs:annotation>
+            <xs:documentation>Communication sent by CA to Operator</xs:documentation>
+        </xs:annotation>
+        <xs:sequence>
+            <xs:element name="date" type="xs:dateTime" minOccurs="1">
+                <xs:annotation>
+                    <xs:documentation>Creation or amend date.</xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="content" minOccurs="1">
+                <xs:annotation>
+                    <xs:documentation>Message content.</xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:maxLength value="1000"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:simpleType name="IdentifierTypeType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="eori">
+                <xs:annotation>
+                    <xs:documentation>
+                        Economic Operators Registration and Identification number (EORI)
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="vat">
+                <xs:annotation>
+                    <xs:documentation>
+                        VAT identification number (VATIN) 
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="gln">
+                <xs:annotation>
+                    <xs:documentation>
+                        Global location number
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="tin">
+                <xs:annotation>
+                    <xs:documentation>
+                        Tax Identification Number (TIN)
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="cbr">
+                <xs:annotation>
+                    <xs:documentation>
+                        Central Business Register (CBR) 
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="cin">
+                <xs:annotation>
+                    <xs:documentation>
+                        Company Identification Number (CIN)
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="duns">
+                <xs:annotation>
+                    <xs:documentation>
+                        The nine-digit D-U-N-S Number (DUNS) 
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+             <xs:enumeration value="comp_num">
+                <xs:annotation>
+                    <xs:documentation>
+                        National company number (NCN)
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+             <xs:enumeration value="comp_reg">
+                <xs:annotation>
+                    <xs:documentation>
+                        Registration number in official national company register (NCR)
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="oni">
+                <xs:annotation>
+                    <xs:documentation>
+                        Other National Identifier (ONI)
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="IdentifierValueType">
+        <xs:restriction base="xs:string">
+            <xs:maxLength value="80"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:complexType name="CommercialDescriptionType">
+        <xs:annotation>
+            <xs:documentation>
+                This type allows you to express one single
+                commercial description and associate it
+                with individual quantitative
+                metrics.
+            </xs:documentation>
+        </xs:annotation>
+        <xs:sequence>
+            <xs:element name="descriptionOfGoods">
+                <xs:annotation>
+                    <xs:documentation>
+                        Single commercial description.
+                    </xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                        <xs:maxLength value="150"/>
+                    </xs:restriction>
+                </xs:simpleType>
+            </xs:element>
+
+            <xs:element name="goodsMeasure" type="eudrCommon:GoodsMeasureType">
+                <xs:annotation>
+                    <xs:documentation>
+                        Units of measurement combinations for the declared commodity
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="GoodsMeasureType">
+        <xs:sequence>
+            <xs:element name="percentageEstimationOrDeviation" type="eudrCommon:DecimalThreePrecType" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation>
+                        Percentage estimate or deviation
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="netWeight" type="eudrCommon:DecimalSixteenTotalSixPrecType" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation>
+                        This is mandatory if activity type is IMPORT/EXPORT. The weight must be provided in Kg. 
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="supplementaryUnit" type="eudrCommon:DecimalSixteenTotalSixPrecType" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation>
+                        The number of units, when a manufactured product is quantified in this way.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+            <xs:element name="supplementaryUnitQualifier" type="eudrCommon:SupplementaryUnitQualifierType" minOccurs="0">
+                <xs:annotation>
+                    <xs:documentation>
+                        This field must be provided if the value is provided in supplementaryUnit field.
+                        It represents the type of the numberofUnits field.
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:element>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:simpleType name="SupplementaryUnitQualifierType">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="3"/>
+            <xs:maxLength value="4"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="DecimalThreePrecType">
+        <xs:annotation>
+            <xs:documentation>
+                Decimal type with precision three
+            </xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:decimal">
+            <xs:fractionDigits value="3"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="DecimalSixteenTotalSixPrecType">
+        <xs:annotation>
+            <xs:documentation>Decimal number with a total of 16 and 6 fraction digits</xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:decimal">
+            <xs:totalDigits value="16"/>
+            <xs:fractionDigits value="6"/>
+            <xs:minInclusive value="0"/>
+            <xs:maxInclusive value="9999999999.999999"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="HSHeadingType">
+        <xs:annotation>
+            <xs:documentation>
+                Commodity code from the Harmonized Commodity Description and Coding System
+            </xs:documentation>
+        </xs:annotation>
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[0-9]{2,6}"/>
+            <xs:minLength value="2"/>
+            <xs:maxLength value="6"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="EuropeanCountryType">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="AT">
+                <xs:annotation>
+                    <xs:documentation>
+                        Austria
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="BE">
+                <xs:annotation>
+                    <xs:documentation>
+                        Belgium
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="BG">
+                <xs:annotation>
+                    <xs:documentation>
+                        Bulgaria
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="CY">
+                <xs:annotation>
+                    <xs:documentation>
+                        Cyprus
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="CZ">
+                <xs:annotation>
+                    <xs:documentation>
+                        Czech Republic
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="DE">
+                <xs:annotation>
+                    <xs:documentation>
+                        Germany
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="DK">
+                <xs:annotation>
+                    <xs:documentation>
+                        Denmark
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="EE">
+                <xs:annotation>
+                    <xs:documentation>
+                        Estonia
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="ES">
+                <xs:annotation>
+                    <xs:documentation>
+                        Spain
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="FI">
+                <xs:annotation>
+                    <xs:documentation>
+                        Finland
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="FR">
+                <xs:annotation>
+                    <xs:documentation>
+                        France
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="GR">
+                <xs:annotation>
+                    <xs:documentation>
+                        Greece
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="HR">
+                <xs:annotation>
+                    <xs:documentation>
+                        Croatia
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="HU">
+                <xs:annotation>
+                    <xs:documentation>
+                        Hungary
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="IE">
+                <xs:annotation>
+                    <xs:documentation>
+                        Ireland
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="IT">
+                <xs:annotation>
+                    <xs:documentation>
+                        Italy
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="LT">
+                <xs:annotation>
+                    <xs:documentation>
+                        Lithuania
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="LU">
+                <xs:annotation>
+                    <xs:documentation>
+                        Luxembourg
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="LV">
+                <xs:annotation>
+                    <xs:documentation>
+                        Latvia
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="MT">
+                <xs:annotation>
+                    <xs:documentation>
+                        Malta
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="NL">
+                <xs:annotation>
+                    <xs:documentation>
+                        Netherlands
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="PL">
+                <xs:annotation>
+                    <xs:documentation>
+                        Poland
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="PT">
+                <xs:annotation>
+                    <xs:documentation>
+                        Portugal
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="RO">
+                <xs:annotation>
+                    <xs:documentation>
+                        Romania
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="SE">
+                <xs:annotation>
+                    <xs:documentation>
+                        Sweden
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="SI">
+                <xs:annotation>
+                    <xs:documentation>
+                        Slovenia
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="SK">
+                <xs:annotation>
+                    <xs:documentation>
+                        Slovakia (Slovak Republic)
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="XI">
+                <xs:annotation>
+                    <xs:documentation>
+                        United Kingdom (Northern Ireland)
+                    </xs:documentation>
+                </xs:annotation>
+            </xs:enumeration>
+        </xs:restriction>
+    </xs:simpleType>
+
+</xs:schema>

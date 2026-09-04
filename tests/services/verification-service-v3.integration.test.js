@@ -8,17 +8,65 @@
 
 const { expect } = require('chai');
 const EudrVerifyDeclarationClientV3 = require('../../services/verification-service-v3');
+const EudrSubmissionClientV3 = require('../../services/submission-service-v3');
+const EudrRetrievalClientV3 = require('../../services/retrieval-service-v3');
 const { logger } = require('../../utils/logger');
+const { delay, pollUntil } = require('../helpers/wait');
 
 // Known, pre-existing V3 DDS (status AVAILABLE) - see docs/analysis/v3-live-test-plan.md.
 // uuid 64d46f0a-d5a3-422f-a7bc-fb9cbf6bff2e
 const KNOWN_DDS_REFERENCE_NUMBER = '26HRBELAQMZQ9C';
 const KNOWN_DDS_VERIFICATION_NUMBER = '7QSWSSRD';
 
+function makeGeojsonBase64() {
+  const geojson = {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [15.9665, 45.8150],
+          [15.9675, 45.8150],
+          [15.9675, 45.8160],
+          [15.9665, 45.8160],
+          [15.9665, 45.8150]
+        ]]
+      },
+      properties: {}
+    }]
+  };
+  return Buffer.from(JSON.stringify(geojson)).toString('base64');
+}
+
+// Same DOMESTIC shape used by submission-service-v3.integration.test.js, which is confirmed to
+// submit successfully with the generic operator account in .env.
+function buildStatement(internalReferenceNumber) {
+  return {
+    internalReferenceNumber,
+    activityType: 'DOMESTIC',
+    countryOfActivity: 'HR',
+    commodities: [{
+      descriptors: {
+        descriptionOfGoods: 'Integration test - beech timber',
+        goodsMeasure: { netWeight: 50, percentageEstimationOrDeviation: 10 }
+      },
+      hsHeading: '4407',
+      speciesInfo: { scientificName: 'Fagus sylvatica', commonName: 'European Beech' },
+      producers: [{ country: 'HR', name: 'Integration Test Producer', geometryGeojson: makeGeojsonBase64() }]
+    }],
+    geoLocationConfidential: false
+  };
+}
+
 describe('EudrVerifyDeclarationClientV3 - Integration Tests', function() {
-  this.timeout(30000);
+  this.timeout(120000);
 
   let verifyClient;
+  let submissionClient;
+  let retrievalClient;
+  const createdUuids = [];
+  const skipCleanup = process.env.EUDR_RUN_CLEANUP !== '1';
 
   before(function() {
     if (logger && logger.level) {
@@ -37,6 +85,32 @@ describe('EudrVerifyDeclarationClientV3 - Integration Tests', function() {
       password: process.env.EUDR_TRACES_PASSWORD,
       webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
     });
+
+    // Used by the tests that need a freshly submitted DDS of their own to verify, and to poll
+    // for the reference/verification numbers the Information System assigns asynchronously.
+    const writeConfig = {
+      username: process.env.EUDR_TRACES_USERNAME,
+      password: process.env.EUDR_TRACES_PASSWORD,
+      webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
+    };
+    submissionClient = new EudrSubmissionClientV3(writeConfig);
+    retrievalClient = new EudrRetrievalClientV3(writeConfig);
+  });
+
+  after(async function() {
+    if (skipCleanup) {
+      console.log(`[cleanup] defaulting to no cleanup; set EUDR_RUN_CLEANUP=1 to withdraw ${createdUuids.length} DDS records: ${JSON.stringify(createdUuids)}`);
+      return;
+    }
+
+    for (const uuid of createdUuids) {
+      try {
+        await submissionClient.withdrawDds(uuid);
+        console.log(`[cleanup] withdrew DDS ${uuid}`);
+      } catch (error) {
+        console.log(`[cleanup] withdraw failed for ${uuid}: ${error.eudrErrorCode || error.message}`);
+      }
+    }
   });
 
   describe('known existing DDS (stable, real data - not created/withdrawn by this suite)', function() {
@@ -123,8 +197,19 @@ describe('EudrVerifyDeclarationClientV3 - Integration Tests', function() {
       });
       createdUuids.push(submitResult.uuid);
 
+      // getDds can throw a raw InternalSystemException (HTTP 500) while the Information System is
+      // still indexing a freshly submitted DDS - see v3-live-test-plan.md, Known Limitation #9.
+      // Treat a thrown error as "not ready yet", the same convention as the withdrawn-DDS test
+      // below, so a known server-side quirk does not fail a test aimed at verifyDeclaration.
       const poll = await pollUntil(
-        () => retrievalClient.getDds(submitResult.uuid),
+        async () => {
+          try {
+            return await retrievalClient.getDds(submitResult.uuid);
+          } catch (error) {
+            console.log(`[verifyDeclaration] getDds threw while polling (treated as not-ready): ${error.message}`);
+            return { ddsInfo: [] };
+          }
+        },
         (result) => Boolean(result.ddsInfo && result.ddsInfo.length > 0 && result.ddsInfo[0].referenceNumber && result.ddsInfo[0].verificationNumber),
         { intervalMs: 3000, timeoutMs: 30000 }
       );

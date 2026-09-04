@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:eudrCommon="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3" xmlns:error="http://ec.europa.eu/sanco/tracesnt/error/v01" xmlns:verify="http://ec.europa.eu/tracesnt/certificate/eudr/verify-declaration/v3" targetNamespace="http://ec.europa.eu/tracesnt/certificate/eudr/verify-declaration/v3" elementFormDefault="qualified">
+
+	<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRVerifyDeclarationServiceV3?xsd=2" namespace="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3"/>
+	<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRVerifyDeclarationServiceV3?xsd=4" namespace="http://ec.europa.eu/sanco/tracesnt/error/v01"/>
+
+	<!-- Elements for WSDL message parts -->
+
+	<xs:element name="VerifyDeclarationRequest" type="verify:VerifyDeclarationRequestType"/>
+	<xs:element name="VerifyDeclarationResponse" type="verify:VerifyDeclarationResponseType"/>
+
+	<xs:element name="BusinessRulesValidationException" type="error:BusinessRulesValidationExceptionType"/>
+	<xs:element name="PermissionDeniedException" type="error:CertificatePermissionDeniedExceptionType"/>
+
+	<!-- Request / Response types -->
+
+	<xs:complexType name="VerifyDeclarationRequestType">
+		<xs:annotation>
+			<xs:documentation>
+				Verify declaration request by providing reference number and verification number as input parameter.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="referenceNumber" type="eudrCommon:ReferenceNumberType"/>
+			<xs:element name="verificationNumber" type="eudrCommon:VerificationNumberType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="VerifyDeclarationResponseType">
+		<xs:annotation>
+			<xs:documentation>
+				Verify declaration response is the same for all user roles, including SME downstream operators. Three possible outcomes: (1)
+				exists and is usable, (2) exists but is not usable, (3) not found.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="result" type="verify:VerifyResultType"/>
+			<xs:element name="status" type="eudrCommon:EudrStatusType" minOccurs="0"/>
+			<xs:element name="dateTime" type="xs:dateTime"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="VerifyResultType">
+		<xs:annotation>
+			<xs:documentation>
+				Verify declaration result type.
+				EXISTING_USABLE : The declaration exists and is in a usable status. For status values other than ARCHIVED and nonAVAILABLE, EXISTING_USABLE will be set.
+				EXISTING_NON_USABLE : The declaration exists but is not usable. Status is set when the declaration is not archived and available.
+				NON_EXISTENT : No declaration matches the provided reference number and verification number combination.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="EXISTING_USABLE"/>
+			<xs:enumeration value="EXISTING_NON_USABLE"/>
+			<xs:enumeration value="NON_EXISTENT"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+</xs:schema>

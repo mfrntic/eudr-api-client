@@ -1,0 +1,377 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:eudrCommon="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3" xmlns:error="http://ec.europa.eu/sanco/tracesnt/error/v01" xmlns:dds="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3" targetNamespace="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3" elementFormDefault="qualified">
+
+	<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRDueDiligenceStatementServiceV3?xsd=3" namespace="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3"/>
+	<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRDueDiligenceStatementServiceV3?xsd=5" namespace="http://ec.europa.eu/sanco/tracesnt/error/v01"/>
+
+	<!-- Elements for WSDL message parts -->
+
+	<xs:element name="SubmitDdsRequest" type="dds:SubmitDdsRequestType"/>
+	<xs:element name="SubmitDdsResponse" type="dds:SubmitDdsResponseType"/>
+	<xs:element name="AmendDdsRequest" type="dds:AmendDdsRequestType"/>
+	<xs:element name="AmendDdsResponse" type="dds:DdsModificationResponseType"/>
+	<xs:element name="WithdrawDdsRequest" type="dds:WithdrawDdsRequestType"/>
+	<xs:element name="WithdrawDdsResponse" type="dds:DdsModificationResponseType"/>
+	<xs:element name="GetDdsRequest" type="dds:GetDdsRequestType"/>
+	<xs:element name="GetDdsResponse" type="dds:DdsOverviewResponseType"/>
+	<xs:element name="GetDdsByInternalReferenceRequest" type="dds:GetDdsByInternalReferenceRequestType"/>
+	<xs:element name="GetDdsByInternalReferenceResponse" type="dds:DdsOverviewResponseType"/>
+	<xs:element name="GetDdsByIdentifiersRequest" type="dds:GetDdsByIdentifiersRequestType"/>
+	<xs:element name="GetDdsByIdentifiersResponse" type="dds:GetDdsByIdentifiersResponseType"/>
+
+	<xs:element name="BusinessRulesValidationException" type="error:BusinessRulesValidationExceptionType"/>
+	<xs:element name="PermissionDeniedException" type="error:CertificatePermissionDeniedExceptionType"/>
+	<xs:element name="NotFoundException" type="error:NotFoundFault"/>
+
+	<!-- Role type scoped to DDS submission only -->
+
+	<xs:simpleType name="OperatorRoleType">
+		<xs:annotation>
+			<xs:documentation>
+				Roles permitted for DDS submission.
+				OPERATOR: any natural or legal person who, in the course of a commercial activity,
+				places relevant products on the market or exports them,
+				excluding downstream operators.
+				REPRESENTATIVE_OPERATOR: an authorised representative — any natural or legal person
+				established in the Union who has received a written mandate from an operator to act
+				on its behalf in relation to specified tasks with regard to the operator's obligations under
+				Regulation.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="OPERATOR">
+				<xs:annotation>
+					<xs:documentation>Operator: places relevant products on the market or exports them</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+			<xs:enumeration value="REPRESENTATIVE_OPERATOR">
+				<xs:annotation>
+					<xs:documentation>Authorised representative: acts on behalf of an operator under written mandate</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- Request / Response types -->
+
+	<xs:complexType name="SubmitDdsRequestType">
+		<xs:annotation>
+			<xs:documentation>
+				Submit a new Due Diligence Statement pursuant to Regulation.
+				The DDS documents the three-step due diligence process: information gathering,
+				risk assessment, and risk mitigation.
+				Accepts optional references for grouping — the voluntary act of creating
+				a new DDS that references previously submitted DDS or SD declarations via their reference numbers.
+				Validation is atomic: blocked if any referenced statement has GROUPED status.
+				The Information System assigns a reference number and verification
+				number upon successful submission.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="operatorRole" type="dds:OperatorRoleType"/>
+			<xs:element name="statement" type="dds:DueDiligenceStatementBaseType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="SubmitDdsResponseType">
+		<xs:annotation>
+			<xs:documentation>Response containing the UUID assigned by the Information System to the submitted DDS.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="uuid" type="eudrCommon:UuidType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="AmendDdsRequestType">
+		<xs:annotation>
+			<xs:documentation>
+				Amend an existing DDS within the 72-hour amendment window.
+				The operator may amend the declaration while retaining the same reference number.
+				After this window closes, amendments result in a new submission with a new identifier.
+				Blocked if the DDS is not in available status or is subject to a customs lock — the immutability constraint applied once used for customs clearance.
+				Re-triggers risk profiling.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="uuid" type="eudrCommon:UuidType"/>
+			<xs:element name="statement" type="dds:DueDiligenceStatementBaseType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="WithdrawDdsRequestType">
+		<xs:annotation>
+			<xs:documentation>
+				Withdraw a DDS within the 72-hour amendment window.
+				Blocked if the DDS is not in available status — a lifecycle state assigned
+				when associated to a grouped declaration.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="uuid" type="eudrCommon:UuidType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="DdsModificationResponseType">
+		<xs:annotation>
+			<xs:documentation>Response for amend/withdraw operations, containing the resulting DDS lifecycle status.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="uuid" type="eudrCommon:UuidType"/>
+			<xs:element name="status" type="eudrCommon:EudrStatusType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetDdsRequestType">
+		<xs:annotation>
+			<xs:documentation>Request to retrieve DDS overview by one or more UUIDs assigned by the Information System.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="uuidList" type="eudrCommon:UuidType" maxOccurs="100"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetDdsByInternalReferenceRequestType">
+		<xs:annotation>
+			<xs:documentation>Request to retrieve DDS overview from the operator-assigned internal reference number.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="internalReference" type="eudrCommon:InternalReferenceNumberType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="DdsOverviewResponseType">
+		<xs:annotation>
+			<xs:documentation>
+				Response containing DDS overview information: UUID, internal reference, reference number, verification number, lifecycle status, and optional
+				rejection reason or communication from competent authority.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="ddsOverviewList" type="eudrCommon:OverviewType" minOccurs="0" maxOccurs="100"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetDdsByIdentifiersRequestType">
+		<xs:annotation>
+			<xs:documentation>
+				Request to retrieve full DDS content by providing the reference number
+				and verification number — the security number assigned by the Information
+				System to ensure additional security of data.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="referenceAndVerificationNumber" type="eudrCommon:ReferenceAndVerificationNumberType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetDdsByIdentifiersResponseType">
+		<xs:annotation>
+			<xs:documentation>Response containing the full DDS statement payload retrieved by reference and verification numbers.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="statement" type="dds:DueDiligenceStatementBaseType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- DDS statement payload -->
+	<xs:complexType name="DueDiligenceStatementBaseType">
+		<xs:annotation>
+			<xs:documentation>
+				Core payload of a Due Diligence Statement.
+				Contains the information of
+				product details, operator identification, geolocation of production plots,
+				and country of production.
+				Relevant commodities: cattle, cocoa, coffee, oil palm, rubber, soya and wood.
+				Relevant products: products listed in Annex I that contain, have been fed with
+				or have been made using relevant commodities.
+				Products must be deforestation-free: produced on land not deforested after
+				31 Dec 2020; for wood, harvested without inducing forest degradation after 31 Dec 2020.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="internalReferenceNumber" type="eudrCommon:InternalReferenceNumberType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Internal reference in the operator's own system. If not provided, generated by the
+						Information System.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="activityType" type="eudrCommon:ActivityType">
+				<xs:annotation>
+					<xs:documentation>
+						The type of commercial activity: IMPORT (release for free circulation),
+						EXPORT, or DOMESTIC (placing on the market).
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="representedOperator" type="eudrCommon:EconomicOperatorIdentificationType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						The represented operator on whose behalf the authorised representative is acting.
+						Required when operatorRole is REPRESENTATIVE_OPERATOR. Contains operatorReferenceNumber, address, email, name and phone.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="countryOfActivity" type="eudrCommon:EuropeanCountryType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>EU Member State where the economic activity takes place.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="borderCrossCountry" type="eudrCommon:EuropeanCountryType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Country of entry (for IMPORT activity) or country of exit (for EXPORT activity)
+						at the customs territory border.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="comment" type="eudrCommon:EditorialCommentType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Editorial comment for the competent authority.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="commodities" type="dds:DdsCommodityType" maxOccurs="200">
+				<xs:annotation>
+					<xs:documentation>
+						Relevant commodities and products declared in this DDS.
+						Each commodity includes HS code, commercial description, quantity, producer geolocation, and country of production.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="geoLocationConfidential" type="xs:boolean">
+				<xs:annotation>
+					<xs:documentation>
+						If TRUE, geolocation data is confidential and not disclosed down the
+						supply chain. If FALSE, geolocation data can be disclosed to downstream operators and traders.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="groupedDeclarations" type="eudrCommon:GroupedDeclarationsType" minOccurs="0" maxOccurs="2000">
+				<xs:annotation>
+					<xs:documentation>
+						List of previously submitted DDS or SD declarations referenced by this statement
+						for grouping. Each reference includes a reference number and verification number. Referenced declarations
+						receive GROUPED status.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="DdsCommodityType">
+		<xs:annotation>
+			<xs:documentation>
+				A commodity entry in the DDS, representing a relevant commodity or relevant product. Includes HS code classification, commercial description, species information
+				(for wood), and producer geolocation data.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="position" type="xs:long" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Ordinal position of this commodity within the DDS.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="descriptors" type="eudrCommon:CommercialDescriptionType">
+				<xs:annotation>
+					<xs:documentation>Commercial description and quantity measures for this commodity.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="hsHeading" type="eudrCommon:HSHeadingType">
+				<xs:annotation>
+					<xs:documentation>
+						Commodity code from the Harmonized Commodity Description and Coding System (HS).
+						2 to 6 digit code identifying the product category.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="speciesInfo" type="dds:SpeciesInformationType" minOccurs="0" maxOccurs="500">
+				<xs:annotation>
+					<xs:documentation>
+						Species information required for wood-based products to support
+						verification that harvesting did not induce forest degradation.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="producers" type="dds:DdsProducerType" minOccurs="0" maxOccurs="1000">
+				<xs:annotation>
+					<xs:documentation>
+						Producers of this commodity with geolocation of the plot of land where the commodity was produced. Geolocation must be
+						expressed as lat/long coordinates with 6 decimal digits minimum; polygons required
+						for plots greater than 4 hectares (except cattle).
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="DdsProducerType">
+		<xs:annotation>
+			<xs:documentation>
+				Producer information including country of production and geolocation of the plot of land where the commodity was produced.
+				Geolocation is provided as GeoJSON geometry (base64 encoded): lat/long coordinates
+				with minimum 6 decimal digits; polygons for plots greater than 4 hectares (except cattle
+				where establishment coordinates suffice).
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="position" type="xs:long" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Ordinal position of this producer within the commodity.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="country" type="eudrCommon:CountryType">
+				<xs:annotation>
+					<xs:documentation>Country of production: the country where the relevant commodity was produced. ISO 3166-1 alpha-2 code.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="name" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Name of the producer (natural or legal person).</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="500"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="geometryGeojson" type="xs:base64Binary">
+				<xs:annotation>
+					<xs:documentation>
+						GeoJSON geometry (base64 encoded) representing the geolocation of the
+						plot of land. Must contain lat/long coordinates with minimum 6 decimal
+						digits. Polygons required for plots greater than 4 hectares (except cattle where
+						point coordinates for the establishment suffice).
+						Supported geometry types: Point, MultiPoint, Polygon, MultiPolygon, GeometryCollection.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="ScientificNameType">
+		<xs:annotation>
+			<xs:documentation>Used to specify the scientific (or common) name (Box 6).</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="200"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:complexType name="SpeciesInformationType">
+		<xs:sequence>
+			<xs:element name="scientificName" type="dds:ScientificNameType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The scientific name is string not case sensitive.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="commonName" type="dds:ScientificNameType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>The common name is string not case sensitive.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>

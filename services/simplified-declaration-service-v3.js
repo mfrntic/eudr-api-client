@@ -18,6 +18,8 @@ const { parseString } = require('xml2js');
 const EudrErrorHandler = require('../utils/error-handler');
 const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
+const { buildBodyIdentityHeaderXml } = require('../utils/body-identity');
+const { IDENTIFIER_TYPES, MAX_OPERATOR_REFERENCE_NUMBERS, MAX_GROUPED_DECLARATIONS } = require('../utils/eudr-v3-schema');
 
 const SD_V3_NAMESPACE = 'http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3';
 const DDS_V3_NAMESPACE = 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3';
@@ -44,6 +46,11 @@ class EudrSimplifiedDeclarationClientV3 {
    * @param {string} config.username
    * @param {string} config.password
    * @param {string} config.webServiceClientId
+   * @param {string|Object} [config.bodyIdentity] Multi-operator BodyIdentity header (release 8.2.1).
+   *        A plain string is shorthand for OperatorAccessIdentifier; an object accepts exactly one of
+   *        operatorAccessIdentifier, authorityActivityAccessIdentifier,
+   *        organicControlBodyAccessIdentifier, otherBodyAccessIdentifier. Max 16 characters.
+   *        Every operation also accepts a per-call `options.bodyIdentity` override.
    * @param {number} [config.timestampValidity=60]
    * @param {number} [config.timeout=10000]
    * @param {boolean} [config.ssl=false]
@@ -122,7 +129,7 @@ class EudrSimplifiedDeclarationClientV3 {
       .replace(/'/g, '&apos;');
   }
 
-  createSecurityHeaderXml() {
+  createSecurityHeaderXml(bodyIdentity) {
     const nonce = this.generateNonce();
     const created = this.getCurrentTimestamp();
     const expires = this.getExpirationTimestamp(this.config.timestampValidity);
@@ -145,17 +152,29 @@ class EudrSimplifiedDeclarationClientV3 {
                 <wsu:Created>${created}</wsu:Created>
             </wsse:UsernameToken>
         </wsse:Security>
-        <v4:WebServiceClientId>${this.escapeXml(this.config.webServiceClientId)}</v4:WebServiceClientId>`;
+        <v4:WebServiceClientId>${this.escapeXml(this.config.webServiceClientId)}</v4:WebServiceClientId>${this.createBodyIdentityHeaderXml(bodyIdentity)}`;
   }
 
-  createSoapEnvelope(bodyXml) {
+  /**
+   * Optional BodyIdentity header (EUDR release 8.2.1, multi-operator API authentication).
+   * A per-call value wins over the configured one; pass null to suppress the configured one.
+   * Returns an empty string when no identifier applies, keeping envelopes byte-identical
+   * to the pre-8.2.1 output.
+   */
+  createBodyIdentityHeaderXml(bodyIdentity) {
+    return buildBodyIdentityHeaderXml(
+      bodyIdentity === undefined ? this.config.bodyIdentity : bodyIdentity
+    );
+  }
+
+  createSoapEnvelope(bodyXml, bodyIdentity) {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                   xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4"
                   xmlns:sd="http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3"
                   xmlns:eudrCommon="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3">
     <soapenv:Header>
-${this.createSecurityHeaderXml()}
+${this.createSecurityHeaderXml(bodyIdentity)}
     </soapenv:Header>
     <soapenv:Body>
 ${bodyXml}
@@ -166,7 +185,8 @@ ${bodyXml}
   /**
    * Build an EconomicOperatorIdentificationType element body (used for representedOperator).
    * Per the V3 schema: operatorReferenceNumber is a structured {identifierType, identifierValue}
-   * pair, operatorAddress is a structured AddressType, and operatorName is mandatory.
+   * pair repeatable up to MAX_OPERATOR_REFERENCE_NUMBERS times (a single object is also accepted),
+   * operatorAddress is a structured AddressType, and operatorName is mandatory.
    */
   generateEconomicOperatorXml(operator) {
     if (!operator.operatorName) {
@@ -176,14 +196,36 @@ ${bodyXml}
     let xml = '';
 
     if (operator.operatorReferenceNumber) {
-      const ref = operator.operatorReferenceNumber;
-      if (!ref.identifierType || !ref.identifierValue) {
-        throw new Error('representedOperator.operatorReferenceNumber requires identifierType and identifierValue');
+      const references = Array.isArray(operator.operatorReferenceNumber)
+        ? operator.operatorReferenceNumber
+        : [operator.operatorReferenceNumber];
+
+      if (references.length > MAX_OPERATOR_REFERENCE_NUMBERS) {
+        const error = new Error(
+          `representedOperator.operatorReferenceNumber accepts a maximum of ${MAX_OPERATOR_REFERENCE_NUMBERS} entries, received ${references.length}.`
+        );
+        error.eudrErrorCode = 'EUDR_V3_OPERATOR_REFERENCE_NUMBER_LIMIT';
+        error.eudrSpecific = true;
+        throw error;
       }
-      xml += '<eudrCommon:operatorReferenceNumber>';
-      xml += `<eudrCommon:identifierType>${this.escapeXml(ref.identifierType)}</eudrCommon:identifierType>`;
-      xml += `<eudrCommon:identifierValue>${this.escapeXml(ref.identifierValue)}</eudrCommon:identifierValue>`;
-      xml += '</eudrCommon:operatorReferenceNumber>';
+
+      for (const ref of references) {
+        if (!ref || !ref.identifierType || !ref.identifierValue) {
+          throw new Error('representedOperator.operatorReferenceNumber requires identifierType and identifierValue');
+        }
+        if (!IDENTIFIER_TYPES.includes(ref.identifierType)) {
+          const error = new Error(
+            `Invalid identifierType '${ref.identifierType}'. V3 allows: ${IDENTIFIER_TYPES.join(', ')}.`
+          );
+          error.eudrErrorCode = 'EUDR_V3_IDENTIFIER_TYPE_INVALID';
+          error.eudrSpecific = true;
+          throw error;
+        }
+        xml += '<eudrCommon:operatorReferenceNumber>';
+        xml += `<eudrCommon:identifierType>${this.escapeXml(ref.identifierType)}</eudrCommon:identifierType>`;
+        xml += `<eudrCommon:identifierValue>${this.escapeXml(ref.identifierValue)}</eudrCommon:identifierValue>`;
+        xml += '</eudrCommon:operatorReferenceNumber>';
+      }
     }
 
     if (operator.operatorAddress) {
@@ -272,6 +314,15 @@ ${bodyXml}
       const groupedDeclarations = Array.isArray(statement.groupedDeclarations)
         ? statement.groupedDeclarations
         : [statement.groupedDeclarations];
+
+      if (groupedDeclarations.length > MAX_GROUPED_DECLARATIONS) {
+        const error = new Error(
+          `statement.groupedDeclarations accepts a maximum of ${MAX_GROUPED_DECLARATIONS} references, received ${groupedDeclarations.length}.`
+        );
+        error.eudrErrorCode = 'EUDR_V3_GROUPED_DECLARATIONS_LIMIT';
+        error.eudrSpecific = true;
+        throw error;
+      }
 
       for (const grouped of groupedDeclarations) {
         const groupedValue = grouped.groupedDeclaration || grouped.referenceNumber || grouped;
@@ -400,7 +451,7 @@ ${bodyXml}
     return xml;
   }
 
-  createSubmitSoapEnvelope(request) {
+  createSubmitSoapEnvelope(request, bodyIdentity) {
     if (!request || !request.statement) {
       throw new Error('submitSd requires request.statement');
     }
@@ -423,10 +474,10 @@ ${bodyXml}
             </sd:statement>
         </sd:SubmitSdRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
-  createUpdateSoapEnvelope(sdIdentifier, statement) {
+  createUpdateSoapEnvelope(sdIdentifier, statement, bodyIdentity) {
     if (!sdIdentifier) {
       throw new Error('updateSd requires sdIdentifier (V3 SD)');
     }
@@ -441,10 +492,10 @@ ${bodyXml}
             </sd:statement>
         </sd:UpdateSdRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
-  createWithdrawSoapEnvelope(sdIdentifier) {
+  createWithdrawSoapEnvelope(sdIdentifier, bodyIdentity) {
     if (!sdIdentifier) {
       throw new Error('withdrawSd requires sdIdentifier (V3 SD)');
     }
@@ -453,10 +504,10 @@ ${bodyXml}
             <sd:sdIdentifier>${this.escapeXml(sdIdentifier)}</sd:sdIdentifier>
         </sd:WithdrawSdRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
-  createGetSdSoapEnvelope(uuids) {
+  createGetSdSoapEnvelope(uuids, bodyIdentity) {
     const entries = Array.isArray(uuids) ? uuids : [uuids];
     if (entries.length === 0 || !entries[0]) {
       throw new Error('getSd requires at least one uuid');
@@ -482,10 +533,10 @@ ${bodyXml}
             ${entriesXml}
         </sd:GetSdRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
-  createGetSdByInternalReferenceSoapEnvelope(internalReferenceNumber) {
+  createGetSdByInternalReferenceSoapEnvelope(internalReferenceNumber, bodyIdentity) {
     if (!internalReferenceNumber) {
       throw new Error('getSdByInternalReference requires internalReferenceNumber');
     }
@@ -494,10 +545,10 @@ ${bodyXml}
             <sd:internalReference>${this.escapeXml(internalReferenceNumber)}</sd:internalReference>
         </sd:GetSdByInternalReferenceRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
-  createGetSdByIdentifiersSoapEnvelope(referenceNumber, verificationNumber) {
+  createGetSdByIdentifiersSoapEnvelope(referenceNumber, verificationNumber, bodyIdentity) {
     if (!referenceNumber || !verificationNumber) {
       throw new Error('getSdByIdentifiers requires referenceNumber and verificationNumber');
     }
@@ -509,7 +560,7 @@ ${bodyXml}
             </sd:referenceAndVerificationNumber>
         </sd:GetSdByIdentifiersRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
   parseSubmitSdResponse(xmlResponse) {
@@ -677,7 +728,7 @@ ${bodyXml}
 
   async submitSd(request, options = {}) {
     try {
-      const soapEnvelope = this.createSubmitSoapEnvelope(request);
+      const soapEnvelope = this.createSubmitSoapEnvelope(request, options.bodyIdentity);
       const response = await this.sendSoapRequest(soapEnvelope, this.sdSoapActionFor('submitSd'));
 
       if (options.rawResponse) {
@@ -702,7 +753,7 @@ ${bodyXml}
 
   async updateSd(sdIdentifier, statement, options = {}) {
     try {
-      const soapEnvelope = this.createUpdateSoapEnvelope(sdIdentifier, statement);
+      const soapEnvelope = this.createUpdateSoapEnvelope(sdIdentifier, statement, options.bodyIdentity);
       const response = await this.sendSoapRequest(soapEnvelope, this.sdSoapActionFor('updateSd'));
 
       if (options.rawResponse) {
@@ -727,7 +778,7 @@ ${bodyXml}
 
   async withdrawSd(sdIdentifier, options = {}) {
     try {
-      const soapEnvelope = this.createWithdrawSoapEnvelope(sdIdentifier);
+      const soapEnvelope = this.createWithdrawSoapEnvelope(sdIdentifier, options.bodyIdentity);
       const response = await this.sendSoapRequest(soapEnvelope, this.sdSoapActionFor('withdrawSd'));
 
       if (options.rawResponse) {
@@ -752,7 +803,7 @@ ${bodyXml}
 
   async getSd(uuids, options = {}) {
     try {
-      const soapEnvelope = this.createGetSdSoapEnvelope(uuids);
+      const soapEnvelope = this.createGetSdSoapEnvelope(uuids, options.bodyIdentity);
       const response = await this.sendSoapRequest(soapEnvelope, this.sdSoapActionFor('getSd'));
 
       if (options.rawResponse) {
@@ -777,7 +828,7 @@ ${bodyXml}
 
   async getSdByInternalReference(internalReferenceNumber, options = {}) {
     try {
-      const soapEnvelope = this.createGetSdByInternalReferenceSoapEnvelope(internalReferenceNumber);
+      const soapEnvelope = this.createGetSdByInternalReferenceSoapEnvelope(internalReferenceNumber, options.bodyIdentity);
       const response = await this.sendSoapRequest(soapEnvelope, this.sdSoapActionFor('getSdByInternalReference'));
 
       if (options.rawResponse) {
@@ -802,7 +853,7 @@ ${bodyXml}
 
   async getSdByIdentifiers(referenceNumber, verificationNumber, options = {}) {
     try {
-      const soapEnvelope = this.createGetSdByIdentifiersSoapEnvelope(referenceNumber, verificationNumber);
+      const soapEnvelope = this.createGetSdByIdentifiersSoapEnvelope(referenceNumber, verificationNumber, options.bodyIdentity);
       const response = await this.sendSoapRequest(soapEnvelope, this.sdSoapActionFor('getSdByIdentifiers'));
 
       if (options.rawResponse) {

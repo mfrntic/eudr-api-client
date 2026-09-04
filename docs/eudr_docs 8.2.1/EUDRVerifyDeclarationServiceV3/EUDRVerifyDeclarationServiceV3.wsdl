@@ -1,0 +1,114 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:base="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:verify="http://ec.europa.eu/tracesnt/certificate/eudr/verify-declaration/v3" targetNamespace="http://ec.europa.eu/tracesnt/certificate/eudr/verify-declaration/v3">
+
+	<wsp:Policy xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+		<sp:TransportBinding>
+			<wsp:Policy>
+				<sp:TransportToken>
+					<wsp:Policy>
+						<sp:HttpsToken/>
+					</wsp:Policy>
+				</sp:TransportToken>
+				<sp:AlgorithmSuite>
+					<wsp:Policy>
+						<sp:Basic256/>
+					</wsp:Policy>
+				</sp:AlgorithmSuite>
+				<sp:Layout>
+					<wsp:Policy>
+						<sp:Lax/>
+					</wsp:Policy>
+				</sp:Layout>
+				<sp:IncludeTimestamp/>
+			</wsp:Policy>
+		</sp:TransportBinding>
+		<sp:SupportingTokens>
+			<wsp:Policy>
+				<sp:UsernameToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+					<wsp:Policy>
+						<sp:HashPassword/>
+						<sp:WssUsernameToken10/>
+					</wsp:Policy>
+				</sp:UsernameToken>
+			</wsp:Policy>
+		</sp:SupportingTokens>
+	</wsp:Policy>
+
+	<wsdl:import location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRVerifyDeclarationServiceV3?wsdl=1" namespace="http://ec.europa.eu/sanco/tracesnt/base/v4"/>
+
+	<wsdl:types>
+		<xs:schema>
+			<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRVerifyDeclarationServiceV3?xsd=2" namespace="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3"/>
+			<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRVerifyDeclarationServiceV3?xsd=3" namespace="http://ec.europa.eu/tracesnt/certificate/eudr/verify-declaration/v3"/>
+		</xs:schema>
+	</wsdl:types>
+
+	<!-- Messages -->
+	<wsdl:message name="VerifyDeclarationRequest">
+		<wsdl:part name="statement" element="verify:VerifyDeclarationRequest"/>
+	</wsdl:message>
+	<wsdl:message name="VerifyDeclarationResponse">
+		<wsdl:part name="ddsIdentifier" element="verify:VerifyDeclarationResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="BusinessRulesValidationExceptionMessage">
+		<wsdl:part name="fault" element="verify:BusinessRulesValidationException"/>
+	</wsdl:message>
+	<wsdl:message name="PermissionDeniedExceptionMessage">
+		<wsdl:part name="fault" element="verify:PermissionDeniedException"/>
+	</wsdl:message>
+
+	<!-- Port Type -->
+
+	<wsdl:portType name="EUDRVerifyDeclarationPort">
+
+		<wsdl:operation name="verifyDeclaration">
+			<wsdl:documentation>
+				Verify DDS/SD declaration.
+				Only for Operators, Authorised Representative, SME Downstream Operator or
+				Trader, Non-SME Downstream Operator or Trader.
+			</wsdl:documentation>
+			<wsdl:input message="verify:VerifyDeclarationRequest" name="VerifyDeclarationRequest"/>
+			<wsdl:output message="verify:VerifyDeclarationResponse" name="VerifyDeclarationResponse"/>
+			<wsdl:fault name="BusinessRulesValidationException" message="verify:BusinessRulesValidationExceptionMessage"/>
+			<wsdl:fault name="PermissionDeniedException" message="verify:PermissionDeniedExceptionMessage"/>
+		</wsdl:operation>
+
+	</wsdl:portType>
+
+	<!-- Binding -->
+
+	<wsdl:binding name="EUDRVerifyDeclarationSoapBinding" type="verify:EUDRVerifyDeclarationPort">
+
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+
+		<wsdl:operation name="verifyDeclaration">
+			<wsdl:documentation>
+				Verify a DDS or SD declaration by providing its reference number and verification number. Returns whether the declaration
+				exists and whether it is in a usable status for compliance purposes
+			</wsdl:documentation>
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/verification/v3/verify-declaration"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+			<wsdl:fault name="BusinessRulesValidationException">
+				<soap:fault name="BusinessRulesValidationException" use="literal"/>
+			</wsdl:fault>
+			<wsdl:fault name="PermissionDeniedException">
+				<soap:fault name="PermissionDeniedException" use="literal"/>
+			</wsdl:fault>
+		</wsdl:operation>
+	</wsdl:binding>
+
+	<!-- Service -->
+
+	<wsdl:service name="EUDRVerifyDeclarationServiceV3">
+		<wsdl:port name="EUDRVerifyDeclarationServiceV3Endpoint" binding="verify:EUDRVerifyDeclarationSoapBinding">
+			<soap:address location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRVerifyDeclarationServiceV3"/>
+		</wsdl:port>
+	</wsdl:service>
+
+</wsdl:definitions>

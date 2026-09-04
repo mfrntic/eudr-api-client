@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:body="http://ec.europa.eu/tracesnt/body/v3" targetNamespace="http://ec.europa.eu/tracesnt/body/v3">
+    
+    <wsdl:types>
+        <xs:schema>
+            <xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRDueDiligenceStatementServiceV3?xsd=2" namespace="http://ec.europa.eu/tracesnt/body/v3"/>
+        </xs:schema>
+    </wsdl:types>
+    
+ 	<wsdl:message name="BodyIdentityHeader">
+    	<wsdl:part name="bodyIdentity" element="body:BodyIdentity"/>
+  	</wsdl:message>
+
+	<wsdl:message name="CustomsOfficeIdentityHeader">
+    	<wsdl:part name="customsOfficeReferenceNumber" element="body:CustomsOfficeReferenceNumber"/>
+  	</wsdl:message>
+    
+</wsdl:definitions>

@@ -275,6 +275,63 @@ The live acceptance V1/V2 endpoints currently return a SOAP fault: `"This API ve
 ### Estimate
 1-2 days
 
+## Story 9: Align the V3 clients with Information System release 8.2.1 [DONE]
+
+Triggered by the release notes for release 8.2.1 (August 2026),
+`docs/eudr_docs 1.4/EUDR_Release_Notes_821_596uh5f79EC8oA3TmKzHOQwcP8_132197.pdf`. Every item was
+audited against the live acceptance WSDL/XSD rather than the vendored PDF reference docs, because
+`docs/eudr_docs 1.5/` predates the release. The full audit is
+[docs/analysis/release-8.2.1-conformance.md](release-8.2.1-conformance.md).
+
+Only one release-note item turned out to be a wire change; the rest were GUI features or vocabulary
+for capabilities the library already had.
+
+### Acceptance criteria
+- [x] `BodyIdentity` SOAP header (multi-operator authentication) supported on all six DDS V3 and all
+      six SD V3 operations, as an optional `config.bodyIdentity` with a per-call `options.bodyIdentity`
+      override. Not added to the Verify Declaration client, whose WSDL does not declare the header.
+- [x] With no `bodyIdentity` configured, the generated envelope is byte-identical to the pre-8.2.1
+      output (the namespace is declared inline on the header element, not on the envelope).
+- [x] Input validation matching the XSD choice: exactly one identifier kind, max 16 characters
+      (`EUDR_V3_BODY_IDENTITY_INVALID`, `EUDR_V3_BODY_IDENTITY_TOO_LONG`).
+- [x] `NotFoundException`, newly declared as a fault on the `get*` operations, is classified by
+      `EudrErrorHandler` as `httpStatus: 404` / `notFound: true` / `EUDR_NOT_FOUND` instead of
+      falling through to a generic 500. The two neighbouring faults found while documenting it are
+      mapped too: `UnauthenticatedException` → 401 and `PermissionDeniedException` → 403.
+- [x] `representedOperator.operatorReferenceNumber` accepts up to 12 entries per the XSD (a single
+      object still works); `identifierType` is validated against the live enum.
+- [x] `groupedDeclarations` is validated against the schema limit of 2000 references.
+- [x] The live schemas are vendored in `docs/eudr_docs 8.2.1/` so the next release note is a diff.
+- [x] README documents multi-operator authentication and the GUI-to-wire mapping of the verification
+      result values.
+
+### Findings that required no code change
+- Grouping ("Group Head") is the existing `groupedDeclarations` element; the XML shape we emit was
+  already correct against `GroupedDeclarationsType`.
+- SD versioning is carried by `getSd`'s `uuidAndVersionNumberList` and by the `version` field in
+  responses; both were already supported. `getDds` has no version parameter in the live schema.
+- Verification still returns `EXISTING_USABLE` / `EXISTING_NON_USABLE` / `NON_EXISTENT`; the release
+  notes' VALID / NOT VALID / NOT FOUND is GUI wording.
+- The removed IMO/TRACES/NIRMS identifiers were never present in the V3 schema or in this library.
+
+### Repairs made along the way
+`tests/services/verification-service-v3.integration.test.js` could never run two of its cases: it
+referenced `submissionClient`, `retrievalClient`, `createdUuids`, `buildStatement`, `delay` and
+`pollUntil` without ever declaring or importing them, so both threw `ReferenceError`. The missing
+setup was added (mirroring `submission-service-v3.integration.test.js`), the suite timeout raised
+from 30s to 120s to fit its own polling, and the fresh-DDS test taught to treat a thrown `getDds` as
+"not ready yet" like its sibling withdrawn-DDS test. The suite now runs 5 passing, 2 self-skipped on
+the documented indexing delay, 0 failing.
+
+### Still open
+Live verification of real operator switching needs a Web Service Identifier for the acceptance
+account, which does not exist yet. A bogus identifier is rejected by the server with
+`UnauthenticatedException`, which proves the header is parsed and enforced, but not that a valid one
+switches operator context. Tracked in [v3-live-test-plan.md](v3-live-test-plan.md).
+
+### Estimate
+0.5-1 day
+
 ## Proposed implementation order
 1. Story 1
 2. Story 2

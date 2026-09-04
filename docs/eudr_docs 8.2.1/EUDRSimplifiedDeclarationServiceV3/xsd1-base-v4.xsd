@@ -1,0 +1,205 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:base="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:iso2let="urn:un:unece:uncefact:codelist:standard:ISO:ISO2AlphaLanguageCode:2006-10-27" targetNamespace="http://ec.europa.eu/sanco/tracesnt/base/v4" elementFormDefault="qualified">
+
+	<xs:import namespace="urn:un:unece:uncefact:codelist:standard:ISO:ISO2AlphaLanguageCode:2006-10-27" schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3?xsd=6"/>
+
+	<xs:simpleType name="CityType">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="150"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="CountryType">
+		<xs:annotation>
+			<xs:documentation>ISO 3166-1 alpha-2 codes</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:pattern value="[a-zA-Z]{2}"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="DecimalTwoPrecType">
+    	<xs:restriction base="xs:decimal">
+        	<xs:fractionDigits value="2"/>
+    	</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="PostalCodeType">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="9"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="StreetAndNumberType">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="200"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="POBoxType">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="70"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="NonStructuredAddressType">
+        <xs:restriction base="xs:string">
+            <xs:minLength value="1"/>
+            <xs:maxLength value="250"/>
+        </xs:restriction>
+    </xs:simpleType>
+	
+	<xs:simpleType name="MimeImageType">
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="IMAGE_JPEG"/>
+			<xs:enumeration value="IMAGE_PNG"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:complexType name="ImageType">
+		<xs:simpleContent>
+	        <xs:extension base="xs:base64Binary">
+	            <xs:attribute name="mimeContentType" type="base:MimeImageType" use="required"/>
+	        </xs:extension>
+	    </xs:simpleContent>
+    </xs:complexType>
+
+    <xs:complexType name="NameAndAddressType">
+		<xs:sequence>
+			<xs:element name="name">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="1"/>
+						<xs:maxLength value="200"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="country" type="base:CountryType"/>
+			<xs:element name="street" type="base:StreetAndNumberType" minOccurs="0"/>
+			<xs:element name="postalCode" type="base:PostalCodeType" minOccurs="0"/>
+			<xs:element name="city" type="base:CityType" minOccurs="0"/>
+			<xs:element name="address" type="base:NonStructuredAddressType"/>
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:complexType name="WithProxyTicket">
+		<xs:sequence>
+			<xs:element name="proxyTicket">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="1"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>			
+	</xs:complexType>
+	
+	<xs:complexType name="DateTimeRange">
+		<xs:annotation>
+			<xs:documentation>
+				A range of xs:dateTime
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="From" type="xs:dateTime" minOccurs="1" maxOccurs="1" nillable="false"/>
+			<xs:element name="To" type="xs:dateTime" minOccurs="1" maxOccurs="1" nillable="false"/>
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:element name="WebServiceClientId" type="xs:string">
+		<xs:annotation>
+			<xs:documentation>
+				A unique identifier defining the client of the Web service, exactly as a User-Agent in the HTTP world.
+			</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+
+	<xs:element name="LanguageCode" type="iso2let:ISO2AlphaLanguageCodeContentType">
+		<xs:annotation>
+			<xs:documentation>
+				A 2 letters language code.
+			</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+
+	<xs:simpleType name="UnLocode">
+		<xs:restriction base="xs:token">
+			<xs:maxLength value="5"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="CNCode">
+		<xs:restriction base="xs:token">
+			<xs:pattern value="([0-9][0-9]){1,10}"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:complexType name="CNCodeFilter">
+		<xs:simpleContent>
+			<xs:extension base="base:CNCode">
+				<xs:attribute name="exactMatch" type="xs:boolean" default="false" use="optional">
+					<xs:annotation>
+						<xs:documentation>
+							If set to true, the search will be performed by exact match of the commodity’s CN Code.
+							If the attribute is not specified or set to false, the search is performed wildcard-wise (starts with).
+						</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	
+	<xs:complexType name="StringFilterType">
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attribute name="exactMatch" type="xs:boolean" default="false" use="optional">
+					<xs:annotation>
+						<xs:documentation>
+							If set to true, the search will be performed by exact match
+							If the attribute is not specified or set to false, the search is performed full-text (fuzzy)
+						</xs:documentation>
+					</xs:annotation>
+				</xs:attribute>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	
+	<xs:complexType name="AttributeType">
+		<xs:simpleContent>
+			<xs:extension base="xs:token">
+				<xs:attribute name="key" type="xs:token" use="required"/>
+			</xs:extension>
+		</xs:simpleContent>
+	</xs:complexType>
+	
+	<xs:complexType name="AttributesType">
+		<xs:sequence>
+			<xs:element name="Attribute" type="base:AttributeType" minOccurs="1" maxOccurs="50"/>
+		</xs:sequence>
+	</xs:complexType>
+	
+	<xs:element name="Attributes" type="base:AttributesType">
+		<xs:annotation>
+			<xs:documentation>
+				A list of attributes to configure the endpoint
+			</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+	
+	<xs:simpleType name="PaginationPageSizeType">
+		<xs:restriction base="xs:int">
+			<xs:minInclusive value="1"/>
+			<xs:maxInclusive value="200"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="PaginationOffsetType">
+		<xs:restriction base="xs:int">
+			<xs:minInclusive value="0"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+</xs:schema>

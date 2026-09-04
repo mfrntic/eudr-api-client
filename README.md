@@ -57,6 +57,7 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
 - [Configuration](#configuration)
   - [Environment Variables](#environment-variables)
   - [Configuration Options](#configuration-options)
+  - [Multi-Operator Authentication](#multi-operator-authentication)
   - [Configuration Priority](#configuration-priority)
   - [Example Configuration Scenarios](#example-configuration-scenarios)
   - [Accessing Configuration Information](#accessing-configuration-information)
@@ -178,6 +179,7 @@ const config = {
   ssl: false, // true for production (secure), false for development
   timestampValidity: 60, // seconds
   timeout: 10000, // milliseconds
+  bodyIdentity: 'OP12345678', // only for API users belonging to several operators - see Multi-Operator Authentication
 };
 ```
 
@@ -197,6 +199,51 @@ const config = {
   timeout: 10000,
 };
 ```
+
+### Multi-Operator Authentication
+
+*Requires EUDR Information System release 8.2.1 or later.*
+
+An API user that belongs to more than one EUDR operator can declare **which operator it acts as** on
+each call, using the optional `BodyIdentity` SOAP header. Before 8.2.1 a web service user could only
+belong to a single operator, and calls from a multi-operator user were rejected with
+`EUDR_WEBSERVICE_USER_FROM_MANY_OPERATOR`.
+
+The value is the operator's **Web Service Identifier**, assigned by the Commission when the operator
+requests API access (max 16 characters).
+
+```javascript
+// Configure a default identity for every call from this client
+const client = new EudrSubmissionClientV3({
+  username: 'your-username',
+  password: 'your-password',
+  webServiceClientId: 'eudr-test',
+  bodyIdentity: 'OP12345678'          // shorthand for OperatorAccessIdentifier
+});
+
+// Or switch identity per call - the natural multi-operator pattern
+await client.submitDds(request, { bodyIdentity: 'OP12345678' });
+await client.submitDds(otherRequest, { bodyIdentity: 'OP87654321' });
+
+// Pass null to suppress a configured identity for one call
+await client.submitDds(request, { bodyIdentity: null });
+```
+
+Bodies other than operators use the object form, which accepts exactly one identifier:
+
+```javascript
+{ bodyIdentity: { authorityActivityAccessIdentifier: 'AA-000123' } }
+{ bodyIdentity: { organicControlBodyAccessIdentifier: 'OCB-00042' } }
+{ bodyIdentity: { otherBodyAccessIdentifier: 'CUSTOMS-01' } }
+```
+
+| Aspect | Behaviour |
+|--------|-----------|
+| **Supported clients** | `EudrSubmissionClientV3`, `EudrRetrievalClientV3`, `EudrSimplifiedDeclarationClientV3` (all 12 DDS + SD operations) |
+| **Not supported** | `EudrVerifyDeclarationClientV3` — the Verify Declaration WSDL does not declare the header |
+| **When omitted** | No header is sent and the request is byte-identical to previous library versions — single-operator users need to change nothing |
+| **Validation** | Exactly one identifier kind (`EUDR_V3_BODY_IDENTITY_INVALID`), at most 16 characters (`EUDR_V3_BODY_IDENTITY_TOO_LONG`) |
+| **Rejected identity** | An identifier the account may not act as comes back as `UnauthenticatedException` — surfaced as `error.httpStatus === 401` |
 
 ### Configuration Priority
 
@@ -380,6 +427,8 @@ console.log(`✅ Domestic DDS submitted. UUID: ${domesticResult.uuid}`);
 
 **Scenario**: Submitting a new DDS that references previously submitted DDS or SD declarations for grouping. This is the V3 replacement for the old V1/V2 `associatedStatements`/`TRADE` pattern — see [Data Types](#data-types) for the conceptual difference.
 
+> **Terminology:** what the TRACES NT web interface calls a **Group Head** is exactly this — a DDS or SD submitted with `groupedDeclarations`. There is no separate group-head API operation or field; the grouping declaration gets its own reference number, and its members move to `GROUPED` status. A DDS group head may group DDS and/or SD members; an SD group head may group SD members only. The schema allows up to 2000 references per submission (the library rejects more with `EUDR_V3_GROUPED_DECLARATIONS_LIMIT`), while the Commission's release notes quote a business limit of 1000 members per group.
+
 ```javascript
 const groupedResult = await client.submitDds({
   operatorRole: 'OPERATOR',
@@ -488,7 +537,39 @@ try {
 }
 ```
 
-See each V3 client's **Error Handling** subsection below for the full list of client-side `eudrErrorCode` values, and how server-side `BusinessRulesValidationException`/`PermissionDeniedException` faults surface via `error.details.soapFault`.
+#### Client-side validation error codes (V3)
+
+All of these are thrown **before any network call**, carry `error.eudrSpecific === true`, and are the same in every V3 client unless the table says otherwise.
+
+| Error code | When it's thrown |
+|---|---|
+| `EUDR_V3_ACTIVITY_TYPE_TRADE_NOT_SUPPORTED` | `activityType: 'TRADE'` — dropped in V3 (DDS) |
+| `EUDR_V3_ACTIVITY_TYPE_INVALID` | `activityType` is not `DOMESTIC`/`IMPORT`/`EXPORT` (DDS) |
+| `EUDR_V3_OPERATOR_ROLE_INVALID` | `operatorRole` is not `OPERATOR`/`REPRESENTATIVE_OPERATOR` (DDS) |
+| `EUDR_V3_LEGACY_OPERATOR_TYPE_FIELD` | the V1/V2 `operatorType` field was passed |
+| `EUDR_V3_LEGACY_ASSOCIATED_STATEMENTS_FIELD` | the V1/V2 `associatedStatements` field was passed |
+| `EUDR_V3_IDENTIFIER_TYPE_INVALID` | `operatorReferenceNumber.identifierType` is outside the V3 enum |
+| `EUDR_V3_OPERATOR_REFERENCE_NUMBER_LIMIT` | more than 12 `operatorReferenceNumber` entries |
+| `EUDR_V3_GROUPED_DECLARATIONS_LIMIT` | more than 2000 `groupedDeclarations` references |
+| `EUDR_V3_BODY_IDENTITY_INVALID` | `bodyIdentity` has zero, several, or unknown identifier fields |
+| `EUDR_V3_BODY_IDENTITY_TOO_LONG` | a `bodyIdentity` value longer than 16 characters |
+| `EUDR_V3_SD_*` | SD-only rules — see the [SD validation errors table](#v3-simplified-declaration-client) |
+
+#### How server faults are surfaced
+
+`EudrErrorHandler` normalizes every SOAP fault into the same thrown `Error`. The raw fault always remains available on `error.details.soapFault`.
+
+| Server fault | `error.httpStatus` | Also set |
+|---|---|---|
+| `NotFoundException` (V3 `get*` operations) | `404` | `error.notFound === true`, `eudrErrorCode: 'EUDR_NOT_FOUND'` |
+| `UnauthenticatedException` | `401` | — (wrong credentials, or a `bodyIdentity` the account may not act as) |
+| `PermissionDeniedException` / "not authorized" faults | `403` | — |
+| `BusinessRulesValidationException` | `400` | `error.eudrErrors[]` with `{ code, message, field }` |
+| XSD validation (`SAXParseException` / `cvc-*`) | `400` | `eudrErrors[0].code === 'XML_VALIDATION_ERROR'` |
+
+> `NotFoundException` became an explicitly declared fault on the V3 `get*` operations with EUDR release 8.2.1; before that it surfaced as a generic 500.
+
+See each V3 client's **Error Handling** subsection below for worked examples.
 
 ## API Reference
 
@@ -715,6 +796,8 @@ await sdClient.getSdByIdentifiers('DECLARATION-IDENTIFIER', 'VERIFICATION-NUMBER
 | `EUDR_V3_SD_PRODUCER_COUNTRY_REQUIRED` | a producer is missing `producerCountry` |
 | `EUDR_V3_SD_PRODUCER_LOCATION_INVALID` | a producer's location has zero or more than one of `geometryGeojson`/`postalAddress`/`cadastralIdentifier` |
 
+The SD client also throws the shared V3 codes — `EUDR_V3_IDENTIFIER_TYPE_INVALID`, `EUDR_V3_OPERATOR_REFERENCE_NUMBER_LIMIT`, `EUDR_V3_GROUPED_DECLARATIONS_LIMIT`, `EUDR_V3_BODY_IDENTITY_INVALID`, `EUDR_V3_BODY_IDENTITY_TOO_LONG` — listed in [Client-side validation error codes](#business-rules--validation).
+
 ---
 ### 🚀 EudrSubmissionClientV3
 The V3 client for submitting, amending, and withdrawing DDS statements against the unified DDS V3 service. Not backward compatible with V1/V2 payloads — see the breaking-changes table in [V3 DDS Facade Clients](#v3-dds-facade-clients).
@@ -730,6 +813,7 @@ The V3 client for submitting, amending, and withdrawing DDS statements against t
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `rawResponse` | boolean | false | Whether to return the raw XML response instead of the parsed result |
+| `bodyIdentity` | string\|Object | - | Operator identity for this call ([multi-operator authentication](#multi-operator-authentication)); overrides the configured value, `null` suppresses it |
 
 #### Detailed Method Reference
 
@@ -804,6 +888,11 @@ try {
     console.error('Invalid operatorRole:', error.message);
   } else if (error.eudrErrorCode === 'EUDR_V3_ACTIVITY_TYPE_TRADE_NOT_SUPPORTED') {
     console.error('TRADE is not supported in V3:', error.message);
+  } else if (error.eudrErrorCode?.startsWith('EUDR_V3_BODY_IDENTITY')) {
+    console.error('Invalid bodyIdentity:', error.message);
+  } else if (error.httpStatus === 401) {
+    // Wrong credentials, or a bodyIdentity this account may not act as
+    console.error('Authentication rejected:', error.details?.soapFault?.faultString);
   } else if (error.details?.soapFault) {
     // Server-side faults: BusinessRulesValidationException / PermissionDeniedException
     console.error('SOAP fault:', error.details.soapFault.faultString);
@@ -861,6 +950,7 @@ Retrieval facade over the unified DDS V3 service. Unlike V1/V2, retrieval and su
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `rawResponse` | boolean | false | Whether to return the raw XML response instead of the parsed result |
+| `bodyIdentity` | string\|Object | - | Operator identity for this call ([multi-operator authentication](#multi-operator-authentication)); overrides the configured value, `null` suppresses it |
 
 > Note: unlike V1/V2, `decodeGeojson` auto-decoding is **not yet implemented** for V3 — `geometryGeojson` in `getDdsByIdentifiers` results comes back base64-encoded exactly as received from the server.
 
@@ -944,12 +1034,15 @@ try {
   const result = await retrievalV3.getDds('some-uuid');
   console.log('Success:', result.ddsInfo);
 } catch (error) {
-  console.error(error.message);
-  // Inspect the raw SOAP fault for NotFoundException / BusinessRulesValidationException details -
-  // V3 fault-to-HTTP-status mapping in EudrErrorHandler is generic, not yet tailored per V3 fault type.
-  console.error(error.details?.soapFault);
-  if (error.eudrErrorCode) {
+  if (error.notFound) {
+    // NotFoundException - no declaration matches the identifiers.
+    // Declared as an explicit fault on all V3 get* operations since Information System release 8.2.1.
+    console.error('Not found:', error.eudrErrorMessage); // error.httpStatus === 404, error.eudrErrorCode === 'EUDR_NOT_FOUND'
+  } else if (error.eudrErrorCode) {
     console.error('EUDR error code:', error.eudrErrorCode);
+  } else {
+    // Inspect the raw SOAP fault for BusinessRulesValidationException details
+    console.error(error.details?.soapFault);
   }
 }
 ```
@@ -1003,6 +1096,7 @@ Single unified client for the new Simplified Declaration (SD) V3 service — see
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `rawResponse` | boolean | false | Whether to return the raw XML response instead of the parsed result |
+| `bodyIdentity` | string\|Object | - | Operator identity for this call ([multi-operator authentication](#multi-operator-authentication)); overrides the configured value, `null` suppresses it |
 
 #### Key Features
 - ✅ **New V3-only concept**: no V1/V2 precedent, no legacy field name compatibility concerns
@@ -1157,7 +1251,12 @@ v1.0" §4.1 (not the main Operator API Reference, which only lists this service 
 - ✅ **Single-operation client**: only `verifyDeclaration`, no submission/retrieval split
 - ✅ **Role-agnostic**: usable by Operators, Authorised Representatives, and SME/Non-SME Downstream Operators or Traders alike — unlike DDS submission, which is operator-only
 - ✅ **Works for both DDS and SD**: the same `referenceNumber`/`verificationNumber` pair works regardless of which service originally issued the declaration
+- ⚠️ **No `bodyIdentity` support**: the Verify Declaration WSDL does not declare the `BodyIdentity` header, so [multi-operator authentication](#multi-operator-authentication) does not apply to this client
 - ✅ **Three-way result**: `EXISTING_USABLE`, `EXISTING_NON_USABLE`, or `NON_EXISTENT` — `status` (the underlying `EudrStatusType`) is only present for the two `EXISTING_*` outcomes
+
+> **Wording:** the TRACES NT web interface labels these three outcomes **VALID**, **NOT VALID** and **NOT FOUND**. The API values are unchanged: `EXISTING_USABLE` → VALID, `EXISTING_NON_USABLE` → NOT VALID, `NON_EXISTENT` → NOT FOUND.
+>
+> To read the **full content** of a declaration rather than just verify it, use `getDdsByIdentifiers` / `getSdByIdentifiers` with the same reference + verification number pair. That operation is restricted to non-SME operators — SME downstream operators and traders can verify existence but cannot read content.
 
 #### Detailed Method Reference
 
@@ -1238,8 +1337,9 @@ All V3 statement fields that the schema allows to repeat can be provided as eith
 | **`groupedDeclarations`** | DDS & SD statement | Referenced declarations for grouping |
 | **`postalAddress`** | SD producer location | Alternative postal address(es) for a production location |
 | **`cadastralIdentifier`** | SD producer location | Alternative land-registry identifier(s) |
+| **`operatorReferenceNumber`** | `representedOperator` (DDS & SD) | Operator identifiers, up to 12 |
 
-> **Schema change vs V1/V2:** `representedOperator.operatorReferenceNumber` is a single structured `{ identifierType, identifierValue }` object in V3, not a repeatable array like V1/V2's `operator.referenceNumber` — an operator now has exactly one reference number.
+> **Schema change vs V1/V2:** `representedOperator.operatorReferenceNumber` is a structured `{ identifierType, identifierValue }` object in V3, where V1/V2 used `operator.referenceNumber`. It may repeat up to **12** times (pass an array); a single object is still accepted and is the common case. `identifierType` is validated against the V3 enum — the V1/V2 IMO-based values (`ship_man_comp_imo`, `ship_reg_owner_imo`) and `remos` no longer exist and are rejected with `EUDR_V3_IDENTIFIER_TYPE_INVALID`.
 
 #### Examples
 
@@ -1338,7 +1438,7 @@ const request = {
       operatorReferenceNumber: {       // EconomicOperatorReferenceNumberType - structured, optional
         identifierType: 'eori' | 'vat' | 'gln' | 'tin' | 'cbr' | 'cin' | 'duns' | 'comp_num' | 'comp_reg' | 'oni',
         identifierValue: String
-      },
+      },                               // may also be an array of up to 12 such objects
       operatorAddress: {                // AddressType - structured, optional
         country: String,                // required if operatorAddress is present
         street: String,                 // required if operatorAddress is present
@@ -1600,7 +1700,33 @@ const encoded = Buffer.from(JSON.stringify(geojson)).toString('base64');
 const decoded = JSON.parse(Buffer.from(encoded, 'base64').toString('utf-8'));
 ```
 
-#### 5. SSL Certificate Errors
+#### 5. Declaration Not Found (404)
+
+```
+error.httpStatus === 404, error.eudrErrorCode === 'EUDR_NOT_FOUND'
+```
+
+**Solution**: `getDds`/`getSd` and their `ByInternalReference`/`ByIdentifiers` variants throw this when nothing matches the identifiers you passed. Check the `notFound` flag rather than string-matching the message:
+
+```javascript
+try {
+  await retrievalV3.getDdsByIdentifiers(referenceNumber, verificationNumber);
+} catch (error) {
+  if (error.notFound) { /* no such declaration */ }
+}
+```
+
+Note that a freshly submitted DDS is not immediately queryable — the Information System indexes it asynchronously, so a 404 (or an empty `ddsInfo` array) right after `submitDds` is expected, not an error in your code.
+
+#### 6. Multi-Operator Identity Rejected (401)
+
+```
+error.httpStatus === 401, faultString: 'UnauthenticatedException'
+```
+
+**Solution**: the `bodyIdentity` you sent is not a Web Service Identifier this account may act as. Verify the identifier in TRACES NT, or drop the option entirely if the account belongs to a single operator. The same fault also means plain wrong credentials, so check `username`/`password` first when you are not using `bodyIdentity` at all.
+
+#### 7. SSL Certificate Errors
 
 ```
 Error: unable to verify the first certificate
@@ -1640,6 +1766,17 @@ process.env.EUDR_LOG_LEVEL = 'trace';
 #### Q: Are V1 and V2 still usable?
 
 **A**: No. The live EUDR system (both acceptance and production) rejects V1/V2 requests outright with a SOAP fault (`"This API version has been discontinued. Please use the V3 API endpoints."`). The V1/V2 client classes remain in this library and are documented in the [Legacy: V1 / V2 API Reference](#legacy-v1--v2-api-reference-deprecated--non-functional) section, purely for migration reference — don't build new integrations on them.
+
+#### Q: Can one API user submit on behalf of several operators?
+
+**A**: Yes, since EUDR Information System release 8.2.1 — if the user is registered with more than one operator. Send the target operator's Web Service Identifier in the `BodyIdentity` header, either per client or per call:
+
+```javascript
+const client = new EudrSubmissionClientV3({ ...config, bodyIdentity: 'OP12345678' });
+await client.submitDds(request, { bodyIdentity: 'OP87654321' }); // per-call override
+```
+
+See [Multi-Operator Authentication](#multi-operator-authentication). It applies to the DDS and SD clients; the Verify Declaration service does not accept the header. Before 8.2.1 such a user was rejected with `EUDR_WEBSERVICE_USER_FROM_MANY_OPERATOR`, and that is still what you get if you omit the header on a multi-operator account.
 
 #### Q: What's the difference between `httpStatus` and `status` fields in responses?
 

@@ -54,9 +54,20 @@ submissions have no legal value — it's the sandbox EUDR provides for exactly t
 ## Re-fetching the authoritative schema
 
 The WSDL/XSD served by the acceptance environment is the ground truth for field names, types, and
-cardinality — more reliable than the vendored reference PDF/MD in `docs/eudr_docs 1.5/`. Fetch directly:
-- `https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRDueDiligenceStatementServiceV3?wsdl` (+ `?xsd=2` common, `?xsd=3` DDS-specific)
-- `https://acceptance.eudr.webcloud.ec.europa.eu/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3?wsdl` (+ `?xsd=2`, `?xsd=3`)
+cardinality — more reliable than the vendored reference PDF/MD in `docs/eudr_docs 1.5/`.
+
+A full snapshot fetched on 2026-09-04 (Information System release 8.2.1) is vendored in
+[docs/eudr_docs 8.2.1/](../../../docs/eudr_docs%208.2.1/README.md), including the re-fetch recipe —
+check that first, and re-fetch when you need to know whether the contract has moved since.
+
+**The `?xsd=N` numbering is assigned per service and shifts when the Commission adds a schema** — it
+already changed once, when release 8.2.1 inserted the `body/v3` schema (the `BodyIdentity` header) as
+`?xsd=2` and pushed the EUDR common schema from `?xsd=2` to `?xsd=3`. Never trust the number; fetch and
+check `targetNamespace`. As of the 8.2.1 snapshot:
+- `EUDRDueDiligenceStatementServiceV3` / `EUDRSimplifiedDeclarationServiceV3`: `?xsd=1` base v4,
+  `?xsd=2` body v3, `?xsd=3` EUDR common v3, `?xsd=4` service-specific, `?xsd=5` error v01
+- `EUDRVerifyDeclarationServiceV3`: `?xsd=1` base v4, `?xsd=2` EUDR common v3, `?xsd=3` verify-declaration
+  v3, `?xsd=4` error v01 (no body v3 — this service does not accept the `BodyIdentity` header)
 
 ## What live testing already caught once
 

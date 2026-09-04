@@ -16,6 +16,8 @@ const { parseString } = require('xml2js');
 const EudrErrorHandler = require('../utils/error-handler');
 const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
+const { buildBodyIdentityHeaderXml } = require('../utils/body-identity');
+const { IDENTIFIER_TYPES, MAX_OPERATOR_REFERENCE_NUMBERS, MAX_GROUPED_DECLARATIONS } = require('../utils/eudr-v3-schema');
 
 const DDS_V3_NAMESPACE = 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3';
 
@@ -26,6 +28,11 @@ class EudrDueDiligenceStatementServiceV3Transport {
    * @param {string} config.username
    * @param {string} config.password
    * @param {string} config.webServiceClientId
+   * @param {string|Object} [config.bodyIdentity] Multi-operator BodyIdentity header (release 8.2.1).
+   *        A plain string is shorthand for OperatorAccessIdentifier; an object accepts exactly one of
+   *        operatorAccessIdentifier, authorityActivityAccessIdentifier,
+   *        organicControlBodyAccessIdentifier, otherBodyAccessIdentifier. Max 16 characters.
+   *        Every operation also accepts a per-call `options.bodyIdentity` override.
    * @param {number} [config.timestampValidity=60]
    * @param {number} [config.timeout=10000]
    * @param {boolean} [config.ssl=false]
@@ -115,7 +122,7 @@ class EudrDueDiligenceStatementServiceV3Transport {
       .replace(/'/g, '&apos;');
   }
 
-  createSecurityHeaderXml() {
+  createSecurityHeaderXml(bodyIdentity) {
     const nonce = this.generateNonce();
     const created = this.getCurrentTimestamp();
     const expires = this.getExpirationTimestamp(this.config.timestampValidity);
@@ -138,17 +145,29 @@ class EudrDueDiligenceStatementServiceV3Transport {
                 <wsu:Created>${created}</wsu:Created>
             </wsse:UsernameToken>
         </wsse:Security>
-        <v4:WebServiceClientId>${this.escapeXml(this.config.webServiceClientId)}</v4:WebServiceClientId>`;
+        <v4:WebServiceClientId>${this.escapeXml(this.config.webServiceClientId)}</v4:WebServiceClientId>${this.createBodyIdentityHeaderXml(bodyIdentity)}`;
   }
 
-  createSoapEnvelope(bodyXml) {
+  /**
+   * Optional BodyIdentity header (EUDR release 8.2.1, multi-operator API authentication).
+   * A per-call value wins over the configured one; pass null to suppress the configured one.
+   * Returns an empty string when no identifier applies, keeping envelopes byte-identical
+   * to the pre-8.2.1 output.
+   */
+  createBodyIdentityHeaderXml(bodyIdentity) {
+    return buildBodyIdentityHeaderXml(
+      bodyIdentity === undefined ? this.config.bodyIdentity : bodyIdentity
+    );
+  }
+
+  createSoapEnvelope(bodyXml, bodyIdentity) {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                   xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4"
                   xmlns:dds="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3"
                   xmlns:eudrCommon="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3">
     <soapenv:Header>
-${this.createSecurityHeaderXml()}
+${this.createSecurityHeaderXml(bodyIdentity)}
     </soapenv:Header>
     <soapenv:Body>
 ${bodyXml}
@@ -159,7 +178,8 @@ ${bodyXml}
   /**
    * Build an EconomicOperatorIdentificationType element body (used for representedOperator).
    * Per the V3 schema: operatorReferenceNumber is a structured {identifierType, identifierValue}
-   * pair, operatorAddress is a structured AddressType, and operatorName is mandatory.
+   * pair repeatable up to MAX_OPERATOR_REFERENCE_NUMBERS times (a single object is also accepted),
+   * operatorAddress is a structured AddressType, and operatorName is mandatory.
    */
   generateEconomicOperatorXml(operator) {
     if (!operator.operatorName) {
@@ -169,14 +189,36 @@ ${bodyXml}
     let xml = '';
 
     if (operator.operatorReferenceNumber) {
-      const ref = operator.operatorReferenceNumber;
-      if (!ref.identifierType || !ref.identifierValue) {
-        throw new Error('representedOperator.operatorReferenceNumber requires identifierType and identifierValue');
+      const references = Array.isArray(operator.operatorReferenceNumber)
+        ? operator.operatorReferenceNumber
+        : [operator.operatorReferenceNumber];
+
+      if (references.length > MAX_OPERATOR_REFERENCE_NUMBERS) {
+        const error = new Error(
+          `representedOperator.operatorReferenceNumber accepts a maximum of ${MAX_OPERATOR_REFERENCE_NUMBERS} entries, received ${references.length}.`
+        );
+        error.eudrErrorCode = 'EUDR_V3_OPERATOR_REFERENCE_NUMBER_LIMIT';
+        error.eudrSpecific = true;
+        throw error;
       }
-      xml += '<eudrCommon:operatorReferenceNumber>';
-      xml += `<eudrCommon:identifierType>${this.escapeXml(ref.identifierType)}</eudrCommon:identifierType>`;
-      xml += `<eudrCommon:identifierValue>${this.escapeXml(ref.identifierValue)}</eudrCommon:identifierValue>`;
-      xml += '</eudrCommon:operatorReferenceNumber>';
+
+      for (const ref of references) {
+        if (!ref || !ref.identifierType || !ref.identifierValue) {
+          throw new Error('representedOperator.operatorReferenceNumber requires identifierType and identifierValue');
+        }
+        if (!IDENTIFIER_TYPES.includes(ref.identifierType)) {
+          const error = new Error(
+            `Invalid identifierType '${ref.identifierType}'. V3 allows: ${IDENTIFIER_TYPES.join(', ')}.`
+          );
+          error.eudrErrorCode = 'EUDR_V3_IDENTIFIER_TYPE_INVALID';
+          error.eudrSpecific = true;
+          throw error;
+        }
+        xml += '<eudrCommon:operatorReferenceNumber>';
+        xml += `<eudrCommon:identifierType>${this.escapeXml(ref.identifierType)}</eudrCommon:identifierType>`;
+        xml += `<eudrCommon:identifierValue>${this.escapeXml(ref.identifierValue)}</eudrCommon:identifierValue>`;
+        xml += '</eudrCommon:operatorReferenceNumber>';
+      }
     }
 
     if (operator.operatorAddress) {
@@ -280,6 +322,15 @@ ${bodyXml}
         ? statement.groupedDeclarations
         : [statement.groupedDeclarations];
 
+      if (groupedDeclarations.length > MAX_GROUPED_DECLARATIONS) {
+        const error = new Error(
+          `statement.groupedDeclarations accepts a maximum of ${MAX_GROUPED_DECLARATIONS} references, received ${groupedDeclarations.length}.`
+        );
+        error.eudrErrorCode = 'EUDR_V3_GROUPED_DECLARATIONS_LIMIT';
+        error.eudrSpecific = true;
+        throw error;
+      }
+
       for (const grouped of groupedDeclarations) {
         const groupedValue = grouped.groupedDeclaration || grouped.referenceNumber || grouped;
         xml += '<dds:groupedDeclarations>';
@@ -364,7 +415,7 @@ ${bodyXml}
     return xml;
   }
 
-  createSubmitSoapEnvelope(request) {
+  createSubmitSoapEnvelope(request, bodyIdentity) {
     if (!request || !request.statement) {
       throw new Error('submitDds requires request.statement');
     }
@@ -395,10 +446,10 @@ ${bodyXml}
             </dds:statement>
         </dds:SubmitDdsRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
-  createAmendSoapEnvelope(uuid, statement) {
+  createAmendSoapEnvelope(uuid, statement, bodyIdentity) {
     if (!uuid) {
       throw new Error('amendDds requires uuid (V3)');
     }
@@ -413,10 +464,10 @@ ${bodyXml}
             </dds:statement>
         </dds:AmendDdsRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
-  createWithdrawSoapEnvelope(uuid) {
+  createWithdrawSoapEnvelope(uuid, bodyIdentity) {
     if (!uuid) {
       throw new Error('withdrawDds requires uuid (V3)');
     }
@@ -425,10 +476,10 @@ ${bodyXml}
             <dds:uuid>${this.escapeXml(uuid)}</dds:uuid>
         </dds:WithdrawDdsRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
-  createGetDdsSoapEnvelope(uuids) {
+  createGetDdsSoapEnvelope(uuids, bodyIdentity) {
     const uuidList = Array.isArray(uuids) ? uuids : [uuids];
     if (uuidList.length === 0 || !uuidList[0]) {
       throw new Error('getDds requires at least one uuid');
@@ -445,10 +496,10 @@ ${bodyXml}
             ${uuidListXml}
         </dds:GetDdsRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
-  createGetDdsByInternalReferenceSoapEnvelope(internalReferenceNumber) {
+  createGetDdsByInternalReferenceSoapEnvelope(internalReferenceNumber, bodyIdentity) {
     if (!internalReferenceNumber) {
       throw new Error('getDdsByInternalReference requires internalReferenceNumber');
     }
@@ -457,10 +508,10 @@ ${bodyXml}
             <dds:internalReference>${this.escapeXml(internalReferenceNumber)}</dds:internalReference>
         </dds:GetDdsByInternalReferenceRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
-  createGetDdsByIdentifiersSoapEnvelope(referenceNumber, verificationNumber) {
+  createGetDdsByIdentifiersSoapEnvelope(referenceNumber, verificationNumber, bodyIdentity) {
     if (!referenceNumber || !verificationNumber) {
       throw new Error('getDdsByIdentifiers requires referenceNumber and verificationNumber');
     }
@@ -472,7 +523,7 @@ ${bodyXml}
             </dds:referenceAndVerificationNumber>
         </dds:GetDdsByIdentifiersRequest>`;
 
-    return this.createSoapEnvelope(bodyXml);
+    return this.createSoapEnvelope(bodyXml, bodyIdentity);
   }
 
   parseSubmitResponse(xmlResponse) {
@@ -654,7 +705,7 @@ ${bodyXml}
 
   async submitDds(request, options = {}) {
     try {
-      const soapEnvelope = this.createSubmitSoapEnvelope(request);
+      const soapEnvelope = this.createSubmitSoapEnvelope(request, options.bodyIdentity);
       const response = await this.sendSoapRequest(
         soapEnvelope,
         this.soapActionFor('submitDds')
@@ -681,7 +732,7 @@ ${bodyXml}
 
   async amendDds(uuid, statement, options = {}) {
     try {
-      const soapEnvelope = this.createAmendSoapEnvelope(uuid, statement);
+      const soapEnvelope = this.createAmendSoapEnvelope(uuid, statement, options.bodyIdentity);
       const response = await this.sendSoapRequest(
         soapEnvelope,
         this.soapActionFor('amendDds')
@@ -709,7 +760,7 @@ ${bodyXml}
 
   async withdrawDds(uuid, options = {}) {
     try {
-      const soapEnvelope = this.createWithdrawSoapEnvelope(uuid);
+      const soapEnvelope = this.createWithdrawSoapEnvelope(uuid, options.bodyIdentity);
       const response = await this.sendSoapRequest(
         soapEnvelope,
         this.soapActionFor('withdrawDds')
@@ -737,7 +788,7 @@ ${bodyXml}
 
   async getDds(uuids, options = {}) {
     try {
-      const soapEnvelope = this.createGetDdsSoapEnvelope(uuids);
+      const soapEnvelope = this.createGetDdsSoapEnvelope(uuids, options.bodyIdentity);
       const response = await this.sendSoapRequest(soapEnvelope, this.soapActionFor('getDds'));
 
       if (options.rawResponse) {
@@ -762,7 +813,7 @@ ${bodyXml}
 
   async getDdsByInternalReference(internalReferenceNumber, options = {}) {
     try {
-      const soapEnvelope = this.createGetDdsByInternalReferenceSoapEnvelope(internalReferenceNumber);
+      const soapEnvelope = this.createGetDdsByInternalReferenceSoapEnvelope(internalReferenceNumber, options.bodyIdentity);
       const response = await this.sendSoapRequest(soapEnvelope, this.soapActionFor('getDdsByInternalReference'));
 
       if (options.rawResponse) {
@@ -787,7 +838,7 @@ ${bodyXml}
 
   async getDdsByIdentifiers(referenceNumber, verificationNumber, options = {}) {
     try {
-      const soapEnvelope = this.createGetDdsByIdentifiersSoapEnvelope(referenceNumber, verificationNumber);
+      const soapEnvelope = this.createGetDdsByIdentifiersSoapEnvelope(referenceNumber, verificationNumber, options.bodyIdentity);
       const response = await this.sendSoapRequest(soapEnvelope, this.soapActionFor('getDdsByIdentifiers'));
 
       if (options.rawResponse) {

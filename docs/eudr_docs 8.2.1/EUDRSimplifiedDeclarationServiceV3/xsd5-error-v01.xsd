@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:error="http://ec.europa.eu/sanco/tracesnt/error/v01" xmlns:udt="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:21" targetNamespace="http://ec.europa.eu/sanco/tracesnt/error/v01" elementFormDefault="qualified">
+
+	<xs:import namespace="urn:un:unece:uncefact:data:standard:UnqualifiedDataType:21" schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3?xsd=7"/>
+
+	<xs:complexType name="Error">
+		<xs:annotation>
+			<xs:documentation>
+				Describes an error message
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="ID" type="xs:string" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="Message" type="udt:TextType" minOccurs="1" maxOccurs="1"/>
+			<xs:element name="Field" type="udt:TextType" minOccurs="1" maxOccurs="1"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="CertificatePermissionDeniedExceptionType">
+		<xs:complexContent>
+			<xs:extension base="error:ErrorBasedExceptionType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	
+	<xs:complexType name="BusinessRulesValidationExceptionType">
+		<xs:complexContent>
+			<xs:extension base="error:ErrorBasedExceptionType"/>
+		</xs:complexContent>
+	</xs:complexType>
+	
+	<xs:complexType name="PermissionDeniedExceptionType">
+		<xs:complexContent>
+			<xs:extension base="error:ErrorBasedExceptionType"/>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType name="InvalidParametersExceptionType">
+		<xs:complexContent>
+			<xs:extension base="error:ErrorBasedExceptionType"/>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType name="NotFoundFault">
+		<xs:complexContent>
+			<xs:extension base="error:ErrorBasedExceptionType"/>
+		</xs:complexContent>
+	</xs:complexType>
+
+	<xs:complexType name="ErrorBasedExceptionType">
+		<xs:sequence>
+			<xs:element name="Error" type="error:Error" minOccurs="0" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+
+</xs:schema>

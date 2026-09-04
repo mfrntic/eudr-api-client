@@ -1,0 +1,89 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:body="http://ec.europa.eu/tracesnt/body/v3" targetNamespace="http://ec.europa.eu/tracesnt/body/v3">
+
+	<xs:element name="CustomsOfficeReferenceNumber" type="xs:string">
+		<xs:annotation>
+			<xs:documentation>
+				A customs office reference number as defined in :
+				http://ec.europa.eu/taxation_customs/dds2/col/col_home.jsp?Lang=en
+			</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+
+	<xs:simpleType name="AuthorityActivityCode">
+		<xs:restriction base="xs:token">
+			<xs:maxLength value="40"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:element name="BodyIdentity" type="body:BodyIdentityType"/>
+
+	<xs:element name="AuthorityActivityAccessIdentifier" type="body:AuthorityActivityAccessIdentifierType"/>
+	<xs:element name="OperatorAccessIdentifier" type="body:OperatorAccessIdentifierType"/>
+	<xs:element name="OrganicControlBodyAccessIdentifier" type="body:OrganicControlBodyAccessIdentifierType"/>
+	<xs:element name="OtherBodyAccessIdentifier" type="body:OtherBodyAccessIdentifierType"/>
+
+	<xs:complexType name="BodyIdentityType">
+		<xs:sequence>
+			<xs:choice>
+				<xs:element name="AuthorityActivityAccessIdentifier" type="body:AuthorityActivityAccessIdentifierType" maxOccurs="1"/>
+				<xs:element name="OperatorAccessIdentifier" type="body:OperatorAccessIdentifierType" maxOccurs="1"/>
+				<xs:element name="OrganicControlBodyAccessIdentifier" type="body:OrganicControlBodyAccessIdentifierType" maxOccurs="1"/>
+				<xs:element name="OtherBodyAccessIdentifier" type="body:OtherBodyAccessIdentifierType" maxOccurs="1"/>
+			</xs:choice>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:simpleType name="AuthorityActivityAccessIdentifierType">
+		<xs:annotation>
+			<xs:documentation>
+				This identifier is assigned by the EC administrator and uniquely identifies 
+				a single authority activity within the system. 
+				The identifier is assigned when the client requests the access to the system.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:maxLength value="16"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="OperatorAccessIdentifierType">
+		<xs:annotation>
+			<xs:documentation>
+				This identifier is assigned by the EC administrator and uniquely identifies 
+				a single operator within the system. 
+				The identifier is assigned when the client requests the access to the system.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:maxLength value="16"/>
+		</xs:restriction>
+	</xs:simpleType>
+	
+	<xs:simpleType name="OrganicControlBodyAccessIdentifierType">
+		<xs:annotation>
+			<xs:documentation>
+				This identifier is assigned by the EC administrator and uniquely identifies 
+				a single organic control body within the system. 
+				The identifier is assigned when the client requests the access to the system.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:maxLength value="16"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<xs:simpleType name="OtherBodyAccessIdentifierType">
+		<xs:annotation>
+			<xs:documentation>
+				This identifier is assigned by the EC administrator and uniquely identifies 
+				a single other body (like a national customs system)
+				The identifier is assigned when the client requests the access to the system.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:token">
+			<xs:maxLength value="32"/>
+		</xs:restriction>
+	</xs:simpleType>
+
+
+</xs:schema>

@@ -541,4 +541,93 @@ describe('EudrSimplifiedDeclarationClientV3', function() {
       expect(parsed.statement.commodities[0].speciesInfo).to.be.undefined;
     });
   });
+
+  describe('bodyIdentity header (multi-operator authentication, release 8.2.1)', function() {
+    it('should omit the header entirely when no bodyIdentity is configured', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+
+      expect(client.createGetSdSoapEnvelope('uuid-1')).to.not.include('BodyIdentity');
+      expect(client.createSubmitSoapEnvelope({
+        operatorRole: 'MICRO_OPERATOR',
+        statement: validStatement
+      })).to.not.include('BodyIdentity');
+    });
+
+    it('should emit the header on every operation when configured', function() {
+      const client = new EudrSimplifiedDeclarationClientV3({ ...baseConfig, bodyIdentity: 'OP12345' });
+      const envelopes = [
+        client.createSubmitSoapEnvelope({ operatorRole: 'MICRO_OPERATOR', statement: validStatement }),
+        client.createUpdateSoapEnvelope('uuid-1', validStatement),
+        client.createWithdrawSoapEnvelope('uuid-1'),
+        client.createGetSdSoapEnvelope('uuid-1'),
+        client.createGetSdByInternalReferenceSoapEnvelope('SD-REF-1'),
+        client.createGetSdByIdentifiersSoapEnvelope('25HR123', 'ABCD1234')
+      ];
+
+      for (const soapEnvelope of envelopes) {
+        expect(soapEnvelope).to.include('<body:BodyIdentity xmlns:body="http://ec.europa.eu/tracesnt/body/v3">');
+        expect(soapEnvelope).to.include('<OperatorAccessIdentifier>OP12345</OperatorAccessIdentifier>');
+      }
+    });
+
+    it('should let a per-call value override the configured one', function() {
+      const client = new EudrSimplifiedDeclarationClientV3({ ...baseConfig, bodyIdentity: 'CONFIGURED' });
+
+      expect(client.createGetSdSoapEnvelope('uuid-1', 'PER-CALL'))
+        .to.include('<OperatorAccessIdentifier>PER-CALL</OperatorAccessIdentifier>');
+      expect(client.createGetSdSoapEnvelope('uuid-1', null)).to.not.include('BodyIdentity');
+    });
+
+    it('should reject an identifier longer than 16 characters', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+
+      try {
+        client.createGetSdSoapEnvelope('uuid-1', 'A'.repeat(17));
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_BODY_IDENTITY_TOO_LONG');
+      }
+    });
+  });
+
+  describe('operatorReferenceNumber cardinality', function() {
+    it('should emit one element per entry when given an array', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      const soapEnvelope = client.createSubmitSoapEnvelope({
+        operatorRole: 'REPRESENTATIVE_MSPO',
+        statement: {
+          ...validStatement,
+          representedOperator: {
+            operatorName: 'Test MSPO',
+            operatorReferenceNumber: [
+              { identifierType: 'eori', identifierValue: 'FR1234567890' },
+              { identifierType: 'vat', identifierValue: 'FR0123456789' }
+            ]
+          }
+        }
+      });
+
+      expect(soapEnvelope.match(/<eudrCommon:operatorReferenceNumber>/g)).to.have.lengthOf(2);
+    });
+
+    it('should reject an identifierType outside the V3 enum', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+
+      try {
+        client.createSubmitSoapEnvelope({
+          operatorRole: 'REPRESENTATIVE_MSPO',
+          statement: {
+            ...validStatement,
+            representedOperator: {
+              operatorName: 'Test MSPO',
+              operatorReferenceNumber: { identifierType: 'nirms', identifierValue: 'X1' }
+            }
+          }
+        });
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_IDENTIFIER_TYPE_INVALID');
+      }
+    });
+  });
 });

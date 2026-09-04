@@ -418,4 +418,194 @@ describe('EudrSubmissionClientV3', function() {
       );
     });
   });
+
+  describe('bodyIdentity header (multi-operator authentication, release 8.2.1)', function() {
+    const baseStatement = {
+      activityType: 'IMPORT',
+      commodities: [{
+        descriptors: {
+          descriptionOfGoods: 'Test goods',
+          goodsMeasure: { netWeight: 100 }
+        },
+        hsHeading: '1801'
+      }],
+      geoLocationConfidential: false
+    };
+    const submitRequest = { operatorRole: 'OPERATOR', statement: baseStatement };
+
+    it('should omit the header entirely when no bodyIdentity is configured', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+
+      expect(client.transport.createSubmitSoapEnvelope(submitRequest)).to.not.include('BodyIdentity');
+      expect(client.transport.createWithdrawSoapEnvelope('uuid-1')).to.not.include('BodyIdentity');
+    });
+
+    it('should treat a plain string as OperatorAccessIdentifier', function() {
+      const client = new EudrSubmissionClientV3({ ...baseConfig, bodyIdentity: 'OP12345' });
+      const soapEnvelope = client.transport.createSubmitSoapEnvelope(submitRequest);
+
+      expect(soapEnvelope).to.include('<body:BodyIdentity xmlns:body="http://ec.europa.eu/tracesnt/body/v3">');
+      expect(soapEnvelope).to.include('<OperatorAccessIdentifier>OP12345</OperatorAccessIdentifier>');
+      // The body/v3 schema has no elementFormDefault, so the child element stays unqualified.
+      expect(soapEnvelope).to.not.include('<body:OperatorAccessIdentifier>');
+    });
+
+    it('should accept each identifier kind of the BodyIdentityType choice', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+
+      expect(client.transport.createGetDdsSoapEnvelope('uuid-1', { authorityActivityAccessIdentifier: 'AA-1' }))
+        .to.include('<AuthorityActivityAccessIdentifier>AA-1</AuthorityActivityAccessIdentifier>');
+      expect(client.transport.createGetDdsSoapEnvelope('uuid-1', { organicControlBodyAccessIdentifier: 'OCB-1' }))
+        .to.include('<OrganicControlBodyAccessIdentifier>OCB-1</OrganicControlBodyAccessIdentifier>');
+      expect(client.transport.createGetDdsSoapEnvelope('uuid-1', { otherBodyAccessIdentifier: 'OTH-1' }))
+        .to.include('<OtherBodyAccessIdentifier>OTH-1</OtherBodyAccessIdentifier>');
+    });
+
+    it('should let a per-call value override the configured one, and null suppress it', function() {
+      const client = new EudrSubmissionClientV3({ ...baseConfig, bodyIdentity: 'CONFIGURED' });
+
+      expect(client.transport.createGetDdsSoapEnvelope('uuid-1', 'PER-CALL'))
+        .to.include('<OperatorAccessIdentifier>PER-CALL</OperatorAccessIdentifier>');
+      expect(client.transport.createGetDdsSoapEnvelope('uuid-1', null)).to.not.include('BodyIdentity');
+      expect(client.transport.createGetDdsSoapEnvelope('uuid-1'))
+        .to.include('<OperatorAccessIdentifier>CONFIGURED</OperatorAccessIdentifier>');
+    });
+
+    it('should reject more than one identifier (BodyIdentityType is an XSD choice)', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+
+      try {
+        client.transport.createGetDdsSoapEnvelope('uuid-1', {
+          operatorAccessIdentifier: 'OP1',
+          otherBodyAccessIdentifier: 'OTH1'
+        });
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_BODY_IDENTITY_INVALID');
+        expect(error.eudrSpecific).to.be.true;
+      }
+    });
+
+    it('should reject an identifier longer than 16 characters', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+
+      try {
+        client.transport.createGetDdsSoapEnvelope('uuid-1', 'A'.repeat(17));
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_BODY_IDENTITY_TOO_LONG');
+        expect(error.eudrSpecific).to.be.true;
+      }
+    });
+
+    it('should reject unknown identifier fields', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+
+      try {
+        client.transport.createGetDdsSoapEnvelope('uuid-1', { operatorIdentifier: 'OP1' });
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_BODY_IDENTITY_INVALID');
+      }
+    });
+  });
+
+  describe('operatorReferenceNumber cardinality', function() {
+    const baseStatement = {
+      activityType: 'IMPORT',
+      commodities: [{
+        descriptors: {
+          descriptionOfGoods: 'Test goods',
+          goodsMeasure: { netWeight: 100 }
+        },
+        hsHeading: '1801'
+      }],
+      geoLocationConfidential: false
+    };
+
+    function submitWithReferences(client, operatorReferenceNumber) {
+      return client.transport.createSubmitSoapEnvelope({
+        operatorRole: 'REPRESENTATIVE_OPERATOR',
+        statement: {
+          ...baseStatement,
+          representedOperator: {
+            operatorName: 'Test Operator',
+            operatorReferenceNumber
+          }
+        }
+      });
+    }
+
+    it('should emit one element per entry when given an array (XSD allows up to 12)', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+      const soapEnvelope = submitWithReferences(client, [
+        { identifierType: 'eori', identifierValue: 'BE1234567890' },
+        { identifierType: 'vat', identifierValue: 'BE0123456789' }
+      ]);
+
+      expect(soapEnvelope.match(/<eudrCommon:operatorReferenceNumber>/g)).to.have.lengthOf(2);
+      expect(soapEnvelope).to.include('<eudrCommon:identifierValue>BE1234567890</eudrCommon:identifierValue>');
+      expect(soapEnvelope).to.include('<eudrCommon:identifierValue>BE0123456789</eudrCommon:identifierValue>');
+    });
+
+    it('should keep accepting a single object (backward compatible)', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+      const soapEnvelope = submitWithReferences(client, { identifierType: 'vat', identifierValue: 'BE0123456789' });
+
+      expect(soapEnvelope.match(/<eudrCommon:operatorReferenceNumber>/g)).to.have.lengthOf(1);
+    });
+
+    it('should reject more than 12 entries', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+      const references = Array.from({ length: 13 }, function(_, index) {
+        return { identifierType: 'vat', identifierValue: 'BE' + index };
+      });
+
+      try {
+        submitWithReferences(client, references);
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_OPERATOR_REFERENCE_NUMBER_LIMIT');
+      }
+    });
+
+    it('should reject an identifierType outside the V3 enum', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+
+      try {
+        submitWithReferences(client, { identifierType: 'ship_man_comp_imo', identifierValue: 'IMO123' });
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_IDENTIFIER_TYPE_INVALID');
+        expect(error.message).to.include('eori');
+      }
+    });
+  });
+
+  describe('groupedDeclarations cardinality', function() {
+    it('should reject more than 2000 grouped references', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+      const groupedDeclarations = Array.from({ length: 2001 }, function(_, index) {
+        return '25HR' + index;
+      });
+
+      try {
+        client.transport.createSubmitSoapEnvelope({
+          operatorRole: 'OPERATOR',
+          statement: {
+            activityType: 'IMPORT',
+            commodities: [{
+              descriptors: { descriptionOfGoods: 'Test goods', goodsMeasure: { netWeight: 100 } },
+              hsHeading: '1801'
+            }],
+            geoLocationConfidential: false,
+            groupedDeclarations
+          }
+        });
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_GROUPED_DECLARATIONS_LIMIT');
+      }
+    });
+  });
 });

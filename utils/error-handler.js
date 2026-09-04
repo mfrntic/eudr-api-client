@@ -66,7 +66,10 @@ const EUDR_ERROR_CODES = {
   EUDR_API_NO_DDS: 'No DDS corresponding to the provided UUID.',
 
   // Data validation errors
-  EUDR_DATA_TYPE_VALIDATION_ERROR: 'Data type validation error - the provided value does not match the expected format.'
+  EUDR_DATA_TYPE_VALIDATION_ERROR: 'Data type validation error - the provided value does not match the expected format.',
+
+  // Retrieval errors (NotFoundException fault, declared on the V3 get* operations since release 8.2.1)
+  EUDR_NOT_FOUND: 'No declaration matches the provided identifiers.'
 };
 
 // Add at the top with other constants
@@ -95,8 +98,15 @@ class EudrErrorHandler {
     const result = {
       faultCode: null,
       faultString: null,
+      faultType: null,
       errorDetails: []  // Changed to array to support multiple errors
     };
+
+    // NotFoundException is declared as an explicit fault on every V3 get* operation since
+    // release 8.2.1. Flag it up front so it survives whichever return path is taken below.
+    if (/NotFoundException/.test(xmlResponse) || /Data not found/i.test(xmlResponse)) {
+      result.faultType = 'NotFoundException';
+    }
 
     // Parse basic SOAP fault information
     const faultMatch = xmlResponse.match(/<faultcode>(.*?)<\/faultcode>.*?<faultstring>(.*?)<\/faultstring>/s);
@@ -298,6 +308,9 @@ class EudrErrorHandler {
 
           // Check for authorization-related errors and set appropriate HTTP status
           if (soapFault.faultString && (
+            // PermissionDeniedException is a declared fault on every V3 operation; its fault string
+            // carries no lowercase 'permission'/'not authorized' wording, so match it explicitly.
+            soapFault.faultString.includes('PermissionDenied') ||
             soapFault.faultString.includes('not authorized') ||
             soapFault.faultString.includes('not allowed') ||
             soapFault.faultString.includes('permission') ||
@@ -308,6 +321,33 @@ class EudrErrorHandler {
           } else if (soapFault.faultCode === 'S:Client' && soapFault.faultString) {
             // For other client-side errors, use 400 Bad Request
             errorResponse.httpStatus = 400;
+          }
+
+          // Authentication faults arrive as HTTP 500 carrying an UnauthenticatedException fault
+          // string (e.g. wrong credentials, or a bodyIdentity the account may not act as). The
+          // V1/V2 clients already normalize this to 401 themselves; V3 goes through this handler.
+          if (soapFault.faultString && soapFault.faultString.includes('UnauthenticatedException')) {
+            errorResponse.httpStatus = 401;
+          }
+
+          // NotFoundException: a declaration simply does not exist, which is a 404 rather than
+          // the generic 500 this used to fall through to.
+          if (soapFault.faultType === 'NotFoundException') {
+            errorResponse.httpStatus = 404;
+            errorResponse.notFound = true;
+            errorResponse.eudrSpecific = true;
+            errorResponse.wellKnownError = true;
+
+            const alreadyReported = (soapFault.errorDetails || []).some(
+              (detail) => detail.errorCode === 'EUDR_NOT_FOUND'
+            );
+            if (!alreadyReported) {
+              errorResponse.eudrErrors.push({
+                code: 'EUDR_NOT_FOUND',
+                message: soapFault.faultString || EUDR_ERROR_CODES.EUDR_NOT_FOUND,
+                field: null
+              });
+            }
           }
 
           if (soapFault.errorDetails && soapFault.errorDetails.length > 0) {
@@ -374,6 +414,13 @@ class EudrErrorHandler {
               errorResponse.eudrErrorCode = errorResponse.eudrErrors[0].code;
               errorResponse.eudrErrorMessage = errorResponse.eudrErrors[0].message;
             }
+          }
+
+          // A fault can carry no <Error> details at all (NotFoundException does), so the
+          // backward-compatible single-error fields are filled in here as well.
+          if (!errorResponse.eudrErrorCode && errorResponse.eudrErrors.length > 0) {
+            errorResponse.eudrErrorCode = errorResponse.eudrErrors[0].code;
+            errorResponse.eudrErrorMessage = errorResponse.eudrErrors[0].message;
           }
         }
       }

@@ -1,0 +1,315 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:base="http://ec.europa.eu/sanco/tracesnt/base/v4" xmlns:body="http://ec.europa.eu/tracesnt/body/v3" xmlns:sd="http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3" xmlns:eudrCommon="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3" targetNamespace="http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3">
+
+	<wsdl:import location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3?wsdl=1" namespace="http://ec.europa.eu/sanco/tracesnt/base/v4"/>
+	<wsdl:import location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3?wsdl=2" namespace="http://ec.europa.eu/tracesnt/body/v3"/>
+
+	<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3?xsd=3" namespace="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3"/>
+
+	<wsp:Policy xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:sp="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702">
+		<sp:TransportBinding>
+			<wsp:Policy>
+				<sp:TransportToken>
+					<wsp:Policy>
+						<sp:HttpsToken/>
+					</wsp:Policy>
+				</sp:TransportToken>
+				<sp:AlgorithmSuite>
+					<wsp:Policy>
+						<sp:Basic256/>
+					</wsp:Policy>
+				</sp:AlgorithmSuite>
+				<sp:Layout>
+					<wsp:Policy>
+						<sp:Lax/>
+					</wsp:Policy>
+				</sp:Layout>
+				<sp:IncludeTimestamp/>
+			</wsp:Policy>
+		</sp:TransportBinding>
+		<sp:SupportingTokens>
+			<wsp:Policy>
+				<sp:UsernameToken sp:IncludeToken="http://docs.oasis-open.org/ws-sx/ws-securitypolicy/200702/IncludeToken/AlwaysToRecipient">
+					<wsp:Policy>
+						<sp:HashPassword/>
+						<sp:WssUsernameToken10/>
+					</wsp:Policy>
+				</sp:UsernameToken>
+			</wsp:Policy>
+		</sp:SupportingTokens>
+	</wsp:Policy>
+
+	<wsdl:types>
+		<xs:schema>
+			<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3?xsd=4" namespace="http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3"/>
+		</xs:schema>
+	</wsdl:types>
+
+	<!-- Messages -->
+
+	<wsdl:message name="SubmitSdRequest">
+		<wsdl:part name="request" element="sd:SubmitSdRequest"/>
+	</wsdl:message>
+	<wsdl:message name="SubmitSdResponse">
+		<wsdl:part name="sdIdentifier" element="sd:SubmitSdResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="UpdateSdRequest">
+		<wsdl:part name="request" element="sd:UpdateSdRequest"/>
+	</wsdl:message>
+	<wsdl:message name="UpdateSdResponse">
+		<wsdl:part name="response" element="sd:UpdateSdResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="WithdrawSdRequest">
+		<wsdl:part name="sdIdentifier" element="sd:WithdrawSdRequest"/>
+	</wsdl:message>
+	<wsdl:message name="WithdrawSdResponse">
+		<wsdl:part name="response" element="sd:WithdrawSdResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetSdRequest">
+		<wsdl:part name="request" element="sd:GetSdRequest"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetSdResponse">
+		<wsdl:part name="response" element="sd:GetSdResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetSdByInternalReferenceRequest">
+		<wsdl:part name="internalReference" element="sd:GetSdByInternalReferenceRequest"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetSdByInternalReferenceResponse">
+		<wsdl:part name="response" element="sd:GetSdByInternalReferenceResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetSdByIdentifiersRequest">
+		<wsdl:part name="internalReference" element="sd:GetSdByIdentifiersRequest"/>
+	</wsdl:message>
+
+	<wsdl:message name="GetSdByIdentifiersResponse">
+		<wsdl:part name="response" element="sd:GetSdByIdentifiersResponse"/>
+	</wsdl:message>
+
+	<wsdl:message name="BusinessRulesValidationExceptionMessage">
+		<wsdl:part name="fault" element="sd:BusinessRulesValidationException"/>
+	</wsdl:message>
+	<wsdl:message name="PermissionDeniedExceptionMessage">
+		<wsdl:part name="fault" element="sd:PermissionDeniedException"/>
+	</wsdl:message>
+	<wsdl:message name="NotFoundExceptionMessage">
+		<wsdl:part name="fault" element="sd:NotFoundException"/>
+	</wsdl:message>
+
+	<!-- Port Type -->
+
+	<wsdl:portType name="EUDRSimplifiedDeclarationPort">
+		<wsdl:documentation>
+			EUDR Simplified Declaration (SD) service for micro or small primary operators
+			pursuant to Regulation.
+			A simplified declaration is a one-time submission in the Information System by micro or small primary operators, containing the information set out in Annex III,
+			submitted before placing relevant products on the market or exporting them.
+			It replaces the per-shipment due diligence statement for eligible operators.
+			A micro or small primary operator is an operator who is a natural person or
+			micro/small undertaking established in a low-risk country, who places on market or
+			exports relevant products they themselves produced in that country.
+			Upon submission, the Information System assigns a declaration identifier
+			which accompanies relevant products through the supply chain in place of a DDS reference number.
+		</wsdl:documentation>
+
+		<wsdl:operation name="submitSd">
+			<wsdl:documentation>
+				Submit a new Simplified Declaration.
+				This is a one-time submission — micro or small primary operators
+				submit a single simplified declaration covering all relevant products they produce, rather
+				than a per-shipment due diligence statement. The declaration remains valid indefinitely
+				unless major changes occur.
+				Accepts optional SD-only references for grouping; DDS references are rejected.
+				Referenced declarations receive GROUPED status.
+				Role: MSPO (micro or small primary operator) or authorised representative
+				acting for MSPO.
+				Returns the declaration identifier assigned by the Information System.
+			</wsdl:documentation>
+			<wsdl:input message="sd:SubmitSdRequest" name="SubmitSdRequest"/>
+			<wsdl:output message="sd:SubmitSdResponse" name="SubmitSdResponse"/>
+			<wsdl:fault name="BusinessRulesValidationException" message="sd:BusinessRulesValidationExceptionMessage"/>
+			<wsdl:fault name="PermissionDeniedException" message="sd:PermissionDeniedExceptionMessage"/>
+		</wsdl:operation>
+
+		<wsdl:operation name="updateSd">
+			<wsdl:documentation>
+				Update an existing Simplified Declaration. The SD may be updated following major changes to the information provided.
+				Re-triggers risk profiling — the identification of risks of non-compliance
+				based on risk criteria for the purpose of assigning a risk status.
+				Blocked if the SD is not in available status or is subject to a customs lock.
+			</wsdl:documentation>
+			<wsdl:input message="sd:UpdateSdRequest" name="UpdateSdRequest"/>
+			<wsdl:output message="sd:UpdateSdResponse" name="UpdateSdResponse"/>
+			<wsdl:fault name="BusinessRulesValidationException" message="sd:BusinessRulesValidationExceptionMessage"/>
+			<wsdl:fault name="PermissionDeniedException" message="sd:PermissionDeniedExceptionMessage"/>
+			<wsdl:fault name="NotFoundException" message="sd:NotFoundExceptionMessage"/>
+		</wsdl:operation>
+
+		<wsdl:operation name="withdrawSd">
+			<wsdl:documentation>
+				Withdraw a Simplified Declaration.
+				Blocked if the SD is not in available status — a lifecycle state assigned
+				when the SD has been associated to a grouped declaration.
+				Also blocked if the SD is under active checks by competent authorities or is subject to a customs lock.
+			</wsdl:documentation>
+			<wsdl:input message="sd:WithdrawSdRequest" name="WithdrawSdRequest"/>
+			<wsdl:output message="sd:WithdrawSdResponse" name="WithdrawSdResponse"/>
+			<wsdl:fault name="BusinessRulesValidationException" message="sd:BusinessRulesValidationExceptionMessage"/>
+			<wsdl:fault name="PermissionDeniedException" message="sd:PermissionDeniedExceptionMessage"/>
+			<wsdl:fault name="NotFoundException" message="sd:NotFoundExceptionMessage"/>
+		</wsdl:operation>
+
+		<wsdl:operation name="getSd">
+			<wsdl:documentation>
+				Retrieve SD overview (status, declaration identifier, and verification number) by providing the UUID assigned by the Information System.
+			</wsdl:documentation>
+			<wsdl:input message="sd:GetSdRequest"/>
+			<wsdl:output message="sd:GetSdResponse"/>
+			<wsdl:fault name="NotFoundException" message="sd:NotFoundExceptionMessage"/>
+		</wsdl:operation>
+
+		<wsdl:operation name="getSdByInternalReference">
+			<wsdl:documentation>
+				Retrieve SD overview (status, declaration identifier, and verification number) by providing the internal reference number assigned by the operator's
+				own system.
+			</wsdl:documentation>
+			<wsdl:input message="sd:GetSdByInternalReferenceRequest"/>
+			<wsdl:output message="sd:GetSdByInternalReferenceResponse"/>
+			<wsdl:fault name="NotFoundException" message="sd:NotFoundExceptionMessage"/>
+		</wsdl:operation>
+
+		<wsdl:operation name="getSdByIdentifiers">
+			<wsdl:documentation>
+				Retrieve full SD content by providing the declaration identifier and
+				verification number. The verification number is a security number
+				assigned by the Information System to ensure additional security of data.
+				This operation is available only to non-SME operators (standard operators, micro/small primary operators, authorised representatives, and Member States). SME downstream operators do not have access to this operation.
+			</wsdl:documentation>
+			<wsdl:input message="sd:GetSdByIdentifiersRequest"/>
+			<wsdl:output message="sd:GetSdByIdentifiersResponse"/>
+			<wsdl:fault name="NotFoundException" message="sd:NotFoundExceptionMessage"/>
+		</wsdl:operation>
+
+	</wsdl:portType>
+
+	<!-- Binding -->
+
+	<wsdl:binding name="EUDRSimplifiedDeclarationSoapBinding" type="sd:EUDRSimplifiedDeclarationPort">
+
+		<soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+
+		<wsdl:operation name="submitSd">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3/submitSd"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:header message="body:BodyIdentityHeader" part="bodyIdentity" use="literal"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+			<wsdl:fault name="BusinessRulesValidationException">
+				<soap:fault name="BusinessRulesValidationException" use="literal"/>
+			</wsdl:fault>
+			<wsdl:fault name="PermissionDeniedException">
+				<soap:fault name="PermissionDeniedException" use="literal"/>
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="updateSd">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3/updateSd"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:header message="body:BodyIdentityHeader" part="bodyIdentity" use="literal"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+			<wsdl:fault name="BusinessRulesValidationException">
+				<soap:fault name="BusinessRulesValidationException" use="literal"/>
+			</wsdl:fault>
+			<wsdl:fault name="PermissionDeniedException">
+				<soap:fault name="PermissionDeniedException" use="literal"/>
+			</wsdl:fault>
+			<wsdl:fault name="NotFoundException">
+				<soap:fault name="NotFoundException" use="literal"/>
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="withdrawSd">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3/withdrawSd"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:header message="body:BodyIdentityHeader" part="bodyIdentity" use="literal"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output>
+				<soap:body use="literal"/>
+			</wsdl:output>
+			<wsdl:fault name="BusinessRulesValidationException">
+				<soap:fault name="BusinessRulesValidationException" use="literal"/>
+			</wsdl:fault>
+			<wsdl:fault name="PermissionDeniedException">
+				<soap:fault name="PermissionDeniedException" use="literal"/>
+			</wsdl:fault>
+			<wsdl:fault name="NotFoundException">
+				<soap:fault name="NotFoundException" use="literal"/>
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="getSd">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/getSd"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:header message="body:BodyIdentityHeader" part="bodyIdentity" use="literal"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output><soap:body use="literal"/></wsdl:output>
+			<wsdl:fault name="NotFoundException">
+				<soap:fault name="NotFoundException" use="literal"/>
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="getSdByInternalReference">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/getSdByInternalReference"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:header message="body:BodyIdentityHeader" part="bodyIdentity" use="literal"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output><soap:body use="literal"/></wsdl:output>
+			<wsdl:fault name="NotFoundException">
+				<soap:fault name="NotFoundException" use="literal"/>
+			</wsdl:fault>
+		</wsdl:operation>
+
+		<wsdl:operation name="getSdByIdentifiers">
+			<soap:operation soapAction="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/getSdByIdentifiers"/>
+			<wsdl:input>
+				<soap:header use="literal" part="webServiceClientId" message="base:WebServiceClientIdHeader"/>
+				<soap:header message="body:BodyIdentityHeader" part="bodyIdentity" use="literal"/>
+				<soap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output><soap:body use="literal"/></wsdl:output>
+			<wsdl:fault name="NotFoundException">
+				<soap:fault name="NotFoundException" use="literal"/>
+			</wsdl:fault>
+		</wsdl:operation>
+
+	</wsdl:binding>
+
+	<!-- Service -->
+
+	<wsdl:service name="EUDRSimplifiedDeclarationServiceV3">
+		<wsdl:port name="EUDRSimplifiedDeclarationServiceV3Endpoint" binding="sd:EUDRSimplifiedDeclarationSoapBinding">
+			<soap:address location="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3"/>
+		</wsdl:port>
+	</wsdl:service>
+
+</wsdl:definitions>

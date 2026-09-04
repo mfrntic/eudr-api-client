@@ -162,6 +162,26 @@ network call), that would be new work, not covered by this plan.
      for timing-dependent assertions. The anomaly is still logged loudly on every occurrence so it
      stays visible.
 
+10. **`BodyIdentity` multi-operator authentication cannot be verified live yet.** Release 8.2.1 added
+    an optional `BodyIdentity` SOAP header to all DDS V3 and SD V3 operations, letting an API user
+    that belongs to several EUDR bodies declare which one it acts as (see
+    [release-8.2.1-conformance.md](release-8.2.1-conformance.md)). Verifying it for real needs a
+    Web Service Identifier for the acceptance account, which we do not have. What is verified:
+    - unit tests assert the exact envelope shape, including that the child element is unqualified
+      (the `body/v3` schema has no `elementFormDefault`);
+    - unit tests assert that omitting `bodyIdentity` leaves the envelope byte-identical to the
+      pre-8.2.1 output, which is the backward-compatibility guarantee for existing users;
+    - the existing live suites (`npm run test:retrieval:v3`, `npm run test:verification:v3`) still
+      pass unchanged, confirming nothing regressed for single-operator accounts.
+
+    Live probe already run: `getDds` on the known real DDS returns HTTP 200 without the header, and
+    `UnauthenticatedException` with a bogus `OperatorAccessIdentifier`. The server parses and enforces
+    the header. That fault comes back as HTTP 500 with an `UnauthenticatedException` fault string, now
+    normalized to `httpStatus: 401` by `EudrErrorHandler` (V1/V2 already did this locally).
+
+    What is still not verified: that a *valid* identifier actually switches operator context. That
+    needs a Web Service Identifier for the acceptance account.
+
 ## Out of scope (per agreement)
 
 - A full ~30 minute poll to conclusively verify amend/grouping timing — the 15s pragmatic wait was chosen

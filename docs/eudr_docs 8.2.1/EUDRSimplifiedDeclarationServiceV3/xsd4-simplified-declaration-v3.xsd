@@ -1,0 +1,445 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:eudrCommon="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3" xmlns:error="http://ec.europa.eu/sanco/tracesnt/error/v01" xmlns:sd="http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3" targetNamespace="http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3" elementFormDefault="qualified">
+
+	<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3?xsd=3" namespace="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3"/>
+	<xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRSimplifiedDeclarationServiceV3?xsd=5" namespace="http://ec.europa.eu/sanco/tracesnt/error/v01"/>
+
+	<!-- Elements for WSDL message parts -->
+	<xs:element name="SubmitSdRequest" type="sd:SubmitSdRequestType"/>
+	<xs:element name="SubmitSdResponse" type="sd:SubmitSdResponseType"/>
+	<xs:element name="UpdateSdRequest" type="sd:UpdateSdRequestType"/>
+	<xs:element name="UpdateSdResponse" type="sd:SdModificationResponseType"/>
+	<xs:element name="WithdrawSdRequest" type="sd:WithdrawSdRequestType"/>
+	<xs:element name="WithdrawSdResponse" type="sd:SdModificationResponseType"/>
+	<xs:element name="GetSdRequest" type="sd:GetSdRequestType"/>
+	<xs:element name="GetSdResponse" type="sd:SdOverviewResponseType"/>
+	<xs:element name="GetSdByInternalReferenceRequest" type="sd:GetSdByInternalReferenceRequestType"/>
+	<xs:element name="GetSdByInternalReferenceResponse" type="sd:SdOverviewResponseType"/>
+	<xs:element name="GetSdByIdentifiersRequest" type="sd:GetSdByIdentifiersRequestType"/>
+	<xs:element name="GetSdByIdentifiersResponse" type="sd:GetSdByIdentifiersResponseType"/>
+
+	<xs:element name="BusinessRulesValidationException" type="error:BusinessRulesValidationExceptionType"/>
+	<xs:element name="PermissionDeniedException" type="error:CertificatePermissionDeniedExceptionType"/>
+	<xs:element name="NotFoundException" type="error:NotFoundFault"/>
+
+
+	<xs:simpleType name="SdOperatorRoleType">
+		<xs:annotation>
+			<xs:documentation>
+				Roles permitted for SD submission.
+				MICRO_OPERATOR: a micro or small primary operator — an operator who is a natural person or micro/small undertaking, irrespective of legal form, established in a low-risk country, who places on market or exports relevant products they themselves produced in that country. REPRESENTATIVE_MSPO: an authorised representative acting on behalf of a micro or small primary operator under written mandate.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:enumeration value="MICRO_OPERATOR">
+			</xs:enumeration>
+			<xs:enumeration value="REPRESENTATIVE_MSPO">
+			</xs:enumeration>
+			<xs:enumeration value="MEMBER_STATE">
+				<xs:annotation>
+					<xs:documentation>Member State authority</xs:documentation>
+				</xs:annotation>
+			</xs:enumeration>
+		</xs:restriction>
+	</xs:simpleType>
+
+	<!-- SD payload base type -->
+
+	<xs:complexType name="SubmitSdRequestType">
+		<xs:annotation>
+			<xs:documentation>
+				Initial submission of a Simplified Declaration pursuant to
+				Regulation. A simplified declaration is a one-time submission
+				by micro or small primary operators, containing the information set out in
+				Annex III, submitted before placing relevant products on the market or exporting
+				them. Replaces the per-shipment due diligence statement for eligible operators.
+				The declaration remains valid indefinitely unless major changes occur.
+				Accepts optional SD-only references for grouping; DDS references are rejected.
+				The Information System assigns a declaration identifier upon
+				successful submission.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="operatorRole" type="sd:SdOperatorRoleType"/>
+			<xs:element name="statement" type="sd:SimplifiedDeclarationBaseType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="SubmitSdResponseType">
+		<xs:annotation>
+			<xs:documentation>
+				Response containing the declaration identifier — the unique identifier assigned
+				by the Information System to the micro or small primary operator upon submission of a
+				simplified declaration. Accompanies relevant products through the supply chain in place of
+				a DDS reference number.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="sdIdentifier" type="eudrCommon:UuidType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="UpdateSdRequestType">
+		<xs:annotation>
+			<xs:documentation>
+				Update a Simplified Declaration.
+				Re-triggers risk profiling. Blocked if the SD is not in available status
+				or is subject to a customs lock.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="sdIdentifier" type="eudrCommon:UuidType"/>
+			<xs:element name="statement" type="sd:SimplifiedDeclarationBaseType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="WithdrawSdRequestType">
+		<xs:annotation>
+			<xs:documentation>
+				Withdraw a Simplified Declaration.
+				Blocked if the SD is not in available status — a lifecycle state assigned
+				when associated to a grouped declaration. Also blocked if under active checks
+				by competent authorities or subject to a customs lock.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="sdIdentifier" type="eudrCommon:UuidType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="SdModificationResponseType">
+		<xs:annotation>
+			<xs:documentation>Response for update/withdraw operations, containing the resulting SD lifecycle status.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="uuid" type="eudrCommon:UuidType"/>
+			<xs:element name="version" type="xs:integer" minOccurs="0"/>
+			<xs:element name="status" type="eudrCommon:EudrStatusType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetSdRequestType">
+		<xs:annotation>
+			<xs:documentation>Request to retrieve SD overview by one or more UUIDs and optional version number.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="uuidAndVersionNumberList" type="eudrCommon:UuidAndVersionNumberType" maxOccurs="100"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetSdByInternalReferenceRequestType">
+		<xs:annotation>
+			<xs:documentation>Request to retrieve SD overview by the internal reference number from the operator's own system.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="internalReference" type="eudrCommon:InternalReferenceNumberType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="SdOverviewResponseType">
+		<xs:annotation>
+			<xs:documentation>
+				Response containing SD overview information: UUID, internal reference, declaration identifier, verification number, lifecycle status, and optional
+				rejection reason or communication from competent authority.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="sdOverviewList" type="eudrCommon:OverviewType" minOccurs="0" maxOccurs="100"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetSdByIdentifiersRequestType">
+		<xs:annotation>
+			<xs:documentation>
+				Request to retrieve full SD content by providing the declaration identifier
+				and verification number — the security number assigned by the Information
+				System to ensure additional security of data.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="referenceAndVerificationNumber" type="eudrCommon:ReferenceAndVerificationNumberType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="GetSdByIdentifiersResponseType">
+		<xs:annotation>
+			<xs:documentation>Response containing the full SD statement payload retrieved by declaration identifier and verification number.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="statement" type="sd:SimplifiedDeclarationBaseType"/>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="SimplifiedDeclarationBaseType">
+		<xs:annotation>
+			<xs:documentation>
+				Core payload of a Simplified Declaration pursuant to
+				Regulation. Contains the information set out in Annex III for micro or
+				small primary operators established in a low-risk country.
+				Unlike the DDS, this is a one-time submission covering all relevant products
+				the operator produces, rather than a per-shipment declaration.
+				Relevant commodities: cattle, cocoa, coffee, oil palm, rubber, soya and wood.
+				Products must be deforestation-free: produced on land not deforested after
+				31 Dec 2020; for wood, harvested without inducing forest degradation after 31 Dec 2020.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="internalReferenceNumber" type="eudrCommon:ReferenceNumberType">
+				<xs:annotation>
+					<xs:documentation>
+						Operator defined reference. If not provided, generated by the
+						Information System.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+
+			<xs:element name="activityType" type="eudrCommon:ActivityType">
+				<xs:annotation>
+					<xs:documentation>
+						The type of commercial activity: IMPORT (release for free circulation,
+						Art. 2(36)), EXPORT, or DOMESTIC (placing on the market).
+						(Box 2)
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+
+			<xs:element name="representedOperator" type="eudrCommon:EconomicOperatorIdentificationType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						The represented micro or small primary operator on whose behalf the authorised representative is acting (Box 3).
+						Required when operatorRole is REPRESENTATIVE_MSPO. Identified by standard ID.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+
+			<xs:element name="countryOfActivity" type="eudrCommon:EuropeanCountryType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						EU Member State where the economic activity takes place (Box 4).
+						Must be a low-risk country for MSPO eligibility.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+
+			<xs:element name="borderCrossCountry" type="eudrCommon:EuropeanCountryType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Country of entry (for IMPORT activity) or country of exit (for EXPORT activity)
+						at the customs territory border (Box 4).
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+
+			<xs:element name="comment" type="eudrCommon:EditorialCommentType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Editorial comment for the competent authority (Box 5).
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+
+			<xs:element name="commodities" type="sd:SdCommodityType" maxOccurs="200">
+				<xs:annotation>
+					<xs:documentation>
+						Relevant commodities and products declared in this SD.
+						Corresponds to Boxes 6, 9 to 16.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+
+			<xs:element name="geoLocationConfidential" type="xs:boolean">
+				<xs:annotation>
+					<xs:documentation>
+						If TRUE, geolocation data is confidential and not disclosed down the
+						supply chain to downstream operators and traders.
+						If FALSE, geolocation data can be disclosed to anyone down the supply chain.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+
+			<xs:element name="groupedDeclarations" type="eudrCommon:GroupedDeclarationsType" minOccurs="0" maxOccurs="2000">
+				<xs:annotation>
+					<xs:documentation>
+						List of previously submitted SD declarations referenced by this statement for
+						grouping. Each reference includes a reference number.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Associated SD reference (SD-only groups; DDS references rejected) -->
+
+	<xs:complexType name="SdReferenceType">
+		<xs:annotation>
+			<xs:documentation>
+				Reference to a previously submitted Simplified Declaration for grouping.
+				Only SD references are accepted; DDS references are rejected. The referenced SD receives
+				GROUPED status and cannot be individually withdrawn or updated while
+				the referencing grouped declaration is active.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="referenceNumber" type="eudrCommon:ReferenceNumberType">
+				<xs:annotation>
+					<xs:documentation>Reference number of the SD to be grouped.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="verificationNumber" type="eudrCommon:VerificationNumberType">
+				<xs:annotation>
+					<xs:documentation>Verification number of the SD to be grouped — ensures additional security of data.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!-- Request / Response types -->
+
+	<xs:complexType name="SdCommodityType">
+		<xs:annotation>
+			<xs:documentation>
+				A commodity entry in the Simplified Declaration, representing a relevant commodity or relevant product. Includes HS code classification, commercial
+				description, and producer location data.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="position" type="xs:long" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Ordinal position of this commodity within the SD.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="descriptors" type="eudrCommon:CommercialDescriptionType">
+				<xs:annotation>
+					<xs:documentation>Commercial description and quantity measures for this commodity.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="hsHeading" type="eudrCommon:HSHeadingType">
+				<xs:annotation>
+					<xs:documentation>
+						Box 10: commodity code from the Harmonized Commodity Description and Coding System (HS),
+						plus the (optional) corresponding quantity information. 2 to 6 digit code.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="producers" type="sd:SdProducerType" minOccurs="0" maxOccurs="1000">
+				<xs:annotation>
+					<xs:documentation>
+						Producers of this commodity with location information. For SD, location may be
+						provided as GeoJSON geometry or postal address(es), unlike DDS which requires
+						GeoJSON geolocation.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="SdProducerType">
+		<xs:annotation>
+			<xs:documentation>
+				Producer information for a Simplified Declaration. Includes country of production and location data. Unlike DDS producers which require GeoJSON geolocation, SD producers may provide either GeoJSON geometry or postal address(es).
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="producerPosition" type="xs:long" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Ordinal position of this producer within the commodity.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="producerCountry" type="eudrCommon:CountryType">
+				<xs:annotation>
+					<xs:documentation>Country of production: the country where the relevant commodity was produced. ISO 3166-1 alpha-2 code.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="producerName" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>
+						Name of the producer (natural or legal person).
+					</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="500"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+
+			<!-- Include the location choice -->
+			<xs:element name="producerLocation" type="sd:SdProducerLocationType"/>
+
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="SdProducerLocationType">
+		<xs:annotation>
+			<xs:documentation>
+				Choice between GeoJSON geometry, address-based location(s), or cadastral identifier for SD producers.
+				For Simplified Declarations, micro or small primary operators may provide
+				either geolocation as GeoJSON, postal address(es), or a cadastral identifier
+				as an alternative. This contrasts with DDS where GeoJSON geolocation is mandatory.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:choice>
+			<!-- Option 1: GeoJSON geometry (base64 encoded) -->
+			<xs:element name="geometryGeojson" type="xs:base64Binary">
+				<xs:annotation>
+					<xs:documentation>
+						GeoJSON geometry (base64 encoded) representing the geolocation of the
+						plot of land. Must contain lat/long coordinates with minimum 6 decimal
+						digits. Supported types: Point, MultiPoint, Polygon, MultiPolygon, GeometryCollection.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+
+			<!-- Option 2: One or more postal addresses -->
+			<xs:element name="postalAddress" type="sd:SdProducerPostalAddressType" maxOccurs="100">
+				<xs:annotation>
+					<xs:documentation>
+						Postal address(es) of the production location. Alternative to GeoJSON geolocation
+						for micro or small primary operators. 
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+
+			<!-- Option 3: One or more cadastral identifiers -->
+			<xs:element name="cadastralIdentifier" maxOccurs="100">
+				<xs:annotation>
+					<xs:documentation>
+						Cadastral identifier(s) referencing the plot(s) of land in a national land registry.
+						Maximum 80 characters each.
+					</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="80"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:choice>
+	</xs:complexType>
+
+	<xs:complexType name="SdProducerPostalAddressType">
+		<xs:annotation>
+			<xs:documentation>
+				Postal address of a production location for SD producers. Used as an alternative to
+				GeoJSON geolocation for micro or small primary operators.
+			</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="producerStreet" type="eudrCommon:StreetAndNumberType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Street name and number of the production location.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="producerPostalCode" type="eudrCommon:PostalCodeType">
+				<xs:annotation>
+					<xs:documentation>Postal code of the production location.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="producerCity" type="eudrCommon:CityType">
+				<xs:annotation>
+					<xs:documentation>City of the production location.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+</xs:schema>

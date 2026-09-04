@@ -1,0 +1,27 @@
+<?xml version='1.0' encoding='UTF-8'?><!-- Published by JAX-WS RI (https://github.com/eclipse-ee4j/metro-jax-ws). RI's version is JAX-WS RI 2.3.5 git-revision#7ddc91f. --><wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:base="http://ec.europa.eu/sanco/tracesnt/base/v4" targetNamespace="http://ec.europa.eu/sanco/tracesnt/base/v4">
+    
+    <wsdl:types>
+        <xs:schema>
+            <xs:import schemaLocation="https://acceptance.eudr.webcloud.ec.europa.eu:443/tracesnt/ws/EUDRDueDiligenceStatementServiceV3?xsd=1" namespace="http://ec.europa.eu/sanco/tracesnt/base/v4"/>
+        </xs:schema>
+    </wsdl:types>
+
+ 	<wsdl:message name="WebServiceClientIdHeader">
+    	<wsdl:part name="webServiceClientId" element="base:WebServiceClientId"/>
+  	</wsdl:message>
+    
+ 	<wsdl:message name="LanguageCodeHeader">
+		<wsdl:documentation>
+			If the LanguageCode is not supported by the system, it will automatically switch to English.
+		</wsdl:documentation>
+    	<wsdl:part name="languageCode" element="base:LanguageCode"/>
+  	</wsdl:message>
+  	
+  	 <wsdl:message name="AttributesHeader">
+		<wsdl:documentation>
+			Allows sending some generic attribues that the adapt the endpoint behaviour
+		</wsdl:documentation>
+    	<wsdl:part name="attributes" element="base:Attributes"/>
+  	</wsdl:message>
+  	
+</wsdl:definitions>
