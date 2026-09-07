@@ -562,6 +562,12 @@ All of these are thrown **before any network call**, carry `error.eudrSpecific =
 | `EUDR_V3_IDENTIFIER_TYPE_INVALID` | `operatorReferenceNumber.identifierType` is outside the V3 enum |
 | `EUDR_V3_OPERATOR_REFERENCE_NUMBER_LIMIT` | more than 12 `operatorReferenceNumber` entries |
 | `EUDR_V3_GROUPED_DECLARATIONS_LIMIT` | more than 2000 `groupedDeclarations` references |
+| `EUDR_V3_COMMODITIES_LIMIT` | more than 200 `commodities` (same cap in DDS and SD) |
+| `EUDR_V3_PRODUCERS_LIMIT` | more than 1000 `producers` on one commodity (same cap in DDS and SD) |
+| `EUDR_V3_SPECIES_INFO_LIMIT` | more than 500 `speciesInfo` entries on one commodity (DDS only — SD has no `speciesInfo`) |
+| `EUDR_V3_DESCRIPTION_OF_GOODS_REQUIRED` | `descriptors` was provided without `descriptionOfGoods` — both children of `CommercialDescriptionType` are mandatory |
+| `EUDR_V3_GOODS_MEASURE_REQUIRED` | `descriptors` was provided without `goodsMeasure` |
+| `EUDR_V3_GEOJSON_INVALID` | `geometryGeojson` is neither a base64 string, a `Buffer`, nor a GeoJSON object |
 | `EUDR_V3_BODY_IDENTITY_INVALID` | `bodyIdentity` has zero, several, or unknown identifier fields |
 | `EUDR_V3_BODY_IDENTITY_TOO_LONG` | a `bodyIdentity` value longer than its schema limit (16 characters; 32 for `otherBodyAccessIdentifier`) |
 | `EUDR_V3_SD_*` | SD-only rules — see the [SD validation errors table](#v3-simplified-declaration-client) |
@@ -805,11 +811,21 @@ await sdClient.getSdByIdentifiers('DECLARATION-IDENTIFIER', 'VERIFICATION-NUMBER
 |---|---|
 | `EUDR_V3_SD_OPERATOR_ROLE_INVALID` | `operatorRole` is not one of `MICRO_OPERATOR`, `REPRESENTATIVE_MSPO`, `MEMBER_STATE` |
 | `EUDR_V3_SD_INTERNAL_REFERENCE_REQUIRED` | `statement.internalReferenceNumber` is missing (mandatory for SD) |
+| `EUDR_V3_SD_INTERNAL_REFERENCE_TOO_LONG` | `statement.internalReferenceNumber` is longer than 14 characters — see the note below |
 | `EUDR_V3_SD_ACTIVITY_TYPE_INVALID` | `statement.activityType` is not `DOMESTIC`, `IMPORT`, or `EXPORT` |
 | `EUDR_V3_SD_PRODUCER_COUNTRY_REQUIRED` | a producer is missing `producerCountry` |
 | `EUDR_V3_SD_PRODUCER_LOCATION_INVALID` | a producer's location has zero or more than one of `geometryGeojson`/`postalAddress`/`cadastralIdentifier` |
+| `EUDR_V3_SD_REPRESENTED_OPERATOR_REQUIRED` | `operatorRole` is `REPRESENTATIVE_MSPO` but `statement.representedOperator` is missing (`submitSd` only — `updateSd` carries no role) |
+| `EUDR_V3_SD_POSTAL_ADDRESS_LIMIT` | more than 100 `postalAddress` entries on one producer location |
+| `EUDR_V3_SD_CADASTRAL_IDENTIFIER_LIMIT` | more than 100 `cadastralIdentifier` entries on one producer location |
 
-The SD client also throws the shared V3 codes — `EUDR_V3_IDENTIFIER_TYPE_INVALID`, `EUDR_V3_OPERATOR_REFERENCE_NUMBER_LIMIT`, `EUDR_V3_GROUPED_DECLARATIONS_LIMIT`, `EUDR_V3_BODY_IDENTITY_INVALID`, `EUDR_V3_BODY_IDENTITY_TOO_LONG` — listed in [Client-side validation error codes](#business-rules--validation).
+The SD client also throws the shared V3 codes — `EUDR_V3_IDENTIFIER_TYPE_INVALID`, `EUDR_V3_OPERATOR_REFERENCE_NUMBER_LIMIT`, `EUDR_V3_GROUPED_DECLARATIONS_LIMIT`, `EUDR_V3_COMMODITIES_LIMIT`, `EUDR_V3_PRODUCERS_LIMIT`, `EUDR_V3_DESCRIPTION_OF_GOODS_REQUIRED`, `EUDR_V3_GOODS_MEASURE_REQUIRED`, `EUDR_V3_GEOJSON_INVALID`, `EUDR_V3_BODY_IDENTITY_INVALID`, `EUDR_V3_BODY_IDENTITY_TOO_LONG` — listed in [Client-side validation error codes](#business-rules--validation).
+
+> **`internalReferenceNumber` is capped at 14 characters for SD, not 50.** The schema types the SD field as `eudrCommon:ReferenceNumberType` (maxLength 14), while the DDS field and the `getSdByInternalReference` lookup both use `InternalReferenceNumberType` (maxLength 50) — and the EU's 1.5 reference doc separately claims 35. Three numbers for one field; the library follows the type that actually carries it, so keep SD internal references at 14 characters or fewer.
+
+> **`submitSd` returns a UUID, not the `S…` number.** `SubmitSdResponse/sdIdentifier` is typed `eudrCommon:UuidType`, so it is a plain UUID and is what you pass to `updateSd`/`withdrawSd`/`getSd`. The 14-character declaration reference (e.g. `S26FRNMNBSA96Q`) that accompanies goods through the supply chain is `referenceNumber` in the **`getSd` overview**, so obtaining it takes a second call. The EU's own annotation blurs the two — build against the types.
+
+> **`geometryGeojson` accepts more than a string.** The schema type is `xs:base64Binary`, so the library base64-encodes a `Buffer` or a plain GeoJSON object for you; a string is passed through untouched, on the assumption it is already base64. This applies to the DDS client too.
 
 ---
 ### 🚀 EudrSubmissionClientV3

@@ -631,4 +631,159 @@ describe('EudrSubmissionClientV3', function() {
       }
     });
   });
+
+  describe('cardinality caps shared with SD', function() {
+    const commodity = {
+      descriptors: { descriptionOfGoods: 'Test goods', goodsMeasure: { netWeight: 100 } },
+      hsHeading: '1801'
+    };
+    const submit = (statement) => new EudrSubmissionClientV3(baseConfig)
+      .transport.createSubmitSoapEnvelope({ operatorRole: 'OPERATOR', statement });
+
+    it('should reject more than 200 commodities', function() {
+      try {
+        submit({
+          activityType: 'IMPORT',
+          commodities: new Array(201).fill(commodity),
+          geoLocationConfidential: false
+        });
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_COMMODITIES_LIMIT');
+      }
+    });
+
+    it('should reject more than 1000 producers on a commodity', function() {
+      try {
+        submit({
+          activityType: 'IMPORT',
+          commodities: [{
+            ...commodity,
+            producers: new Array(1001).fill({ country: 'FR', geometryGeojson: 'BASE64' })
+          }],
+          geoLocationConfidential: false
+        });
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_PRODUCERS_LIMIT');
+      }
+    });
+
+    it('should reject more than 500 speciesInfo entries on a commodity', function() {
+      try {
+        submit({
+          activityType: 'IMPORT',
+          commodities: [{
+            ...commodity,
+            speciesInfo: new Array(501).fill({ scientificName: 'Theobroma cacao', commonName: 'Cacao' })
+          }],
+          geoLocationConfidential: false
+        });
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_SPECIES_INFO_LIMIT');
+      }
+    });
+  });
+
+  describe('CommercialDescriptionType mandatory children', function() {
+    const statementWith = (descriptors) => ({
+      activityType: 'IMPORT',
+      commodities: [{ descriptors, hsHeading: '1801' }],
+      geoLocationConfidential: false
+    });
+
+    it('should require descriptors.descriptionOfGoods', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+      try {
+        client.transport.createSubmitSoapEnvelope({
+          operatorRole: 'OPERATOR',
+          statement: statementWith({ goodsMeasure: { netWeight: 100 } })
+        });
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_DESCRIPTION_OF_GOODS_REQUIRED');
+      }
+    });
+
+    it('should require descriptors.goodsMeasure', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+      try {
+        client.transport.createSubmitSoapEnvelope({
+          operatorRole: 'OPERATOR',
+          statement: statementWith({ descriptionOfGoods: 'Test goods' })
+        });
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_GOODS_MEASURE_REQUIRED');
+      }
+    });
+
+    it('should still allow a commodity with no descriptors at all', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+
+      expect(() => client.transport.createSubmitSoapEnvelope({
+        operatorRole: 'OPERATOR',
+        statement: {
+          activityType: 'IMPORT',
+          commodities: [{ hsHeading: '1801' }],
+          geoLocationConfidential: false
+        }
+      })).to.not.throw();
+    });
+  });
+
+  describe('geometryGeojson encoding (xs:base64Binary)', function() {
+    const statementWithGeojson = (geometryGeojson) => ({
+      activityType: 'IMPORT',
+      commodities: [{
+        descriptors: { descriptionOfGoods: 'Test goods', goodsMeasure: { netWeight: 100 } },
+        hsHeading: '1801',
+        producers: [{ country: 'FR', name: 'Producer', geometryGeojson }]
+      }],
+      geoLocationConfidential: false
+    });
+
+    it('should pass a string through untouched (already base64)', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+      const envelope = client.transport.createSubmitSoapEnvelope({
+        operatorRole: 'OPERATOR',
+        statement: statementWithGeojson('BASE64_GEOJSON')
+      });
+
+      expect(envelope).to.include('<dds:geometryGeojson>BASE64_GEOJSON</dds:geometryGeojson>');
+    });
+
+    it('should base64-encode a Buffer and a GeoJSON object instead of emitting raw text', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+      const geojson = { type: 'Point', coordinates: [15.98, 45.81] };
+
+      const fromBuffer = client.transport.createSubmitSoapEnvelope({
+        operatorRole: 'OPERATOR',
+        statement: statementWithGeojson(Buffer.from(JSON.stringify(geojson)))
+      });
+      const fromObject = client.transport.createSubmitSoapEnvelope({
+        operatorRole: 'OPERATOR',
+        statement: statementWithGeojson(geojson)
+      });
+      const expected = Buffer.from(JSON.stringify(geojson)).toString('base64');
+
+      expect(fromBuffer).to.include(`<dds:geometryGeojson>${expected}</dds:geometryGeojson>`);
+      expect(fromObject).to.include(`<dds:geometryGeojson>${expected}</dds:geometryGeojson>`);
+      expect(fromObject).to.not.include('[object Object]');
+    });
+
+    it('should reject a value that is neither string, Buffer nor object', function() {
+      const client = new EudrSubmissionClientV3(baseConfig);
+      try {
+        client.transport.createSubmitSoapEnvelope({
+          operatorRole: 'OPERATOR',
+          statement: statementWithGeojson(42)
+        });
+        throw new Error('Expected a validation error');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_GEOJSON_INVALID');
+      }
+    });
+  });
 });

@@ -319,7 +319,12 @@ describe('EudrSimplifiedDeclarationClientV3', function() {
     it('should accept all three valid operatorRole values', function() {
       const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
       ['MICRO_OPERATOR', 'REPRESENTATIVE_MSPO', 'MEMBER_STATE'].forEach((role) => {
-        expect(() => client.createSubmitSoapEnvelope({ operatorRole: role, statement: validStatement })).to.not.throw();
+        // REPRESENTATIVE_MSPO additionally requires representedOperator (see its own test below).
+        const statement = role === 'REPRESENTATIVE_MSPO'
+          ? { ...validStatement, representedOperator: { operatorName: 'Represented MSPO' } }
+          : validStatement;
+
+        expect(() => client.createSubmitSoapEnvelope({ operatorRole: role, statement })).to.not.throw();
       });
     });
 
@@ -424,6 +429,211 @@ describe('EudrSimplifiedDeclarationClientV3', function() {
         expect.fail('Expected to throw');
       } catch (error) {
         expect(error.eudrErrorCode).to.equal('EUDR_V3_SD_PRODUCER_LOCATION_INVALID');
+      }
+    });
+
+    it('should require descriptors.descriptionOfGoods (mandatory in CommercialDescriptionType)', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      try {
+        client.createSubmitSoapEnvelope({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: {
+            ...validStatement,
+            commodities: [{ descriptors: { goodsMeasure: { netWeight: 100 } }, hsHeading: '1801' }]
+          }
+        });
+        expect.fail('Expected to throw');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_DESCRIPTION_OF_GOODS_REQUIRED');
+      }
+    });
+
+    it('should require descriptors.goodsMeasure (mandatory in CommercialDescriptionType)', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      try {
+        client.createSubmitSoapEnvelope({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: {
+            ...validStatement,
+            commodities: [{ descriptors: { descriptionOfGoods: 'Test cocoa' }, hsHeading: '1801' }]
+          }
+        });
+        expect.fail('Expected to throw');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_GOODS_MEASURE_REQUIRED');
+      }
+    });
+
+    it('should require representedOperator when operatorRole is REPRESENTATIVE_MSPO', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      try {
+        client.createSubmitSoapEnvelope({ operatorRole: 'REPRESENTATIVE_MSPO', statement: validStatement });
+        expect.fail('Expected to throw');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_SD_REPRESENTED_OPERATOR_REQUIRED');
+      }
+    });
+
+    it('should not require representedOperator for MICRO_OPERATOR, nor on updateSd', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+
+      expect(() => client.createSubmitSoapEnvelope({
+        operatorRole: 'MICRO_OPERATOR',
+        statement: validStatement
+      })).to.not.throw();
+
+      // updateSd carries no operatorRole, so the conditional rule cannot apply there.
+      expect(() => client.createUpdateSoapEnvelope('sd-uuid', validStatement)).to.not.throw();
+    });
+
+    it('should reject an internalReferenceNumber longer than 14 characters (ReferenceNumberType)', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      try {
+        client.createSubmitSoapEnvelope({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: { ...validStatement, internalReferenceNumber: 'A'.repeat(15) }
+        });
+        expect.fail('Expected to throw');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_SD_INTERNAL_REFERENCE_TOO_LONG');
+      }
+    });
+
+    it('should accept an internalReferenceNumber of exactly 14 characters', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+
+      expect(() => client.createSubmitSoapEnvelope({
+        operatorRole: 'MICRO_OPERATOR',
+        statement: { ...validStatement, internalReferenceNumber: 'A'.repeat(14) }
+      })).to.not.throw();
+    });
+
+    it('should reject more than 200 commodities', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      try {
+        client.createSubmitSoapEnvelope({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: { ...validStatement, commodities: new Array(201).fill(validStatement.commodities[0]) }
+        });
+        expect.fail('Expected to throw');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_COMMODITIES_LIMIT');
+      }
+    });
+
+    it('should reject more than 1000 producers on a commodity', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      try {
+        client.createSubmitSoapEnvelope({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: {
+            ...validStatement,
+            commodities: [{
+              ...validStatement.commodities[0],
+              producers: new Array(1001).fill(validStatement.commodities[0].producers[0])
+            }]
+          }
+        });
+        expect.fail('Expected to throw');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_PRODUCERS_LIMIT');
+      }
+    });
+
+    it('should reject more than 100 postal addresses', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      const address = { producerPostalCode: '10000', producerCity: 'Zagreb' };
+      try {
+        client.createSubmitSoapEnvelope({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: {
+            ...validStatement,
+            commodities: [{
+              ...validStatement.commodities[0],
+              producers: [{ producerCountry: 'HR', producerLocation: { postalAddress: new Array(101).fill(address) } }]
+            }]
+          }
+        });
+        expect.fail('Expected to throw');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_SD_POSTAL_ADDRESS_LIMIT');
+      }
+    });
+
+    it('should reject more than 100 cadastral identifiers', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      try {
+        client.createSubmitSoapEnvelope({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: {
+            ...validStatement,
+            commodities: [{
+              ...validStatement.commodities[0],
+              producers: [{
+                producerCountry: 'HR',
+                producerLocation: { cadastralIdentifier: new Array(101).fill('CAD-1') }
+              }]
+            }]
+          }
+        });
+        expect.fail('Expected to throw');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_SD_CADASTRAL_IDENTIFIER_LIMIT');
+      }
+    });
+  });
+
+  describe('geometryGeojson encoding (xs:base64Binary)', function() {
+    const withGeojson = (geometryGeojson) => ({
+      ...validStatement,
+      commodities: [{
+        ...validStatement.commodities[0],
+        producers: [{ producerCountry: 'FR', producerLocation: { geometryGeojson } }]
+      }]
+    });
+
+    it('should pass a string through untouched (already base64)', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      const envelope = client.createSubmitSoapEnvelope({
+        operatorRole: 'MICRO_OPERATOR',
+        statement: withGeojson('BASE64_GEOJSON')
+      });
+
+      expect(envelope).to.include('<sd:geometryGeojson>BASE64_GEOJSON</sd:geometryGeojson>');
+    });
+
+    it('should base64-encode a Buffer instead of emitting UTF-8 text', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      const envelope = client.createSubmitSoapEnvelope({
+        operatorRole: 'MICRO_OPERATOR',
+        statement: withGeojson(Buffer.from('{"type":"Point"}'))
+      });
+
+      expect(envelope).to.include(`<sd:geometryGeojson>${Buffer.from('{"type":"Point"}').toString('base64')}</sd:geometryGeojson>`);
+    });
+
+    it('should base64-encode a GeoJSON object instead of emitting [object Object]', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      const geojson = { type: 'Point', coordinates: [15.98, 45.81] };
+      const envelope = client.createSubmitSoapEnvelope({
+        operatorRole: 'MICRO_OPERATOR',
+        statement: withGeojson(geojson)
+      });
+
+      expect(envelope).to.not.include('[object Object]');
+      expect(envelope).to.include(`<sd:geometryGeojson>${Buffer.from(JSON.stringify(geojson)).toString('base64')}</sd:geometryGeojson>`);
+    });
+
+    it('should reject a value that is neither string, Buffer nor object', function() {
+      const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
+      try {
+        client.createSubmitSoapEnvelope({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: withGeojson(42)
+        });
+        expect.fail('Expected to throw');
+      } catch (error) {
+        expect(error.eudrErrorCode).to.equal('EUDR_V3_GEOJSON_INVALID');
       }
     });
   });

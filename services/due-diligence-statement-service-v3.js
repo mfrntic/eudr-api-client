@@ -17,7 +17,15 @@ const EudrErrorHandler = require('../utils/error-handler');
 const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
 const { buildBodyIdentityHeaderXml } = require('../utils/body-identity');
-const { IDENTIFIER_TYPES, MAX_OPERATOR_REFERENCE_NUMBERS, MAX_GROUPED_DECLARATIONS } = require('../utils/eudr-v3-schema');
+const {
+  IDENTIFIER_TYPES,
+  MAX_OPERATOR_REFERENCE_NUMBERS,
+  MAX_GROUPED_DECLARATIONS,
+  MAX_COMMODITIES,
+  MAX_PRODUCERS,
+  MAX_SPECIES_INFO,
+  encodeGeoJsonBase64
+} = require('../utils/eudr-v3-schema');
 
 const DDS_V3_NAMESPACE = 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3';
 
@@ -299,6 +307,16 @@ ${bodyXml}
     }
 
     const commodities = Array.isArray(statement.commodities) ? statement.commodities : [statement.commodities];
+
+    if (commodities.length > MAX_COMMODITIES) {
+      const error = new Error(
+        `statement.commodities accepts a maximum of ${MAX_COMMODITIES} entries, received ${commodities.length}.`
+      );
+      error.eudrErrorCode = 'EUDR_V3_COMMODITIES_LIMIT';
+      error.eudrSpecific = true;
+      throw error;
+    }
+
     for (const commodity of commodities) {
       xml += '<dds:commodities>';
       xml += this.generateCommodityXml(commodity);
@@ -350,27 +368,43 @@ ${bodyXml}
     }
 
     if (commodity.descriptors) {
+      /*
+       * eudrCommon:CommercialDescriptionType declares descriptionOfGoods and goodsMeasure
+       * without minOccurs="0", so once descriptors is present both are mandatory. Emitting
+       * them conditionally would produce a schema-invalid <descriptors> that only fails at
+       * the server, with a generic fault.
+       */
+      if (!commodity.descriptors.descriptionOfGoods) {
+        const error = new Error('commodity.descriptors.descriptionOfGoods is required (mandatory in CommercialDescriptionType).');
+        error.eudrErrorCode = 'EUDR_V3_DESCRIPTION_OF_GOODS_REQUIRED';
+        error.eudrSpecific = true;
+        throw error;
+      }
+      if (!commodity.descriptors.goodsMeasure) {
+        const error = new Error('commodity.descriptors.goodsMeasure is required (mandatory in CommercialDescriptionType).');
+        error.eudrErrorCode = 'EUDR_V3_GOODS_MEASURE_REQUIRED';
+        error.eudrSpecific = true;
+        throw error;
+      }
+
       xml += '<dds:descriptors>';
-      if (commodity.descriptors.descriptionOfGoods) {
-        xml += `<eudrCommon:descriptionOfGoods>${this.escapeXml(commodity.descriptors.descriptionOfGoods)}</eudrCommon:descriptionOfGoods>`;
+      xml += `<eudrCommon:descriptionOfGoods>${this.escapeXml(commodity.descriptors.descriptionOfGoods)}</eudrCommon:descriptionOfGoods>`;
+
+      const measure = commodity.descriptors.goodsMeasure;
+      xml += '<eudrCommon:goodsMeasure>';
+      if (measure.percentageEstimationOrDeviation !== undefined) {
+        xml += `<eudrCommon:percentageEstimationOrDeviation>${this.escapeXml(measure.percentageEstimationOrDeviation)}</eudrCommon:percentageEstimationOrDeviation>`;
       }
-      if (commodity.descriptors.goodsMeasure) {
-        const measure = commodity.descriptors.goodsMeasure;
-        xml += '<eudrCommon:goodsMeasure>';
-        if (measure.percentageEstimationOrDeviation !== undefined) {
-          xml += `<eudrCommon:percentageEstimationOrDeviation>${this.escapeXml(measure.percentageEstimationOrDeviation)}</eudrCommon:percentageEstimationOrDeviation>`;
-        }
-        if (measure.netWeight !== undefined) {
-          xml += `<eudrCommon:netWeight>${this.escapeXml(measure.netWeight)}</eudrCommon:netWeight>`;
-        }
-        if (measure.supplementaryUnit !== undefined) {
-          xml += `<eudrCommon:supplementaryUnit>${this.escapeXml(measure.supplementaryUnit)}</eudrCommon:supplementaryUnit>`;
-        }
-        if (measure.supplementaryUnitQualifier) {
-          xml += `<eudrCommon:supplementaryUnitQualifier>${this.escapeXml(measure.supplementaryUnitQualifier)}</eudrCommon:supplementaryUnitQualifier>`;
-        }
-        xml += '</eudrCommon:goodsMeasure>';
+      if (measure.netWeight !== undefined) {
+        xml += `<eudrCommon:netWeight>${this.escapeXml(measure.netWeight)}</eudrCommon:netWeight>`;
       }
+      if (measure.supplementaryUnit !== undefined) {
+        xml += `<eudrCommon:supplementaryUnit>${this.escapeXml(measure.supplementaryUnit)}</eudrCommon:supplementaryUnit>`;
+      }
+      if (measure.supplementaryUnitQualifier) {
+        xml += `<eudrCommon:supplementaryUnitQualifier>${this.escapeXml(measure.supplementaryUnitQualifier)}</eudrCommon:supplementaryUnitQualifier>`;
+      }
+      xml += '</eudrCommon:goodsMeasure>';
       xml += '</dds:descriptors>';
     }
 
@@ -380,6 +414,16 @@ ${bodyXml}
 
     if (commodity.speciesInfo) {
       const species = Array.isArray(commodity.speciesInfo) ? commodity.speciesInfo : [commodity.speciesInfo];
+
+      if (species.length > MAX_SPECIES_INFO) {
+        const error = new Error(
+          `commodity.speciesInfo accepts a maximum of ${MAX_SPECIES_INFO} entries, received ${species.length}.`
+        );
+        error.eudrErrorCode = 'EUDR_V3_SPECIES_INFO_LIMIT';
+        error.eudrSpecific = true;
+        throw error;
+      }
+
       for (const speciesItem of species) {
         xml += '<dds:speciesInfo>';
         if (speciesItem.scientificName) {
@@ -394,6 +438,16 @@ ${bodyXml}
 
     if (commodity.producers) {
       const producers = Array.isArray(commodity.producers) ? commodity.producers : [commodity.producers];
+
+      if (producers.length > MAX_PRODUCERS) {
+        const error = new Error(
+          `commodity.producers accepts a maximum of ${MAX_PRODUCERS} entries, received ${producers.length}.`
+        );
+        error.eudrErrorCode = 'EUDR_V3_PRODUCERS_LIMIT';
+        error.eudrSpecific = true;
+        throw error;
+      }
+
       for (const producer of producers) {
         xml += '<dds:producers>';
         if (producer.position !== undefined) {
@@ -406,7 +460,8 @@ ${bodyXml}
           xml += `<dds:name>${this.escapeXml(producer.name)}</dds:name>`;
         }
         if (producer.geometryGeojson) {
-          xml += `<dds:geometryGeojson>${this.escapeXml(producer.geometryGeojson)}</dds:geometryGeojson>`;
+          const geojson = encodeGeoJsonBase64(producer.geometryGeojson, 'producer');
+          xml += `<dds:geometryGeojson>${this.escapeXml(geojson)}</dds:geometryGeojson>`;
         }
         xml += '</dds:producers>';
       }

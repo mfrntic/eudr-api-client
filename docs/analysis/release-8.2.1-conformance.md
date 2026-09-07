@@ -150,6 +150,71 @@ No API surface.
 - The vendored WSDL in `docs/eudr_docs 1.5/` was stale, with no SD WSDL and no XSDs, so schema drift
   was invisible to `git diff`. Fixed by vendoring the full snapshot in `docs/eudr_docs 8.2.1/`.
 
+### From a line-by-line SD re-audit against the vendored 8.2.1 contract
+
+The SD wire format itself was conformant — element order, prefixes (both schemas are
+`elementFormDefault="qualified"`), the `producerLocation` choice, the `getSd*` SOAPAction quirk and
+all four response shapes matched. What the pass did find were validation-strictness gaps, where
+malformed caller input was forwarded to the server instead of being rejected locally. All four are
+now fixed:
+
+- `eudrCommon:CommercialDescriptionType` declares `descriptionOfGoods` and `goodsMeasure` without
+  `minOccurs="0"`, so both are mandatory, but both clients emitted them conditionally — a caller
+  passing `descriptors: {}` produced a schema-invalid `<descriptors>` and a generic server fault.
+  Now `EUDR_V3_DESCRIPTION_OF_GOODS_REQUIRED` / `EUDR_V3_GOODS_MEASURE_REQUIRED`. A commodity with
+  no `descriptors` at all is still allowed in the DDS client, as before.
+- `SimplifiedDeclarationBaseType.representedOperator` is annotated *"Required when operatorRole is
+  REPRESENTATIVE_MSPO"*, a conditional the XSD cannot express. Now enforced on `submitSd` via
+  `EUDR_V3_SD_REPRESENTED_OPERATOR_REQUIRED`; `updateSd` carries no `operatorRole`, so the rule
+  cannot apply there.
+- `maxOccurs` was enforced for `groupedDeclarations` (2000), `operatorReferenceNumber` (12) and
+  `getSd` uuids (100), but not for `commodities` (200), `producers` (1000), `postalAddress` (100)
+  or `cadastralIdentifier` (100). The four missing caps now live in `utils/eudr-v3-schema.js`
+  alongside the existing ones.
+- `geometryGeojson` is `xs:base64Binary`, but both clients emitted `String(value)`. A `Buffer`
+  became UTF-8 text and a GeoJSON object became `"[object Object]"` — well-formed XML carrying the
+  wrong bytes, failing only at the server. `encodeGeoJsonBase64` in `utils/eudr-v3-schema.js` now
+  normalises Buffers and objects, passes strings through untouched, and rejects anything else with
+  `EUDR_V3_GEOJSON_INVALID`.
+
+A follow-up cross-check against the **DDS** XSD then showed the first pass had been half-applied,
+because it read the SD schema in isolation:
+
+- `commodities` (200) and `producers` (1000) are identical caps in `DueDiligenceStatementBaseType`
+  / `DdsCommodityType` (`xsd4-due-diligence-statement-v3.xsd:235,297`), but the caps had been
+  wired into the SD client only. Both clients now enforce them, and the codes were renamed from
+  `EUDR_V3_SD_*` to the shared `EUDR_V3_COMMODITIES_LIMIT` / `EUDR_V3_PRODUCERS_LIMIT`. The
+  `EUDR_V3_SD_*` prefix is reserved for rules that genuinely differ between the two.
+- `speciesInfo` is capped at 500 per commodity (`:289`) and was unenforced anywhere.
+  Now `EUDR_V3_SPECIES_INFO_LIMIT`, DDS only — `SdCommodityType` has no `speciesInfo`.
+- SD's `internalReferenceNumber` is `eudrCommon:ReferenceNumberType` = **maxLength 14**
+  (`xsd4-simplified-declaration-v3.xsd:186`), while the DDS field and the
+  `getSdByInternalReference` lookup are both `InternalReferenceNumberType` = **50**
+  (`xsd4-due-diligence-statement-v3.xsd:191`), and the 1.5 doc's prose claims **35** (`:2111`).
+  Three numbers for one field. The client now enforces 14 for SD
+  (`EUDR_V3_SD_INTERNAL_REFERENCE_TOO_LONG`), following the type that carries the field.
+- The `activityType` error message read *"SD only allows: DOMESTIC, IMPORT, EXPORT"*, which is a
+  false framing. `eudrCommon:ActivityType` enumerates only those three, the DDS and SD copies of
+  `xsd3-eudr-common-v3.xsd` are byte-identical, and `TRADE` was dropped V1/V2 → V3 for the DDS too
+  (`...v1.0.md:2075`, `:2227`). Reworded to "V3 allows".
+
+Also worth recording, because it is easy to get wrong in a UI: `SubmitSdResponse/sdIdentifier` is
+`eudrCommon:UuidType` — a plain UUID. The 14-character `S…` declaration reference is
+`OverviewType/referenceNumber`, returned by `getSd`, so it takes a second call. The XSD annotation
+on `SubmitSdResponseType` blurs the two by calling the UUID "the declaration identifier ...
+accompanies relevant products through the supply chain". Documented in the README.
+
+Not enforced, and left that way: `countryOfActivity` and `borderCrossCountry` are
+`EuropeanCountryType` (an enum of the 27 Member States plus `XI`), but neither client validates
+them, consistently with not validating the generic `CountryType` used by `producerCountry`.
+
+Deliberately left server-enforced: `netWeight` being mandatory for IMPORT/EXPORT, and
+`supplementaryUnitQualifier` being required alongside `supplementaryUnit`. Both are
+`GoodsMeasureType` annotations, and V3 dropped V1/V2's client-side units validation on purpose —
+see `docs/analysis/v3-live-test-plan.md`. Also unchanged: `internalReferenceNumber` stays mandatory
+client-side for SD. Its annotation says the Information System generates one when absent, but the
+element has no `minOccurs="0"`, and this audit follows the type over the prose.
+
 ## Still open
 
 - **Live multi-operator verification.** No Web Service Identifier is available for the acceptance

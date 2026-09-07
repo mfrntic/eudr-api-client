@@ -19,7 +19,17 @@ const EudrErrorHandler = require('../utils/error-handler');
 const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
 const { buildBodyIdentityHeaderXml } = require('../utils/body-identity');
-const { IDENTIFIER_TYPES, MAX_OPERATOR_REFERENCE_NUMBERS, MAX_GROUPED_DECLARATIONS } = require('../utils/eudr-v3-schema');
+const {
+  IDENTIFIER_TYPES,
+  MAX_OPERATOR_REFERENCE_NUMBERS,
+  MAX_GROUPED_DECLARATIONS,
+  MAX_COMMODITIES,
+  MAX_PRODUCERS,
+  MAX_POSTAL_ADDRESSES,
+  MAX_CADASTRAL_IDENTIFIERS,
+  MAX_SD_INTERNAL_REFERENCE_LENGTH,
+  encodeGeoJsonBase64
+} = require('../utils/eudr-v3-schema');
 
 const SD_V3_NAMESPACE = 'http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3';
 const DDS_V3_NAMESPACE = 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3';
@@ -257,12 +267,29 @@ ${bodyXml}
     return xml;
   }
 
-  generateSdStatementXml(statement) {
+  /**
+   * @param {Object} statement
+   * @param {string} [operatorRole] Only supplied on submit. The XSD leaves representedOperator
+   *        optional because it cannot express the conditional, but annotates it as required
+   *        when the role is REPRESENTATIVE_MSPO; updateSd carries no role, so the rule can
+   *        only be applied on submit.
+   */
+  generateSdStatementXml(statement, operatorRole) {
     let xml = '';
 
     if (!statement.internalReferenceNumber) {
       const error = new Error('statement.internalReferenceNumber is required for Simplified Declarations (unlike DDS, it is mandatory).');
       error.eudrErrorCode = 'EUDR_V3_SD_INTERNAL_REFERENCE_REQUIRED';
+      error.eudrSpecific = true;
+      throw error;
+    }
+    if (String(statement.internalReferenceNumber).length > MAX_SD_INTERNAL_REFERENCE_LENGTH) {
+      const error = new Error(
+        `statement.internalReferenceNumber is ${String(statement.internalReferenceNumber).length} characters; ` +
+        `SD types it as ReferenceNumberType, which allows a maximum of ${MAX_SD_INTERNAL_REFERENCE_LENGTH} ` +
+        '(the DDS field and the getSdByInternalReference lookup allow 50 — the schema is inconsistent here).'
+      );
+      error.eudrErrorCode = 'EUDR_V3_SD_INTERNAL_REFERENCE_TOO_LONG';
       error.eudrSpecific = true;
       throw error;
     }
@@ -273,13 +300,24 @@ ${bodyXml}
     }
     if (!['DOMESTIC', 'IMPORT', 'EXPORT'].includes(statement.activityType)) {
       const error = new Error(
-        `Invalid activityType '${statement.activityType}'. SD only allows: DOMESTIC, IMPORT, EXPORT.`
+        // eudrCommon:ActivityType enumerates only these three; TRADE was dropped V1/V2 -> V3
+        // for the DDS as well, so this is a V3-wide restriction rather than an SD-specific one.
+        `Invalid activityType '${statement.activityType}'. V3 allows: DOMESTIC, IMPORT, EXPORT.`
       );
       error.eudrErrorCode = 'EUDR_V3_SD_ACTIVITY_TYPE_INVALID';
       error.eudrSpecific = true;
       throw error;
     }
     xml += `<sd:activityType>${this.escapeXml(statement.activityType)}</sd:activityType>`;
+
+    if (operatorRole === 'REPRESENTATIVE_MSPO' && !statement.representedOperator) {
+      const error = new Error(
+        'statement.representedOperator is required when operatorRole is REPRESENTATIVE_MSPO.'
+      );
+      error.eudrErrorCode = 'EUDR_V3_SD_REPRESENTED_OPERATOR_REQUIRED';
+      error.eudrSpecific = true;
+      throw error;
+    }
 
     if (statement.representedOperator) {
       xml += `<sd:representedOperator>${this.generateEconomicOperatorXml(statement.representedOperator)}</sd:representedOperator>`;
@@ -302,6 +340,19 @@ ${bodyXml}
     }
 
     const commodities = Array.isArray(statement.commodities) ? statement.commodities : [statement.commodities];
+
+    if (commodities.length === 0) {
+      throw new Error('statement.commodities is required for SD operations');
+    }
+    if (commodities.length > MAX_COMMODITIES) {
+      const error = new Error(
+        `statement.commodities accepts a maximum of ${MAX_COMMODITIES} entries, received ${commodities.length}.`
+      );
+      error.eudrErrorCode = 'EUDR_V3_COMMODITIES_LIMIT';
+      error.eudrSpecific = true;
+      throw error;
+    }
+
     for (const commodity of commodities) {
       xml += '<sd:commodities>';
       xml += this.generateSdCommodityXml(commodity);
@@ -345,27 +396,43 @@ ${bodyXml}
     if (!commodity.descriptors) {
       throw new Error('commodity.descriptors is required for SD commodities');
     }
+
+    /*
+     * eudrCommon:CommercialDescriptionType declares descriptionOfGoods and goodsMeasure without
+     * minOccurs="0", so both are mandatory. Emitting them conditionally would produce a
+     * schema-invalid <descriptors> that only fails at the server, with a generic fault.
+     */
+    if (!commodity.descriptors.descriptionOfGoods) {
+      const error = new Error('commodity.descriptors.descriptionOfGoods is required (mandatory in CommercialDescriptionType).');
+      error.eudrErrorCode = 'EUDR_V3_DESCRIPTION_OF_GOODS_REQUIRED';
+      error.eudrSpecific = true;
+      throw error;
+    }
+    if (!commodity.descriptors.goodsMeasure) {
+      const error = new Error('commodity.descriptors.goodsMeasure is required (mandatory in CommercialDescriptionType).');
+      error.eudrErrorCode = 'EUDR_V3_GOODS_MEASURE_REQUIRED';
+      error.eudrSpecific = true;
+      throw error;
+    }
+
     xml += '<sd:descriptors>';
-    if (commodity.descriptors.descriptionOfGoods) {
-      xml += `<eudrCommon:descriptionOfGoods>${this.escapeXml(commodity.descriptors.descriptionOfGoods)}</eudrCommon:descriptionOfGoods>`;
+    xml += `<eudrCommon:descriptionOfGoods>${this.escapeXml(commodity.descriptors.descriptionOfGoods)}</eudrCommon:descriptionOfGoods>`;
+
+    const measure = commodity.descriptors.goodsMeasure;
+    xml += '<eudrCommon:goodsMeasure>';
+    if (measure.percentageEstimationOrDeviation !== undefined) {
+      xml += `<eudrCommon:percentageEstimationOrDeviation>${this.escapeXml(measure.percentageEstimationOrDeviation)}</eudrCommon:percentageEstimationOrDeviation>`;
     }
-    if (commodity.descriptors.goodsMeasure) {
-      const measure = commodity.descriptors.goodsMeasure;
-      xml += '<eudrCommon:goodsMeasure>';
-      if (measure.percentageEstimationOrDeviation !== undefined) {
-        xml += `<eudrCommon:percentageEstimationOrDeviation>${this.escapeXml(measure.percentageEstimationOrDeviation)}</eudrCommon:percentageEstimationOrDeviation>`;
-      }
-      if (measure.netWeight !== undefined) {
-        xml += `<eudrCommon:netWeight>${this.escapeXml(measure.netWeight)}</eudrCommon:netWeight>`;
-      }
-      if (measure.supplementaryUnit !== undefined) {
-        xml += `<eudrCommon:supplementaryUnit>${this.escapeXml(measure.supplementaryUnit)}</eudrCommon:supplementaryUnit>`;
-      }
-      if (measure.supplementaryUnitQualifier) {
-        xml += `<eudrCommon:supplementaryUnitQualifier>${this.escapeXml(measure.supplementaryUnitQualifier)}</eudrCommon:supplementaryUnitQualifier>`;
-      }
-      xml += '</eudrCommon:goodsMeasure>';
+    if (measure.netWeight !== undefined) {
+      xml += `<eudrCommon:netWeight>${this.escapeXml(measure.netWeight)}</eudrCommon:netWeight>`;
     }
+    if (measure.supplementaryUnit !== undefined) {
+      xml += `<eudrCommon:supplementaryUnit>${this.escapeXml(measure.supplementaryUnit)}</eudrCommon:supplementaryUnit>`;
+    }
+    if (measure.supplementaryUnitQualifier) {
+      xml += `<eudrCommon:supplementaryUnitQualifier>${this.escapeXml(measure.supplementaryUnitQualifier)}</eudrCommon:supplementaryUnitQualifier>`;
+    }
+    xml += '</eudrCommon:goodsMeasure>';
     xml += '</sd:descriptors>';
 
     if (!commodity.hsHeading) {
@@ -375,6 +442,16 @@ ${bodyXml}
 
     if (commodity.producers) {
       const producers = Array.isArray(commodity.producers) ? commodity.producers : [commodity.producers];
+
+      if (producers.length > MAX_PRODUCERS) {
+        const error = new Error(
+          `commodity.producers accepts a maximum of ${MAX_PRODUCERS} entries, received ${producers.length}.`
+        );
+        error.eudrErrorCode = 'EUDR_V3_PRODUCERS_LIMIT';
+        error.eudrSpecific = true;
+        throw error;
+      }
+
       for (const producer of producers) {
         xml += '<sd:producers>';
         xml += this.generateSdProducerXml(producer);
@@ -420,9 +497,20 @@ ${bodyXml}
 
     xml += '<sd:producerLocation>';
     if (location.geometryGeojson !== undefined) {
-      xml += `<sd:geometryGeojson>${this.escapeXml(location.geometryGeojson)}</sd:geometryGeojson>`;
+      const geojson = encodeGeoJsonBase64(location.geometryGeojson, 'producer.producerLocation');
+      xml += `<sd:geometryGeojson>${this.escapeXml(geojson)}</sd:geometryGeojson>`;
     } else if (location.postalAddress !== undefined) {
       const addresses = Array.isArray(location.postalAddress) ? location.postalAddress : [location.postalAddress];
+
+      if (addresses.length > MAX_POSTAL_ADDRESSES) {
+        const error = new Error(
+          `producer.producerLocation.postalAddress accepts a maximum of ${MAX_POSTAL_ADDRESSES} entries, received ${addresses.length}.`
+        );
+        error.eudrErrorCode = 'EUDR_V3_SD_POSTAL_ADDRESS_LIMIT';
+        error.eudrSpecific = true;
+        throw error;
+      }
+
       for (const address of addresses) {
         xml += '<sd:postalAddress>';
         if (address.producerStreet) {
@@ -442,6 +530,16 @@ ${bodyXml}
       const identifiers = Array.isArray(location.cadastralIdentifier)
         ? location.cadastralIdentifier
         : [location.cadastralIdentifier];
+
+      if (identifiers.length > MAX_CADASTRAL_IDENTIFIERS) {
+        const error = new Error(
+          `producer.producerLocation.cadastralIdentifier accepts a maximum of ${MAX_CADASTRAL_IDENTIFIERS} entries, received ${identifiers.length}.`
+        );
+        error.eudrErrorCode = 'EUDR_V3_SD_CADASTRAL_IDENTIFIER_LIMIT';
+        error.eudrSpecific = true;
+        throw error;
+      }
+
       for (const identifier of identifiers) {
         xml += `<sd:cadastralIdentifier>${this.escapeXml(identifier)}</sd:cadastralIdentifier>`;
       }
@@ -470,7 +568,7 @@ ${bodyXml}
     const bodyXml = `        <sd:SubmitSdRequest>
             <sd:operatorRole>${this.escapeXml(request.operatorRole)}</sd:operatorRole>
             <sd:statement>
-                ${this.generateSdStatementXml(request.statement)}
+                ${this.generateSdStatementXml(request.statement, request.operatorRole)}
             </sd:statement>
         </sd:SubmitSdRequest>`;
 
