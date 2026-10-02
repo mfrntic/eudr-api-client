@@ -15,6 +15,7 @@ const crypto = require('node:crypto');
 const { v4: uuidv4 } = require('uuid');
 const { parseString } = require('xml2js');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
+const { compactSoapEnvelope } = require('../utils/soap-envelope');
 
 /**
  * EUDR Echo Service Client class
@@ -251,7 +252,7 @@ class EudrEchoClient {
           'SOAPAction': 'http://ec.europa.eu/tracesnt/eudr/echo'
         },
         
-        data: soapEnvelope,
+        data: compactSoapEnvelope(soapEnvelope),
         timeout: this.config.timeout,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: this.config.ssl

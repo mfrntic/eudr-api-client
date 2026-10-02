@@ -587,6 +587,8 @@ All of these are thrown **before any network call**, carry `error.eudrSpecific =
 > `NotFoundException` became an explicitly declared fault on the V3 `get*` operations with EUDR release 8.2.1; before that it surfaced as a generic 500.
 >
 > The faultcode prefix varies across the V3 services (`S:`, `soapenv:`, `env:`, `SOAP-ENV:`); the mapping above is prefix-agnostic. `BusinessRulesValidationException` is mapped by name because the EUDR system reports it with a `Server` faultcode.
+>
+> **`403 SNET RPS - Access denied`** is not a SOAP fault: it comes from the European Commission's reverse proxy in front of the EUDR endpoints. Its request smuggling rule rejects bodies where a word ending in an HTTP method (`get`, `post`, `put`, `delete`, `head`, `options`, `patch`, `trace`, `connect`) is followed by another word and, anywhere later, a line break. Values such as "Testbolaget Testbolaget", "Gadget Ltd" or "Head Office" triggered it. The clients now send every envelope without line breaks, so these values pass. Line breaks inside text values (for example `comment`) are sent as a single space, because the proxy decodes `&#10;` before matching.
 
 See each V3 client's **Error Handling** subsection below for worked examples.
 

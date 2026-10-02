@@ -21,6 +21,7 @@ const { parseString } = require('xml2js');
 const EudrErrorHandler = require('../utils/error-handler');
 const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
+const { compactSoapEnvelope } = require('../utils/soap-envelope');
 
 /**
  * EUDR Submission Service Client class
@@ -569,7 +570,7 @@ class EudrSubmissionClient {
           'Content-Type': 'text/xml;charset=UTF-8',
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1'
         },
-        data: soapEnvelope,
+        data: compactSoapEnvelope(soapEnvelope),
         timeout: this.config.timeout,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: this.config.ssl
@@ -684,7 +685,7 @@ class EudrSubmissionClient {
           'Content-Type': 'text/xml;charset=UTF-8',
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1#amendDds'
         },
-        data: soapEnvelope,
+        data: compactSoapEnvelope(soapEnvelope),
         timeout: this.config.timeout,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: this.config.ssl
@@ -891,7 +892,7 @@ class EudrSubmissionClient {
           'Content-Type': 'text/xml;charset=UTF-8',
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1#retractDds'
         },
-        data: soapEnvelope,
+        data: compactSoapEnvelope(soapEnvelope),
         timeout: this.config.timeout,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: this.config.ssl

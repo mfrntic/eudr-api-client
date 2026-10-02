@@ -26,6 +26,7 @@ const { parseString } = require('xml2js');
 const EudrErrorHandler = require('../utils/error-handler');
 const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
+const { compactSoapEnvelope } = require('../utils/soap-envelope');
 
 // Constants for Units of Measure validation based on economic_operators.md
 const HS_CODES_WITH_SUPPLEMENTARY_UNITS = {
@@ -781,7 +782,7 @@ class EudrSubmissionClientV2 {
           'Content-Type': 'text/xml;charset=UTF-8',
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v2'
         },
-        data: soapEnvelope,
+        data: compactSoapEnvelope(soapEnvelope),
         timeout: this.config.timeout,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: this.config.ssl
@@ -900,7 +901,7 @@ class EudrSubmissionClientV2 {
           'Content-Type': 'text/xml;charset=UTF-8',
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v2#amendDds'
         },
-        data: soapEnvelope,
+        data: compactSoapEnvelope(soapEnvelope),
         timeout: this.config.timeout,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: this.config.ssl
@@ -1105,7 +1106,7 @@ class EudrSubmissionClientV2 {
           'Content-Type': 'text/xml;charset=UTF-8',
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v2#retractDds'
         },
-        data: soapEnvelope,
+        data: compactSoapEnvelope(soapEnvelope),
         timeout: this.config.timeout,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: this.config.ssl

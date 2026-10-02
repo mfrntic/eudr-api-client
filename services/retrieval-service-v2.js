@@ -24,6 +24,7 @@ const crypto = require('node:crypto');
 const { v4: uuidv4 } = require('uuid');
 const { parseString, processors } = require('xml2js');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
+const { compactSoapEnvelope } = require('../utils/soap-envelope');
 
 /**
  * EUDR Retrieval Service V2 Client class
@@ -595,7 +596,7 @@ class EudrRetrievalClientV2 {
           'Content-Type': 'text/xml;charset=UTF-8',
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/getDdsInfo'
         },
-        data: soapEnvelope,
+        data: compactSoapEnvelope(soapEnvelope),
         timeout: this.config.timeout,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: this.config.ssl
@@ -668,7 +669,7 @@ class EudrRetrievalClientV2 {
           'Content-Type': 'text/xml;charset=UTF-8',
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/getDdsInfoByInternalReferenceNumber'
         },
-        data: soapEnvelope,
+        data: compactSoapEnvelope(soapEnvelope),
         timeout: this.config.timeout,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: this.config.ssl
@@ -820,7 +821,7 @@ class EudrRetrievalClientV2 {
           'Content-Type': 'text/xml;charset=UTF-8',
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/getStatementByIdentifiers'
         },
-        data: soapEnvelope,
+        data: compactSoapEnvelope(soapEnvelope),
         timeout: this.config.timeout,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: this.config.ssl
@@ -951,7 +952,7 @@ class EudrRetrievalClientV2 {
           'Content-Type': 'text/xml;charset=UTF-8',
           'SOAPAction': 'http://ec.europa.eu/tracesnt/certificate/eudr/retrieval/getReferencedDds'
         },
-        data: soapEnvelope,
+        data: compactSoapEnvelope(soapEnvelope),
         timeout: this.config.timeout,
         httpsAgent: new (require('https').Agent)({
           rejectUnauthorized: this.config.ssl

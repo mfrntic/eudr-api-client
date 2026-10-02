@@ -18,6 +18,7 @@ const { parseString } = require('xml2js');
 const EudrErrorHandler = require('../utils/error-handler');
 const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
+const { compactSoapEnvelope } = require('../utils/soap-envelope');
 const { buildBodyIdentityHeaderXml } = require('../utils/body-identity');
 const {
   IDENTIFIER_TYPES,
@@ -816,7 +817,7 @@ ${bodyXml}
         'Content-Type': 'text/xml;charset=UTF-8',
         SOAPAction: soapAction
       },
-      data: soapEnvelope,
+      data: compactSoapEnvelope(soapEnvelope),
       timeout: this.config.timeout,
       httpsAgent: new https.Agent({
         rejectUnauthorized: this.config.ssl
