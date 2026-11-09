@@ -76,8 +76,8 @@ describe('Services Index Integration', function() {
       const retrievalVersions = services.config.getSupportedVersions('retrieval');
       
       expect(echoVersions).to.deep.equal(['v1', 'v2']);
-      expect(submissionVersions).to.deep.equal(['v1', 'v2', 'v3']);
-      expect(retrievalVersions).to.deep.equal(['v1', 'v2', 'v3']);
+      expect(submissionVersions).to.deep.equal(['v1', 'v2', 'v3', 'v4']);
+      expect(retrievalVersions).to.deep.equal(['v1', 'v2', 'v3', 'v4']);
     });
 
     it('should generate endpoints correctly', function() {

@@ -8,6 +8,7 @@
  */
 
 const { logger } = require('./logger');
+const { extractUserMessage } = require('./soap-response');
 
 // Error code constants
 const EUDR_ERROR_CODES = {
@@ -64,12 +65,24 @@ const EUDR_ERROR_CODES = {
   EUDR_API_AMEND_NOT_ALLOWED_FOR_STATUS: 'The user can only amend when the DDS is in status Available.',
   EUDR_API_AMEND_OR_WITHDRAW_NOT_ALLOWED_FOR_STATUS: 'The user can only retract a DDS in status SUBMITTED or AVAILABLE.',
   EUDR_API_NO_DDS: 'No DDS corresponding to the provided UUID.',
+  // Release 8.2.2: the 72-hour amend window starts when the DDS becomes AVAILABLE; afterwards
+  // amendDds fails with a PermissionDeniedException carrying this code.
+  EUDR_API_AMEND_DEADLINE_ELAPSED: 'The amendment window has elapsed; amendments are only possible if the Competent Authority granted an extension. Submit a new DDS instead.',
+  // Release 8.2.2: grouping can only be set on the initial submission. The server sends the code
+  // with hyphens (EUDR-GROUPING-NOT-ALLOWED-ON-AMEND); parseSoapFault normalizes them to underscores.
+  EUDR_GROUPING_NOT_ALLOWED_ON_AMEND: 'Grouped declarations cannot be added, modified or removed on amend/update; grouping can only be set on the initial submission.',
 
   // Data validation errors
   EUDR_DATA_TYPE_VALIDATION_ERROR: 'Data type validation error - the provided value does not match the expected format.',
 
   // Retrieval errors (NotFoundException fault, declared on the V3 get* operations since release 8.2.1)
-  EUDR_NOT_FOUND: 'No declaration matches the provided identifiers.'
+  EUDR_NOT_FOUND: 'No declaration matches the provided identifiers.',
+  // Release 8.2.2: retrieval no longer reveals whether a declaration exists - not found, wrong
+  // verification number and "not allowed to see" all return the same NotFoundException.
+  EUDR_WEBSERVICE_DDS_NOT_FOUND_OR_NO_ACCESS: 'The DDS does not exist, the verification number does not match, or you are not allowed to see it.',
+  EUDR_WEBSERVICE_SD_NOT_FOUND_OR_NO_ACCESS: 'The SD does not exist, the verification number does not match, or you are not allowed to see it.',
+  // Release 8.2.2: getDdsByIdentifiers / getSdByIdentifiers no longer return content (V3 and V4).
+  EUDR_DETAIL_RETRIEVAL_UNSUPPORTED: 'Declaration detail is no longer retrievable over the API (available only in the web UI). Use the overview operations instead.'
 };
 
 // Add at the top with other constants
@@ -115,8 +128,17 @@ class EudrErrorHandler {
 
     // The exception name is a reliable signal anywhere in the fault; the loose "Data not found"
     // phrase is only trusted inside <detail>, where user content is never echoed.
-    if (/NotFoundException/.test(faultSummary) || /Data not found/i.test(faultDetail)) {
+    if (/NotFoundException/.test(faultSummary) || /Data not found/i.test(faultDetail) ||
+        /_NOT_FOUND_OR_NO_ACCESS\b/.test(faultDetail)) {
       result.faultType = 'NotFoundException';
+    }
+
+    // Release 8.2.2: get*ByIdentifiers answers every call with a NotFoundException whose wording
+    // varies. Observed live on acceptance (2026-11-09): DDS "Statement details can only be accessed
+    // through the UI", SD "Declaration detail access is possible only over UI" (the documented form).
+    if (/\bdetails?\b[^<]{0,40}\bonly\b[^<]{0,40}\bUI\b/i.test(faultSummary)) {
+      result.faultType = 'NotFoundException';
+      result.detailRetrievalUnsupported = true;
     }
 
     // Parse basic SOAP fault information
@@ -311,6 +333,8 @@ class EudrErrorHandler {
       errorResponse.details.status = error.response.status;
       errorResponse.details.statusText = error.response.statusText;
       errorResponse.details.rawData = error.response.data;
+      // V4 may carry an EudrUserMessage announcement header on faults too.
+      errorResponse.userMessage = extractUserMessage(error.response.data);
 
       if (typeof error.response.data === 'string') {
         // console.log("Response data is a string, parsing SOAP fault");
@@ -361,9 +385,13 @@ class EudrErrorHandler {
             errorResponse.eudrSpecific = true;
             errorResponse.wellKnownError = true;
 
+            if (soapFault.detailRetrievalUnsupported) {
+              errorResponse.detailRetrievalUnsupported = true;
+            }
+            const notFoundCode = soapFault.detailRetrievalUnsupported ? 'EUDR_DETAIL_RETRIEVAL_UNSUPPORTED' : 'EUDR_NOT_FOUND';
             errorResponse.eudrErrors.push({
-              code: 'EUDR_NOT_FOUND',
-              message: soapFault.faultString || EUDR_ERROR_CODES.EUDR_NOT_FOUND,
+              code: notFoundCode,
+              message: soapFault.faultString || EUDR_ERROR_CODES[notFoundCode],
               field: null
             });
           }
@@ -383,6 +411,12 @@ class EudrErrorHandler {
                 if (!errorResponse.notFound) {
                   errorResponse.httpStatus = 403; // Forbidden
                 }
+              }
+
+              // A grouping-on-amend rejection is a validation error even though its message may
+              // contain the words "not allowed" that the authorization heuristic above keys on.
+              if (errorDetail.errorCode === 'EUDR_GROUPING_NOT_ALLOWED_ON_AMEND' && !errorResponse.notFound) {
+                errorResponse.httpStatus = 400;
               }
 
               // Handle data type validation errors specially
@@ -432,11 +466,12 @@ class EudrErrorHandler {
                   message: errorDetail.message,
                   field: errorDetail.field || null
                 }));
+                const notFoundCodes = ['EUDR_NOT_FOUND', 'EUDR_DETAIL_RETRIEVAL_UNSUPPORTED'];
                 const preserved = errorResponse.notFound
-                  ? errorResponse.eudrErrors.filter(entry => entry.code === 'EUDR_NOT_FOUND').slice(0, 1)
+                  ? errorResponse.eudrErrors.filter(entry => notFoundCodes.includes(entry.code)).slice(0, 1)
                   : [];
                 errorResponse.eudrErrors = preserved.concat(
-                  mapped.filter(entry => entry.code !== 'EUDR_NOT_FOUND' || preserved.length === 0)
+                  mapped.filter(entry => !notFoundCodes.includes(entry.code) || preserved.length === 0)
                 );
               }
             });

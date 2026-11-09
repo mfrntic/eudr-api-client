@@ -29,18 +29,22 @@ const SERVICE_PATHS = {
   'retrieval': {
     'v1': '/EUDRRetrievalServiceV1',
     'v2': '/EUDRRetrievalServiceV2',
-    'v3': '/EUDRDueDiligenceStatementServiceV3'
+    'v3': '/EUDRDueDiligenceStatementServiceV3',
+    'v4': '/EUDRDueDiligenceStatementServiceV4'
   },
   'submission': {
     'v1': '/EUDRSubmissionServiceV1',
     'v2': '/EUDRSubmissionServiceV2',
-    'v3': '/EUDRDueDiligenceStatementServiceV3'
+    'v3': '/EUDRDueDiligenceStatementServiceV3',
+    'v4': '/EUDRDueDiligenceStatementServiceV4'
   },
   'simplified-declaration': {
-    'v3': '/EUDRSimplifiedDeclarationServiceV3'
+    'v3': '/EUDRSimplifiedDeclarationServiceV3',
+    'v4': '/EUDRSimplifiedDeclarationServiceV4'
   },
   'verification': {
-    'v3': '/EUDRVerifyDeclarationServiceV3'
+    'v3': '/EUDRVerifyDeclarationServiceV3',
+    'v4': '/EUDRVerifyDeclarationServiceV4'
   }
 };
 
@@ -55,18 +59,22 @@ const SOAP_ACTIONS = {
   'retrieval': {
     'v1': 'http://ec.europa.eu/tracesnt/eudr/retrieval/v1',
     'v2': 'http://ec.europa.eu/tracesnt/eudr/retrieval/v2',
-    'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3'
+    'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3',
+    'v4': 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v4'
   },
   'submission': {
     'v1': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v1',
     'v2': 'http://ec.europa.eu/tracesnt/certificate/eudr/submission/v2',
-    'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3'
+    'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3',
+    'v4': 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v4'
   },
   'simplified-declaration': {
-    'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3'
+    'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3',
+    'v4': 'http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v4'
   },
   'verification': {
-    'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/verification/v3/verify-declaration'
+    'v3': 'http://ec.europa.eu/tracesnt/certificate/eudr/verification/v3/verify-declaration',
+    'v4': 'http://ec.europa.eu/tracesnt/certificate/eudr/verification/v4/verify-declaration'
   }
 };
 
@@ -101,7 +109,7 @@ function getBaseUrl(webServiceClientId) {
 /**
  * Get the service path for the given service and version
  * @param {string} service - The service name (echo, retrieval, submission)
- * @param {string} version - The API version (v1, v2, v3)
+ * @param {string} version - The API version (v1, v2, v3, v4)
  * @returns {string} The service path
  * @throws {Error} If service or version is not supported
  */
@@ -122,7 +130,7 @@ function getServicePath(service, version) {
 /**
  * Generate the complete endpoint URL for the given service, version, and webServiceClientId
  * @param {string} service - The service name (echo, retrieval, submission)
- * @param {string} version - The API version (v1, v2, v3)
+ * @param {string} version - The API version (v1, v2, v3, v4)
  * @param {string} webServiceClientId - The webServiceClientId
  * @returns {string} The complete endpoint URL
  * @throws {Error} If any parameter is invalid
@@ -138,7 +146,7 @@ function generateEndpoint(service, version, webServiceClientId) {
  * Validate configuration and generate endpoint if needed
  * @param {Object} config - The configuration object
  * @param {string} service - The service name (echo, retrieval, submission)
- * @param {string} version - The API version (v1, v2, v3)
+ * @param {string} version - The API version (v1, v2, v3, v4)
  * @returns {Object} The validated and potentially updated configuration
  * @throws {Error} If configuration is invalid
  */

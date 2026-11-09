@@ -6,7 +6,9 @@
 
 const { expect } = require('chai');
 const EudrSubmissionClientV3 = require('../../services/submission-service-v3');
+const EudrSubmissionClientV4 = require('../../services/submission-service-v4');
 const EudrRetrievalClientV3 = require('../../services/retrieval-service-v3');
+const EudrRetrievalClientV4 = require('../../services/retrieval-service-v4');
 const { logger } = require('../../utils/logger');
 const { delay, pollUntil, resolveOrCleanNotFound } = require('../helpers/wait');
 const { skipWithoutCredentials } = require('../helpers/credentials');
@@ -51,238 +53,247 @@ function buildDomesticStatement(overrides = {}) {
   return { ...base, ...overrides };
 }
 
-describe('EudrSubmissionClientV3 - Integration Tests', function() {
-  this.timeout(120000);
+// The same live suite runs against both API versions: V4 (release 8.2.2) keeps the V3
+// operations and data model, so every expectation applies to both unless noted.
+const API_VERSIONS = [
+  { label: 'V3', SubmissionClient: EudrSubmissionClientV3, RetrievalClient: EudrRetrievalClientV3 },
+  { label: 'V4', SubmissionClient: EudrSubmissionClientV4, RetrievalClient: EudrRetrievalClientV4 }
+];
 
-  let submissionClient;
-  let retrievalClient;
-  const createdUuids = [];
-  const skipCleanup = process.env.EUDR_RUN_CLEANUP !== '1';
+for (const api of API_VERSIONS) {
+  describe(`EudrSubmissionClient${api.label} - Integration Tests`, function() {
+    this.timeout(120000);
 
-  before(async function() {
-    if (logger && logger.level) {
-      logger.level = 'error';
-    }
-    require('dotenv').config();
+    let submissionClient;
+    let retrievalClient;
+    const createdUuids = [];
+    const skipCleanup = process.env.EUDR_RUN_CLEANUP !== '1';
 
-    const requiredEnvVars = ['EUDR_TRACES_USERNAME', 'EUDR_TRACES_PASSWORD', 'EUDR_TRACES_BASE_URL'];
-    if (skipWithoutCredentials(this, requiredEnvVars)) return;
-
-    const baseConfig = {
-      username: process.env.EUDR_TRACES_USERNAME,
-      password: process.env.EUDR_TRACES_PASSWORD,
-      webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
-    };
-    submissionClient = new EudrSubmissionClientV3(baseConfig);
-    retrievalClient = new EudrRetrievalClientV3(baseConfig);
-  });
-
-  after(async function() {
-    if (skipCleanup) {
-      console.log(`[cleanup] defaulting to no cleanup; set EUDR_RUN_CLEANUP=1 to withdraw ${createdUuids.length} DDS records: ${JSON.stringify(createdUuids)}`);
-      return;
-    }
-
-    for (const uuid of createdUuids) {
-      try {
-        console.log(`[cleanup] withdrawing DDS ${uuid}`);
-        await submissionClient.withdrawDds(uuid);
-        console.log(`[cleanup] withdrew DDS ${uuid}`);
-        logger.info(`Cleaned up (withdrawn) DDS ${uuid}`);
-      } catch (error) {
-        console.log(`[cleanup] withdraw failed for ${uuid}: ${error.eudrErrorCode || error.message}`);
-        logger.warn(`Cleanup withdraw failed for ${uuid}: ${error.message}`);
+    before(async function() {
+      if (logger && logger.level) {
+        logger.level = 'error';
       }
-    }
-  });
+      require('dotenv').config();
 
-  describe('submitDds - by activity type', function() {
-    it('should submit a DOMESTIC DDS with netWeight + percentageEstimationOrDeviation', async function() {
-      const result = await submissionClient.submitDds({
-        operatorRole: 'OPERATOR',
-        statement: buildDomesticStatement()
-      });
+      const requiredEnvVars = ['EUDR_TRACES_USERNAME', 'EUDR_TRACES_PASSWORD', 'EUDR_TRACES_BASE_URL'];
+      if (skipWithoutCredentials(this, requiredEnvVars)) return;
 
-      expect(result.httpStatus).to.equal(200);
-      expect(result.uuid).to.be.a('string');
-      createdUuids.push(result.uuid);
+      const baseConfig = {
+        username: process.env.EUDR_TRACES_USERNAME,
+        password: process.env.EUDR_TRACES_PASSWORD,
+        webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
+      };
+      submissionClient = new api.SubmissionClient(baseConfig);
+      retrievalClient = new api.RetrievalClient(baseConfig);
     });
 
-    it('should submit an IMPORT DDS with netWeight + supplementaryUnit (HS 4410, in Appendix I)', async function() {
-      const result = await submissionClient.submitDds({
-        operatorRole: 'OPERATOR',
-        statement: buildDomesticStatement({
-          activityType: 'IMPORT',
-          borderCrossCountry: 'HR',
-          commodities: [{
-            descriptors: {
-              descriptionOfGoods: 'Integration test - imported timber',
-              goodsMeasure: { netWeight: 100, supplementaryUnit: 5, supplementaryUnitQualifier: 'MTQ' }
-            },
-            hsHeading: '4410',
-            speciesInfo: { scientificName: 'Fagus sylvatica', commonName: 'European Beech' },
-            producers: [{ country: 'FR', name: 'Integration Test Producer', geometryGeojson: makeGeojsonBase64() }]
-          }]
-        })
+    after(async function() {
+      if (skipCleanup) {
+        console.log(`[cleanup] defaulting to no cleanup; set EUDR_RUN_CLEANUP=1 to withdraw ${createdUuids.length} DDS records: ${JSON.stringify(createdUuids)}`);
+        return;
+      }
+
+      for (const uuid of createdUuids) {
+        try {
+          console.log(`[cleanup] withdrawing DDS ${uuid}`);
+          await submissionClient.withdrawDds(uuid);
+          console.log(`[cleanup] withdrew DDS ${uuid}`);
+          logger.info(`Cleaned up (withdrawn) DDS ${uuid}`);
+        } catch (error) {
+          console.log(`[cleanup] withdraw failed for ${uuid}: ${error.eudrErrorCode || error.message}`);
+          logger.warn(`Cleanup withdraw failed for ${uuid}: ${error.message}`);
+        }
+      }
+    });
+
+    describe('submitDds - by activity type', function() {
+      it('should submit a DOMESTIC DDS with netWeight + percentageEstimationOrDeviation', async function() {
+        const result = await submissionClient.submitDds({
+          operatorRole: 'OPERATOR',
+          statement: buildDomesticStatement()
+        });
+
+        expect(result.httpStatus).to.equal(200);
+        expect(result.uuid).to.be.a('string');
+        createdUuids.push(result.uuid);
       });
 
-      console.log("[submitDds] IMPORT result: ", result);
-
-      expect(result.uuid).to.be.a('string');
-      createdUuids.push(result.uuid);
-    });
-  });
-
-  describe('submitDds - business rule regression (percentageEstimationOrDeviation)', function() {
-    it('should be rejected by the server when DOMESTIC goodsMeasure has neither percentage nor supplementaryUnit', async function() {
-      try {
-        await submissionClient.submitDds({
+      it('should submit an IMPORT DDS with netWeight + supplementaryUnit (HS 4410, in Appendix I)', async function() {
+        const result = await submissionClient.submitDds({
           operatorRole: 'OPERATOR',
           statement: buildDomesticStatement({
+            activityType: 'IMPORT',
+            borderCrossCountry: 'HR',
             commodities: [{
               descriptors: {
-                descriptionOfGoods: 'Integration test - missing percentage (regression guard)',
-                goodsMeasure: { netWeight: 50 } // intentionally no percentageEstimationOrDeviation/supplementaryUnit
+                descriptionOfGoods: 'Integration test - imported timber',
+                goodsMeasure: { netWeight: 100, supplementaryUnit: 5, supplementaryUnitQualifier: 'MTQ' }
               },
-              hsHeading: '4407',
+              hsHeading: '4410',
               speciesInfo: { scientificName: 'Fagus sylvatica', commonName: 'European Beech' },
-              producers: [{ country: 'HR', name: 'Integration Test Producer', geometryGeojson: makeGeojsonBase64() }]
+              producers: [{ country: 'FR', name: 'Integration Test Producer', geometryGeojson: makeGeojsonBase64() }]
             }]
           })
         });
-        expect.fail('Expected server to reject submission missing percentageEstimationOrDeviation');
-      } catch (error) {
-        expect(error.eudrErrorCode).to.equal('EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_MISSING');
-      }
+
+        console.log("[submitDds] IMPORT result: ", result);
+
+        expect(result.uuid).to.be.a('string');
+        createdUuids.push(result.uuid);
+      });
     });
-  });
 
-  describe('withdrawDds', function() {
-    it('should withdraw a freshly submitted DDS immediately (no wait)', async function() {
-      const submitResult = await submissionClient.submitDds({
-        operatorRole: 'OPERATOR',
-        statement: buildDomesticStatement()
-      });
-      expect(submitResult.uuid).to.be.a('string');
-
-      const withdrawResult = await submissionClient.withdrawDds(submitResult.uuid);
-      expect(withdrawResult.httpStatus).to.equal(200);
-      expect(withdrawResult.status).to.equal('WITHDRAWN');
-      // already withdrawn - no need to track for after-hook cleanup
-    });
-  });
-
-  describe('withdraw-vs-amend status timing', function() {
-    it('should record the DDS overview immediately after submit, before any wait', async function() {
-      const submitResult = await submissionClient.submitDds({
-        operatorRole: 'OPERATOR',
-        statement: buildDomesticStatement()
-      });
-      createdUuids.push(submitResult.uuid);
-
-      const overview = await resolveOrCleanNotFound(
-        retrievalClient.getDds(submitResult.uuid),
-        'getDds immediately after submit',
-        expect
-      );
-      if (!overview) return;
-
-      console.log(`[timing] getDds immediately after submit: ${JSON.stringify(overview.ddsInfo)}`);
-      // Documented EUDR behavior: this may legitimately be an empty array right after submit.
-      expect(overview.ddsInfo).to.be.an('array');
-    });
-  });
-
-  describe('amendDds - after a 15s wait', function() {
-    it('should attempt amend 15s after submit and report the real outcome', async function() {
-      const submitResult = await submissionClient.submitDds({
-        operatorRole: 'OPERATOR',
-        statement: buildDomesticStatement()
-      });
-      createdUuids.push(submitResult.uuid);
-
-      await delay(15000);
-
-      try {
-        const amendResult = await submissionClient.amendDds(submitResult.uuid, buildDomesticStatement());
-        console.log(`[amend] succeeded 15s after submit: ${JSON.stringify(amendResult)}`);
-        expect(amendResult.uuid).to.equal(submitResult.uuid);
-      } catch (error) {
-        console.log(`[amend] failed 15s after submit: ${error.eudrErrorCode} - ${error.message}`);
-        // Document the real outcome rather than assuming - this is the exact open question
-        // from the manual test (withdraw succeeded immediately, amend didn't).
-        expect(error.eudrErrorCode).to.equal('EUDR_API_AMEND_NOT_ALLOWED_FOR_STATUS');
-      }
-    });
-  });
-
-  describe('grouped declarations', function() {
-    it('should group DDS B referencing DDS A once A has a referenceNumber, and A should become GROUPED', async function() {
-      const submitA = await submissionClient.submitDds({
-        operatorRole: 'OPERATOR',
-        statement: buildDomesticStatement()
-      });
-      createdUuids.push(submitA.uuid);
-
-      // pollUntil expects its probe to resolve rather than throw, but in this window getDds can
-      // answer with a NotFoundException instead of an empty array - treat that as "not ready yet".
-      const poll = await pollUntil(
-        () => retrievalClient.getDds(submitA.uuid).catch((error) => {
-          if (error.notFound) return { ddsInfo: [] };
-          throw error;
-        }),
-        (result) => Boolean(result.ddsInfo && result.ddsInfo.length > 0 && result.ddsInfo[0].referenceNumber),
-        { intervalMs: 3000, timeoutMs: 20000 }
-      );
-
-      if (!poll.ready) {
-        console.log('[grouping] DDS A referenceNumber did not become available within 20s - skipping grouping assertion (known async-delay limitation).');
-        this.skip();
-        return;
-      }
-
-      const referenceNumberA = poll.result.ddsInfo[0].referenceNumber;
-      console.log(`[grouping] DDS A referenceNumber: ${referenceNumberA}, status: ${poll.result.ddsInfo[0].status}`);
-
-      const submitB = await submissionClient.submitDds({
-        operatorRole: 'OPERATOR',
-        statement: buildDomesticStatement({
-          groupedDeclarations: [{ groupedDeclaration: referenceNumberA }]
-        })
-      });
-      createdUuids.push(submitB.uuid);
-
-      await delay(15000);
-
-      const overviewA = await resolveOrCleanNotFound(
-        retrievalClient.getDds(submitA.uuid),
-        'grouping: getDds for DDS A',
-        expect
-      );
-      if (!overviewA) {
-        this.skip();
-        return;
-      }
-
-      console.log(`[grouping] DDS A status after grouping attempt: ${JSON.stringify(overviewA.ddsInfo)}`);
-
-      if (overviewA.ddsInfo[0] && overviewA.ddsInfo[0].status === 'GROUPED') {
+    describe('submitDds - business rule regression (percentageEstimationOrDeviation)', function() {
+      it('should be rejected by the server when DOMESTIC goodsMeasure has neither percentage nor supplementaryUnit', async function() {
         try {
-          await submissionClient.withdrawDds(submitA.uuid);
-          expect.fail('Expected withdraw of a GROUPED DDS to be blocked by the server');
+          await submissionClient.submitDds({
+            operatorRole: 'OPERATOR',
+            statement: buildDomesticStatement({
+              commodities: [{
+                descriptors: {
+                  descriptionOfGoods: 'Integration test - missing percentage (regression guard)',
+                  goodsMeasure: { netWeight: 50 } // intentionally no percentageEstimationOrDeviation/supplementaryUnit
+                },
+                hsHeading: '4407',
+                speciesInfo: { scientificName: 'Fagus sylvatica', commonName: 'European Beech' },
+                producers: [{ country: 'HR', name: 'Integration Test Producer', geometryGeojson: makeGeojsonBase64() }]
+              }]
+            })
+          });
+          expect.fail('Expected server to reject submission missing percentageEstimationOrDeviation');
         } catch (error) {
-          console.log(`[grouping] withdraw of GROUPED DDS A correctly blocked: ${error.eudrErrorCode} - ${error.message}`);
-          expect(error).to.exist;
+          expect(error.eudrErrorCode).to.equal('EUDR_COMMODITIES_DESCRIPTOR_PERCENTAGE_ESTIMATION_MISSING');
+        }
+      });
+    });
+
+    describe('withdrawDds', function() {
+      it('should withdraw a freshly submitted DDS immediately (no wait)', async function() {
+        const submitResult = await submissionClient.submitDds({
+          operatorRole: 'OPERATOR',
+          statement: buildDomesticStatement()
+        });
+        expect(submitResult.uuid).to.be.a('string');
+
+        const withdrawResult = await submissionClient.withdrawDds(submitResult.uuid);
+        expect(withdrawResult.httpStatus).to.equal(200);
+        expect(withdrawResult.status).to.equal('WITHDRAWN');
+        // already withdrawn - no need to track for after-hook cleanup
+      });
+    });
+
+    describe('withdraw-vs-amend status timing', function() {
+      it('should record the DDS overview immediately after submit, before any wait', async function() {
+        const submitResult = await submissionClient.submitDds({
+          operatorRole: 'OPERATOR',
+          statement: buildDomesticStatement()
+        });
+        createdUuids.push(submitResult.uuid);
+
+        const overview = await resolveOrCleanNotFound(
+          retrievalClient.getDds(submitResult.uuid),
+          'getDds immediately after submit',
+          expect
+        );
+        if (!overview) return;
+
+        console.log(`[timing] getDds immediately after submit: ${JSON.stringify(overview.ddsInfo)}`);
+        // Documented EUDR behavior: this may legitimately be an empty array right after submit.
+        expect(overview.ddsInfo).to.be.an('array');
+      });
+    });
+
+    describe('amendDds - after a 15s wait', function() {
+      it('should attempt amend 15s after submit and report the real outcome', async function() {
+        const submitResult = await submissionClient.submitDds({
+          operatorRole: 'OPERATOR',
+          statement: buildDomesticStatement()
+        });
+        createdUuids.push(submitResult.uuid);
+
+        await delay(15000);
+
+        try {
+          const amendResult = await submissionClient.amendDds(submitResult.uuid, buildDomesticStatement());
+          console.log(`[amend] succeeded 15s after submit: ${JSON.stringify(amendResult)}`);
+          expect(amendResult.uuid).to.equal(submitResult.uuid);
+        } catch (error) {
+          console.log(`[amend] failed 15s after submit: ${error.eudrErrorCode} - ${error.message}`);
+          // Document the real outcome rather than assuming - this is the exact open question
+          // from the manual test (withdraw succeeded immediately, amend didn't).
+          expect(error.eudrErrorCode).to.equal('EUDR_API_AMEND_NOT_ALLOWED_FOR_STATUS');
+        }
+      });
+    });
+
+    describe('grouped declarations', function() {
+      it('should group DDS B referencing DDS A once A has a referenceNumber, and A should become GROUPED', async function() {
+        const submitA = await submissionClient.submitDds({
+          operatorRole: 'OPERATOR',
+          statement: buildDomesticStatement()
+        });
+        createdUuids.push(submitA.uuid);
+
+        // pollUntil expects its probe to resolve rather than throw, but in this window getDds can
+        // answer with a NotFoundException instead of an empty array - treat that as "not ready yet".
+        const poll = await pollUntil(
+          () => retrievalClient.getDds(submitA.uuid).catch((error) => {
+            if (error.notFound) return { ddsInfo: [] };
+            throw error;
+          }),
+          (result) => Boolean(result.ddsInfo && result.ddsInfo.length > 0 && result.ddsInfo[0].referenceNumber),
+          { intervalMs: 3000, timeoutMs: 20000 }
+        );
+
+        if (!poll.ready) {
+          console.log('[grouping] DDS A referenceNumber did not become available within 20s - skipping grouping assertion (known async-delay limitation).');
+          this.skip();
+          return;
         }
 
-        const withdrawB = await submissionClient.withdrawDds(submitB.uuid);
-        expect(withdrawB.status).to.equal('WITHDRAWN');
-        const bIndex = createdUuids.indexOf(submitB.uuid);
-        if (bIndex >= 0) createdUuids.splice(bIndex, 1);
-      } else {
-        console.log('[grouping] DDS A did not show GROUPED status within the test window - documenting as a known timing limitation, not asserting failure.');
-        this.skip();
-      }
+        const referenceNumberA = poll.result.ddsInfo[0].referenceNumber;
+        console.log(`[grouping] DDS A referenceNumber: ${referenceNumberA}, status: ${poll.result.ddsInfo[0].status}`);
+
+        const submitB = await submissionClient.submitDds({
+          operatorRole: 'OPERATOR',
+          statement: buildDomesticStatement({
+            groupedDeclarations: [{ groupedDeclaration: referenceNumberA }]
+          })
+        });
+        createdUuids.push(submitB.uuid);
+
+        await delay(15000);
+
+        const overviewA = await resolveOrCleanNotFound(
+          retrievalClient.getDds(submitA.uuid),
+          'grouping: getDds for DDS A',
+          expect
+        );
+        if (!overviewA) {
+          this.skip();
+          return;
+        }
+
+        console.log(`[grouping] DDS A status after grouping attempt: ${JSON.stringify(overviewA.ddsInfo)}`);
+
+        if (overviewA.ddsInfo[0] && overviewA.ddsInfo[0].status === 'GROUPED') {
+          try {
+            await submissionClient.withdrawDds(submitA.uuid);
+            expect.fail('Expected withdraw of a GROUPED DDS to be blocked by the server');
+          } catch (error) {
+            console.log(`[grouping] withdraw of GROUPED DDS A correctly blocked: ${error.eudrErrorCode} - ${error.message}`);
+            expect(error).to.exist;
+          }
+
+          const withdrawB = await submissionClient.withdrawDds(submitB.uuid);
+          expect(withdrawB.status).to.equal('WITHDRAWN');
+          const bIndex = createdUuids.indexOf(submitB.uuid);
+          if (bIndex >= 0) createdUuids.splice(bIndex, 1);
+        } else {
+          console.log('[grouping] DDS A did not show GROUPED status within the test window - documenting as a known timing limitation, not asserting failure.');
+          this.skip();
+        }
+      });
     });
   });
-});
+}

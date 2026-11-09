@@ -11,7 +11,7 @@
  * 
  * @example
  * // Import all services
- * const { EudrEchoClient, EudrRetrievalClient, EudrRetrievalClientV2, EudrSubmissionClient, EudrSubmissionClientV2, EudrSubmissionClientV3, EudrRetrievalClientV3, EudrSimplifiedDeclarationClientV3, EudrVerifyDeclarationClientV3 } = require('./services');
+ * const { EudrEchoClient, EudrRetrievalClient, EudrRetrievalClientV2, EudrSubmissionClient, EudrSubmissionClientV2, EudrSubmissionClientV3, EudrRetrievalClientV3, EudrSimplifiedDeclarationClientV3, EudrVerifyDeclarationClientV3, EudrSubmissionClientV4, EudrRetrievalClientV4, EudrSimplifiedDeclarationClientV4, EudrVerifyDeclarationClientV4 } = require('./services');
  * 
  * // Create clients with automatic endpoint generation
  * const echoClient = new EudrEchoClient({
@@ -54,6 +54,10 @@ const EudrSubmissionClientV3 = require('./submission-service-v3');
 const EudrRetrievalClientV3 = require('./retrieval-service-v3');
 const EudrSimplifiedDeclarationClientV3 = require('./simplified-declaration-service-v3');
 const EudrVerifyDeclarationClientV3 = require('./verification-service-v3');
+const EudrSubmissionClientV4 = require('./submission-service-v4');
+const EudrRetrievalClientV4 = require('./retrieval-service-v4');
+const EudrSimplifiedDeclarationClientV4 = require('./simplified-declaration-service-v4');
+const EudrVerifyDeclarationClientV4 = require('./verification-service-v4');
 
 // Re-export endpoint utilities as config for convenience
 const { endpointUtils } = require('../utils');
@@ -69,6 +73,10 @@ module.exports = {
   EudrRetrievalClientV3,
   EudrSimplifiedDeclarationClientV3,
   EudrVerifyDeclarationClientV3,
+  EudrSubmissionClientV4,
+  EudrRetrievalClientV4,
+  EudrSimplifiedDeclarationClientV4,
+  EudrVerifyDeclarationClientV4,
 
   // Configuration & metadata
   config: endpointUtils

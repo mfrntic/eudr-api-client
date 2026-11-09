@@ -1,5 +1,11 @@
 # V3 Live Test Plan (DDS + Simplified Declaration)
 
+> **Update 2026-11-09 (release 8.2.2 / API V4):** every live suite listed below now runs twice, once per
+> API version (`describe` names `Eudr…ClientV3 - Integration Tests` and `Eudr…ClientV4 - Integration Tests`,
+> npm scripts `test:*:v3` and `test:*:v4`). First combined run: 46 passing, 14 pending, 0 failing.
+> Known Limitations #1 and #6 are now explained by the Commission — see
+> [release-8.2.2-v4-conformance.md](release-8.2.2-v4-conformance.md) section B.
+
 ## Purpose
 
 This document covers **only real, no-mock tests** for the V3 DDS and Simplified Declaration (SD) clients —
@@ -66,7 +72,9 @@ network call), that would be new work, not covered by this plan.
 
 ## Known limitations / open items
 
-1. **`amendDds` has never succeeded live.** Both the original manual test and the new 15s-wait test hit
+1. **`amendDds` has never succeeded live.** *(Explained by release 8.2.2: the 72-hour amend window only
+   opens once the DDS is AVAILABLE, and the reference number may take an hour or more — so an amend seconds
+   after submit is expected to fail with `EUDR_API_AMEND_NOT_ALLOWED_FOR_STATUS`.)* Both the original manual test and the new 15s-wait test hit
    `EUDR_API_AMEND_NOT_ALLOWED_FOR_STATUS`. Meanwhile `withdrawDds` succeeds immediately after submit, even
    though the docs describe the same "must be AVAILABLE" precondition for both operations. Empirical
    conclusion so far: either withdraw is less strict than documented, or the DDS actually was already
@@ -100,7 +108,11 @@ network call), that would be new work, not covered by this plan.
    object. The raw SOAP fault is still captured in `error.details.soapFault` for inspection; this is a
    pre-existing characteristic of `EudrErrorHandler`'s generic fault parsing, not something introduced by
    this test plan.
-6. **`getDdsByIdentifiers` fails with `NotFoundException` ("Data not found.") for real, pre-existing DDS
+6. **Resolved 2026-11-09 — not a bug.** Release 8.2.2 discontinued detail retrieval over the API: on V3 and V4
+   every `getDdsByIdentifiers`/`getSdByIdentifiers` call now fails with a NotFoundException ("Statement details
+   can only be accessed through the UI"), surfaced as `EUDR_DETAIL_RETRIEVAL_UNSUPPORTED`. The known-DDS test
+   now asserts exactly that. Historical notes follow.
+   **`getDdsByIdentifiers` fails with `NotFoundException` ("Data not found.") for real, pre-existing DDS
    records, even when reference/verification numbers are confirmed correct** — and the "pre-V3 legacy
    record" hypothesis below is now disproven by a second data point on a natively-V3 record:
    - First observed on `uuid: 5e5ad1ff-a735-4eec-8588-b164a79738d1`, `referenceNumber: 25HR3TXDB21346`,

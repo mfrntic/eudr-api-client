@@ -18,6 +18,8 @@ const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
 const { compactSoapEnvelope } = require('../utils/soap-envelope');
 const { buildBodyIdentityHeaderXml } = require('../utils/body-identity');
+const { getApiVersionProfile } = require('../utils/eudr-api-versions');
+const { extractUserMessage } = require('../utils/soap-response');
 const {
   IDENTIFIER_TYPES,
   MAX_OPERATOR_REFERENCE_NUMBERS,
@@ -25,10 +27,11 @@ const {
   MAX_COMMODITIES,
   MAX_PRODUCERS,
   MAX_SPECIES_INFO,
-  encodeGeoJsonBase64
+  encodeGeoJsonBase64,
+  generateSummaryAddressXml
 } = require('../utils/eudr-v3-schema');
 
-const DDS_V3_NAMESPACE = 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3';
+const { warnDetailRetrievalDeprecated } = require('../utils/deprecation');
 
 class EudrDueDiligenceStatementServiceV3Transport {
   /**
@@ -45,9 +48,12 @@ class EudrDueDiligenceStatementServiceV3Transport {
    * @param {number} [config.timestampValidity=60]
    * @param {number} [config.timeout=10000]
    * @param {boolean} [config.ssl=false]
+   * @param {string} [apiVersion='v3'] Wire version ('v3' or 'v4'); V4 clients pass 'v4'.
    */
-  constructor(config) {
-    const validatedConfig = validateAndGenerateEndpoint(config, 'submission', 'v3');
+  constructor(config, apiVersion = 'v3') {
+    this.apiProfile = getApiVersionProfile(apiVersion);
+    this.apiVersion = this.apiProfile.version;
+    const validatedConfig = validateAndGenerateEndpoint(config, 'submission', this.apiVersion);
 
     this.config = {
       timestampValidity: 60,
@@ -85,12 +91,13 @@ class EudrDueDiligenceStatementServiceV3Transport {
 
   /**
    * Build the operation-specific SOAPAction per the published WSDL, e.g.
-   * "http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/submitDds".
+   * "http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3/submitDds"
+   * (".../v4/submitDds" for V4).
    * @param {string} operationName
    * @returns {string}
    */
   soapActionFor(operationName) {
-    return `${DDS_V3_NAMESPACE}/${operationName}`;
+    return `${this.apiProfile.ddsNamespace}/${operationName}`;
   }
 
   generateNonce() {
@@ -165,16 +172,17 @@ class EudrDueDiligenceStatementServiceV3Transport {
    */
   createBodyIdentityHeaderXml(bodyIdentity) {
     return buildBodyIdentityHeaderXml(
-      bodyIdentity === undefined ? this.config.bodyIdentity : bodyIdentity
+      bodyIdentity === undefined ? this.config.bodyIdentity : bodyIdentity,
+      this.apiProfile.bodyNamespace
     );
   }
 
   createSoapEnvelope(bodyXml, bodyIdentity) {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                  xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4"
-                  xmlns:dds="http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3"
-                  xmlns:eudrCommon="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3">
+                  xmlns:v4="${this.apiProfile.baseHeaderNamespace}"
+                  xmlns:dds="${this.apiProfile.ddsNamespace}"
+                  xmlns:eudrCommon="${this.apiProfile.commonNamespace}">
     <soapenv:Header>
 ${this.createSecurityHeaderXml(bodyIdentity)}
     </soapenv:Header>
@@ -245,6 +253,8 @@ ${bodyXml}
       }
       xml += '</eudrCommon:operatorAddress>';
     }
+
+    xml += generateSummaryAddressXml(operator.summaryAddress, this.apiVersion, (value) => this.escapeXml(value));
 
     if (operator.operatorEmail) {
       xml += `<eudrCommon:operatorEmail>${this.escapeXml(operator.operatorEmail)}</eudrCommon:operatorEmail>`;
@@ -454,9 +464,22 @@ ${bodyXml}
         if (producer.position !== undefined) {
           xml += `<dds:position>${this.escapeXml(producer.position)}</dds:position>`;
         }
-        if (producer.country) {
-          xml += `<dds:country>${this.escapeXml(producer.country)}</dds:country>`;
+        // DdsProducerType/country is mandatory (eudrCommon:CountryType, ISO 3166-1 alpha-2) in V3 and V4.
+        if (producer.country === undefined || producer.country === null || producer.country === '') {
+          const error = new Error('producer.country is required for DDS producers (ISO 3166-1 alpha-2 code)');
+          error.eudrErrorCode = 'EUDR_V3_PRODUCER_COUNTRY_REQUIRED';
+          error.eudrSpecific = true;
+          throw error;
         }
+        if (!/^[a-zA-Z]{2}$/.test(String(producer.country))) {
+          const error = new Error(
+            `producer.country must be an ISO 3166-1 alpha-2 code (2 letters), received "${producer.country}"`
+          );
+          error.eudrErrorCode = 'EUDR_V3_PRODUCER_COUNTRY_INVALID';
+          error.eudrSpecific = true;
+          throw error;
+        }
+        xml += `<dds:country>${this.escapeXml(producer.country)}</dds:country>`;
         if (producer.name) {
           xml += `<dds:name>${this.escapeXml(producer.name)}</dds:name>`;
         }
@@ -599,6 +622,7 @@ ${bodyXml}
 
           resolve({
             raw: xmlResponse,
+            userMessage: extractUserMessage(xmlResponse),
             parsed: result,
             uuid: uuidKey ? response[uuidKey] : null
           });
@@ -628,6 +652,7 @@ ${bodyXml}
 
           resolve({
             raw: xmlResponse,
+            userMessage: extractUserMessage(xmlResponse),
             parsed: result,
             uuid: uuidKey ? response[uuidKey] : null,
             status: statusKey ? response[statusKey] : null
@@ -674,6 +699,7 @@ ${bodyXml}
 
           resolve({
             raw: xmlResponse,
+            userMessage: extractUserMessage(xmlResponse),
             parsed: result,
             ddsInfo: overviewList.map((item) => this.mapOverviewItem(item))
           });
@@ -733,6 +759,7 @@ ${bodyXml}
 
           resolve({
             raw: xmlResponse,
+            userMessage: extractUserMessage(xmlResponse),
             parsed: result,
             statement: rawStatement ? this.normalizeStatement(rawStatement) : null
           });
@@ -892,7 +919,14 @@ ${bodyXml}
     }
   }
 
+  /**
+   * @deprecated Discontinued by the Commission in release 8.2.2 (V3 and V4): every call now fails
+   * with a NotFoundException ("Statement detail access is possible only over UI"), surfaced as
+   * `eudrErrorCode: 'EUDR_DETAIL_RETRIEVAL_UNSUPPORTED'`. The request is still sent because the
+   * operation remains in the WSDL. Use getDds / getDdsByInternalReference for API lookups.
+   */
   async getDdsByIdentifiers(referenceNumber, verificationNumber, options = {}) {
+    warnDetailRetrievalDeprecated('getDdsByIdentifiers');
     try {
       const soapEnvelope = this.createGetDdsByIdentifiersSoapEnvelope(referenceNumber, verificationNumber, options.bodyIdentity);
       const response = await this.sendSoapRequest(soapEnvelope, this.soapActionFor('getDdsByIdentifiers'));

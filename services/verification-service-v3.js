@@ -13,8 +13,8 @@ const EudrErrorHandler = require('../utils/error-handler');
 const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
 const { compactSoapEnvelope } = require('../utils/soap-envelope');
-
-const VERIFY_V3_NAMESPACE = 'http://ec.europa.eu/tracesnt/certificate/eudr/verification/v3';
+const { getApiVersionProfile } = require('../utils/eudr-api-versions');
+const { extractUserMessage } = require('../utils/soap-response');
 
 class EudrVerifyDeclarationClientV3 {
   /**
@@ -26,9 +26,13 @@ class EudrVerifyDeclarationClientV3 {
    * @param {number} [config.timestampValidity=60]
    * @param {number} [config.timeout=10000]
    * @param {boolean} [config.ssl=false]
+   * @param {string} [apiVersion='v3'] Wire version ('v3' or 'v4'); the V4 client passes 'v4'.
+   *        Note V4 renames the namespace: .../verify-declaration/v3 -> .../verification/v4.
    */
-  constructor(config) {
-    const validatedConfig = validateAndGenerateEndpoint(config, 'verification', 'v3');
+  constructor(config, apiVersion = 'v3') {
+    this.apiProfile = getApiVersionProfile(apiVersion);
+    this.apiVersion = this.apiProfile.version;
+    const validatedConfig = validateAndGenerateEndpoint(config, 'verification', this.apiVersion);
 
     this.config = {
       timestampValidity: 60,
@@ -57,10 +61,10 @@ class EudrVerifyDeclarationClientV3 {
 
   soapActionFor(operationName) {
     if (operationName !== 'verifyDeclaration') {
-      throw new Error(`Unknown verification V3 operation: ${operationName}`);
+      throw new Error(`Unknown verification ${this.apiProfile.serviceSuffix} operation: ${operationName}`);
     }
 
-    return `${VERIFY_V3_NAMESPACE}/verify-declaration`;
+    return this.apiProfile.verifySoapAction;
   }
 
   generateNonce() {
@@ -130,9 +134,9 @@ class EudrVerifyDeclarationClientV3 {
   createSoapEnvelope(bodyXml) {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                  xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4"
-                  xmlns:verify="http://ec.europa.eu/tracesnt/certificate/eudr/verify-declaration/v3"
-                  xmlns:eudrCommon="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3">
+                  xmlns:v4="${this.apiProfile.baseHeaderNamespace}"
+                  xmlns:verify="${this.apiProfile.verifyNamespace}"
+                  xmlns:eudrCommon="${this.apiProfile.commonNamespace}">
     <soapenv:Header>
 ${this.createSecurityHeaderXml()}
     </soapenv:Header>
@@ -174,6 +178,7 @@ ${bodyXml}
 
           resolve({
             raw: xmlResponse,
+            userMessage: extractUserMessage(xmlResponse),
             parsed: result,
             result: resultKey ? response[resultKey] : null,
             status: statusKey ? response[statusKey] : null,

@@ -669,6 +669,36 @@ describe('EudrSubmissionClientV3', function() {
       }
     });
 
+    it('should reject a producer without country (DdsProducerType/country is mandatory)', function() {
+      for (const country of [undefined, null, '']) {
+        try {
+          submit({
+            activityType: 'IMPORT',
+            commodities: [{ ...commodity, producers: [{ country, geometryGeojson: 'BASE64' }] }],
+            geoLocationConfidential: false
+          });
+          throw new Error('Expected a validation error');
+        } catch (error) {
+          expect(error.eudrErrorCode).to.equal('EUDR_V3_PRODUCER_COUNTRY_REQUIRED');
+        }
+      }
+    });
+
+    it('should reject a producer country that is not an ISO 3166-1 alpha-2 code', function() {
+      for (const country of ['FRA', 'F', '12', 'F1']) {
+        try {
+          submit({
+            activityType: 'IMPORT',
+            commodities: [{ ...commodity, producers: [{ country, geometryGeojson: 'BASE64' }] }],
+            geoLocationConfidential: false
+          });
+          throw new Error('Expected a validation error');
+        } catch (error) {
+          expect(error.eudrErrorCode).to.equal('EUDR_V3_PRODUCER_COUNTRY_INVALID');
+        }
+      }
+    });
+
     it('should reject more than 500 speciesInfo entries on a commodity', function() {
       try {
         submit({

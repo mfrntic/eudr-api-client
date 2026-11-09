@@ -191,22 +191,22 @@ describe('Endpoint Utils', function() {
 
     it('should return supported versions for submission service', function() {
       const versions = endpointUtils.getSupportedVersions('submission');
-      expect(versions).to.deep.equal(['v1', 'v2', 'v3']);
+      expect(versions).to.deep.equal(['v1', 'v2', 'v3', 'v4']);
     });
 
     it('should return supported versions for retrieval service', function() {
       const versions = endpointUtils.getSupportedVersions('retrieval');
-      expect(versions).to.deep.equal(['v1', 'v2', 'v3']);
+      expect(versions).to.deep.equal(['v1', 'v2', 'v3', 'v4']);
     });
 
     it('should return supported versions for simplified-declaration service', function() {
       const versions = endpointUtils.getSupportedVersions('simplified-declaration');
-      expect(versions).to.deep.equal(['v3']);
+      expect(versions).to.deep.equal(['v3', 'v4']);
     });
 
     it('should return supported versions for verification service', function() {
       const versions = endpointUtils.getSupportedVersions('verification');
-      expect(versions).to.deep.equal(['v3']);
+      expect(versions).to.deep.equal(['v3', 'v4']);
     });
 
     it('should return empty array for unknown service', function() {

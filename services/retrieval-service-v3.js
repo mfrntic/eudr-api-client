@@ -22,8 +22,9 @@ class EudrRetrievalClientV3 {
    * @param {number} [config.timeout=10000]
    * @param {boolean} [config.ssl=false]
    */
-  constructor(config) {
-    this.transport = new EudrDueDiligenceStatementServiceV3Transport(config);
+  constructor(config, apiVersion = 'v3') {
+    this.transport = new EudrDueDiligenceStatementServiceV3Transport(config, apiVersion);
+    this.apiVersion = this.transport.apiVersion;
     this.config = this.transport.config;
     this.endpoint = this.transport.endpoint;
   }
@@ -40,6 +41,11 @@ class EudrRetrievalClientV3 {
     return this.transport.getDdsByInternalReference(internalReferenceNumber, options);
   }
 
+  /**
+   * @deprecated Since release 8.2.2 the Commission answers every call (V3 and V4) with a
+   * NotFoundException, surfaced as `eudrErrorCode: 'EUDR_DETAIL_RETRIEVAL_UNSUPPORTED'`.
+   * Statement detail is available only in the web UI; use getDds / getDdsByInternalReference.
+   */
   async getDdsByIdentifiers(referenceNumber, verificationNumber, options = {}) {
     return this.transport.getDdsByIdentifiers(referenceNumber, verificationNumber, options);
   }

@@ -22,8 +22,9 @@ class EudrSubmissionClientV3 {
    * @param {number} [config.timeout=10000]
    * @param {boolean} [config.ssl=false]
    */
-  constructor(config) {
-    this.transport = new EudrDueDiligenceStatementServiceV3Transport(config);
+  constructor(config, apiVersion = 'v3') {
+    this.transport = new EudrDueDiligenceStatementServiceV3Transport(config, apiVersion);
+    this.apiVersion = this.transport.apiVersion;
     this.config = this.transport.config;
     this.endpoint = this.transport.endpoint;
   }

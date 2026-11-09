@@ -6,7 +6,17 @@
 [![Test Status](https://img.shields.io/badge/tests-passing-brightgreen.svg)](./tests/README.md)
 
 > **Enterprise-grade Node.js library for EU Deforestation Regulation (EUDR) compliance**
-> Complete integration with the EUDR TRACES system — V3 API: Due Diligence Statements (DDS), Simplified Declarations (SD), and Declaration Verification.
+> Complete integration with the EUDR TRACES system — V4 and V3 APIs: Due Diligence Statements (DDS), Simplified Declarations (SD), and Declaration Verification.
+
+## 🆕 V4 API available (Information System release 8.2.2)
+
+The Commission released a **V4 API** (API documentation v1.3) alongside V3. V3 stays available during a transition period and will be deprecated later — **new integrations should target V4**. V4 keeps the V3 operations and payloads, so moving over is mostly a class rename:
+
+- `EudrSubmissionClientV4` / `EudrRetrievalClientV4` — Due Diligence Statement (DDS)
+- `EudrSimplifiedDeclarationClientV4` — Simplified Declaration (SD)
+- `EudrVerifyDeclarationClientV4` — Declaration verification
+
+See [V4 Clients (release 8.2.2)](#v4-clients-release-822) for the differences, and note that **`getDdsByIdentifiers` / `getSdByIdentifiers` no longer return content on V3 or V4** (detail is UI-only since 8.2.2).
 
 ## ⚠️ V1 / V2 are discontinued — use V3
 
@@ -14,7 +24,7 @@ The EUDR Information System now only accepts **V3** requests. As of this writing
 
 This README documents the **V3 API first**, since it's the only version that actually works. The V1/V2 client classes (`EudrSubmissionClient`, `EudrSubmissionClientV2`, `EudrRetrievalClient`, `EudrRetrievalClientV2`) remain in the library and are still described in this document, but only in the [Legacy: V1 / V2 API Reference](#legacy-v1--v2-api-reference-deprecated--non-functional) section at the bottom — kept for historical reference and for anyone migrating an old integration, not for new development.
 
-**Start new integrations here:**
+**Start new integrations here** (or with the V4 equivalents above — the V3 sections below apply to V4 unless the [V4 section](#v4-clients-release-822) says otherwise):
 - `EudrSubmissionClientV3` / `EudrRetrievalClientV3` — Due Diligence Statement (DDS)
 - `EudrSimplifiedDeclarationClientV3` — Simplified Declaration (SD), for micro/small primary operators
 - `EudrVerifyDeclarationClientV3` — Declaration verification, for downstream operators and traders
@@ -70,6 +80,7 @@ The EU Deforestation Regulation (EUDR) requires operators and traders to submit 
 - [API Reference](#api-reference)
   - [Services Overview](#services-overview)
   - [Echo Service](#echo-service)
+  - [V4 Clients (release 8.2.2)](#v4-clients-release-822)
   - [V3 DDS Facade Clients](#v3-dds-facade-clients)
   - [V3 Simplified Declaration Client](#v3-simplified-declaration-client)
   - [EudrSubmissionClientV3](#-eudrsubmissionclientv3)
@@ -250,8 +261,10 @@ Bodies other than operators use the object form, which accepts exactly one ident
 
 | Aspect | Behaviour |
 |--------|-----------|
-| **Supported clients** | `EudrSubmissionClientV3`, `EudrRetrievalClientV3`, `EudrSimplifiedDeclarationClientV3` (all 12 DDS + SD operations) |
-| **Not supported** | `EudrVerifyDeclarationClientV3` — the Verify Declaration WSDL does not declare the header |
+| **Supported clients** | `EudrSubmissionClientV3/V4`, `EudrRetrievalClientV3/V4`, `EudrSimplifiedDeclarationClientV3/V4` (all 12 DDS + SD operations) |
+| **Namespace** | `http://ec.europa.eu/tracesnt/body/v3` on V3 clients, `http://ec.europa.eu/tracesnt/body/v4` on V4 clients — chosen automatically; a mismatched namespace is ignored or rejected by the server |
+| **Identifier kinds** | The schema allows four, but the documentation (v1.3, §1.2.4) states only `OperatorAccessIdentifier` is accepted on EUDR endpoints; the others are rejected with `UnauthenticatedException` |
+| **Not supported** | `EudrVerifyDeclarationClientV3/V4` — the Verify Declaration WSDL does not declare the header |
 | **When omitted** | No header is sent and the request is byte-identical to previous library versions — single-operator users need to change nothing |
 | **Validation** | Exactly one identifier kind (`EUDR_V3_BODY_IDENTITY_INVALID`), at most 16 characters — 32 for `otherBodyAccessIdentifier` (`EUDR_V3_BODY_IDENTITY_TOO_LONG`) |
 | **Rejected identity** | An identifier the account may not act as comes back as `UnauthenticatedException` — surfaced as `error.httpStatus === 401` |
@@ -564,6 +577,8 @@ All of these are thrown **before any network call**, carry `error.eudrSpecific =
 | `EUDR_V3_GROUPED_DECLARATIONS_LIMIT` | more than 2000 `groupedDeclarations` references |
 | `EUDR_V3_COMMODITIES_LIMIT` | more than 200 `commodities` (same cap in DDS and SD) |
 | `EUDR_V3_PRODUCERS_LIMIT` | more than 1000 `producers` on one commodity (same cap in DDS and SD) |
+| `EUDR_V3_PRODUCER_COUNTRY_REQUIRED` | a DDS producer has no `country` (mandatory in the V3 and V4 schema) |
+| `EUDR_V3_PRODUCER_COUNTRY_INVALID` | a DDS producer `country` is not an ISO 3166-1 alpha-2 code (two letters) |
 | `EUDR_V3_SPECIES_INFO_LIMIT` | more than 500 `speciesInfo` entries on one commodity (DDS only — SD has no `speciesInfo`) |
 | `EUDR_V3_DESCRIPTION_OF_GOODS_REQUIRED` | `descriptors` was provided without `descriptionOfGoods` — both children of `CommercialDescriptionType` are mandatory |
 | `EUDR_V3_GOODS_MEASURE_REQUIRED` | `descriptors` was provided without `goodsMeasure` |
@@ -571,6 +586,8 @@ All of these are thrown **before any network call**, carry `error.eudrSpecific =
 | `EUDR_V3_BODY_IDENTITY_INVALID` | `bodyIdentity` has zero, several, or unknown identifier fields |
 | `EUDR_V3_BODY_IDENTITY_TOO_LONG` | a `bodyIdentity` value longer than its schema limit (16 characters; 32 for `otherBodyAccessIdentifier`) |
 | `EUDR_V3_SD_*` | SD-only rules — see the [SD validation errors table](#v3-simplified-declaration-client) |
+| `EUDR_V3_SUMMARY_ADDRESS_NOT_SUPPORTED` | `representedOperator.summaryAddress` passed to a **V3** client — it is a V4-only field |
+| `EUDR_V4_SUMMARY_ADDRESS_INVALID` | `summaryAddress.name` is not 1–200 characters, or `summaryAddress.country` is not an ISO 3166-1 alpha-2 code |
 
 #### How server faults are surfaced
 
@@ -578,7 +595,10 @@ All of these are thrown **before any network call**, carry `error.eudrSpecific =
 
 | Server fault | `error.httpStatus` | Also set |
 |---|---|---|
-| `NotFoundException` (V3 `get*` operations) | `404` | `error.notFound === true`, `eudrErrorCode: 'EUDR_NOT_FOUND'` |
+| `NotFoundException` (V3/V4 `get*` operations) | `404` | `error.notFound === true`, `eudrErrorCode: 'EUDR_NOT_FOUND'` |
+| `NotFoundException` from `getDdsByIdentifiers` / `getSdByIdentifiers` (release 8.2.2: detail is UI-only) | `404` | `error.notFound === true`, `error.detailRetrievalUnsupported === true`, `eudrErrorCode: 'EUDR_DETAIL_RETRIEVAL_UNSUPPORTED'` |
+| `PermissionDeniedException` with `EUDR_API_AMEND_DEADLINE_ELAPSED` (amend window elapsed, release 8.2.2) | `403` | `eudrErrorCode: 'EUDR_API_AMEND_DEADLINE_ELAPSED'` |
+| `EUDR-GROUPING-NOT-ALLOWED-ON-AMEND` (grouping changed on amend/update, release 8.2.2) | `400` | `eudrErrorCode: 'EUDR_GROUPING_NOT_ALLOWED_ON_AMEND'` (hyphens normalized) |
 | `UnauthenticatedException` | `401` | — (wrong credentials, or a `bodyIdentity` the account may not act as) |
 | `PermissionDeniedException` / "not authorized" faults | `403` | — |
 | `BusinessRulesValidationException` | `400` | `error.eudrErrors[]` with `{ code, message, field }` — `code` is `null` when the server reports no error code (the `{ field, message }` fault shape used by Verify Declaration) |
@@ -602,6 +622,10 @@ See each V3 client's **Error Handling** subsection below for worked examples.
 
 | Service | Class | Automatic Endpoint | Manual Override | Specification |
 |---------|-------|-------------------|-----------------|------------------|
+| **DDS Submission (V4)** | `EudrSubmissionClientV4` | ✅ Yes | ✅ Yes | Operator API v1.3 |
+| **DDS Retrieval (V4)** | `EudrRetrievalClientV4` | ✅ Yes | ✅ Yes | Operator API v1.3 |
+| **Simplified Declaration (V4)** | `EudrSimplifiedDeclarationClientV4` | ✅ Yes | ✅ Yes | Operator API v1.3 |
+| **Verify Declaration (V4)** | `EudrVerifyDeclarationClientV4` | ✅ Yes | ✅ Yes | Downstream Operator & Trader API v1.3 |
 | **DDS Submission (V3)** | `EudrSubmissionClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
 | **DDS Retrieval (V3)** | `EudrRetrievalClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
 | **Simplified Declaration (V3)** | `EudrSimplifiedDeclarationClientV3` | ✅ Yes | ✅ Yes | Operator API v1.0 |
@@ -675,6 +699,68 @@ const response = await echoClient.echo('Hello EUDR');
 // Returns: { message: 'Hello EUDR' }
 ```
 
+### V4 Clients (release 8.2.2)
+
+EUDR Information System release 8.2.2 (deployed to ACCEPTANCE and PRODUCTION) added the **V4 API**, documented in *Operator API Reference v1.3* and *Downstream Operator and Trader API Reference v1.3*. V4 keeps every V3 operation, request and response shape; the V4 classes are subclasses of the V3 classes with a V4 wire profile, so **everything in the V3 sections below applies to V4** unless this section says otherwise.
+
+```javascript
+const {
+  EudrSubmissionClientV4,
+  EudrRetrievalClientV4,
+  EudrSimplifiedDeclarationClientV4,
+  EudrVerifyDeclarationClientV4
+} = require('eudr-api-client');
+
+const config = { username: 'user', password: 'pass', webServiceClientId: 'eudr-test', ssl: false };
+
+const submission = new EudrSubmissionClientV4(config);      // .../EUDRDueDiligenceStatementServiceV4
+const retrieval = new EudrRetrievalClientV4(config);        // .../EUDRDueDiligenceStatementServiceV4
+const sd = new EudrSimplifiedDeclarationClientV4(config);   // .../EUDRSimplifiedDeclarationServiceV4
+const verify = new EudrVerifyDeclarationClientV4(config);   // .../EUDRVerifyDeclarationServiceV4
+
+const { uuid } = await submission.submitDds({ operatorRole: 'OPERATOR', statement: { /* same as V3 */ } });
+const { ddsInfo, userMessage } = await retrieval.getDds(uuid);
+console.log(ddsInfo[0].status, ddsInfo[0].referenceNumberInfo);
+// SUBMITTED 'The submission is currently under analysis by the system'
+```
+
+#### Migrating from V3 to V4
+
+| Area | V3 | V4 | What you do |
+|---|---|---|---|
+| Classes | `Eudr…ClientV3` | `Eudr…ClientV4` | Rename the class; config and method calls stay the same |
+| Namespaces | `…/v3` | `…/v4`; Verify is **renamed** `verify-declaration/v3` → `verification/v4` | Nothing — the library builds the envelopes |
+| `BodyIdentity` header | `http://ec.europa.eu/tracesnt/body/v3` | `http://ec.europa.eu/tracesnt/body/v4` | Nothing — `bodyIdentity` uses the namespace of the client's version |
+| SD `internalReferenceNumber` | max 14 characters | max **50** characters | Longer references are accepted by `EudrSimplifiedDeclarationClientV4` |
+| SD `getSd*` SOAPActions | published under the DDS namespace (WSDL quirk) | fixed to the SD namespace | Nothing |
+| Overview responses | — | `referenceNumberInfo` on every `ddsInfo` / `sdInfo` entry | Optional: show it next to `referenceNumber`. It is free text — don't parse it |
+| `representedOperator` | — | optional `summaryAddress: { name, country }` | Optional on submission; responses may carry it. A V3 client rejects it (`EUDR_V3_SUMMARY_ADDRESS_NOT_SUPPORTED`) |
+| Status values | — | new `CANCELLED` ("cancelled by the operator before availability") | Handle it wherever you switch on `status` |
+| Announcements | — | `EudrUserMessage` SOAP response header | Read `result.userMessage` (string or `null`); also on thrown errors as `error.userMessage` |
+
+**`userMessage`** is set on every parsed response — always `null` on V3, which never sends the header. The documentation shows it as `<eudr:EudrUserMessage>` inside `soapenv:Header`, but the WSDL does not declare it, so the library matches it by local name. Surface it to your users: the Commission uses it for EUDR announcements.
+
+#### Behaviour changes in release 8.2.2 (V3 **and** V4)
+
+- **`getDdsByIdentifiers` / `getSdByIdentifiers` are discontinued.** Every call returns a `NotFoundException` (*"Statement details can only be accessed through the UI"* / *"Declaration detail access is possible only over UI"*). The library still sends the request (the operation remains in the WSDL), logs a one-time deprecation warning, and throws with `error.detailRetrievalUnsupported === true` and `eudrErrorCode: 'EUDR_DETAIL_RETRIEVAL_UNSUPPORTED'`. Use `getDds` / `getDdsByInternalReference` and `getSd` / `getSdByInternalReference` instead.
+- **The amend window starts at AVAILABLE.** The 72-hour amendment window opens when the DDS becomes `AVAILABLE`, not at submission; afterwards `amendDds` fails with `EUDR_API_AMEND_DEADLINE_ELAPSED` (403) unless the Competent Authority granted an extension.
+- **Grouping is fixed at submission.** Adding, changing or removing `groupedDeclarations` on `amendDds` (and, per the V3 schema, `updateSd`) fails with `EUDR_GROUPING_NOT_ALLOWED_ON_AMEND`.
+- **No information leak on retrieval.** A declaration that doesn't exist, one with a wrong verification number, and one you may not see all produce the same `NotFoundException` (`error.notFound === true`).
+- **HS codes** may now have 2–10 digits (previously 2–6).
+- **SD postal addresses** must include `producerStreet` (mandatory in the schema; the library now checks it before sending).
+
+#### Recommended business behaviour (documentation v1.3, §2.3–2.4)
+
+The Commission expects API users to follow these rules; the library does not enforce them, except the per-call UUID limit:
+
+- At most **5 requests per second per IP** (10,000 per minute globally). Sustained abuse may lead to suspension.
+- At most **100 UUIDs** per `getDds` / `getSd` call (enforced client-side) and 1,000 results per internal-reference lookup.
+- Wait **at least one hour** after submission before polling for the reference number, and cache results instead of re-requesting them.
+
+Schema snapshot and full audit: [`docs/eudr_docs 8.2.2/`](docs/eudr_docs%208.2.2/README.md), [`docs/analysis/release-8.2.2-v4-conformance.md`](docs/analysis/release-8.2.2-v4-conformance.md).
+
+---
+
 ### V3 DDS Facade Clients
 
 > **V3 is a new API contract, not a "V2.1."** It is not backward compatible with V1/V2: field names, response shapes, operation names, and some business rules changed (see the breaking-changes table below). Treat migration to V3 like integrating a new API, not applying a patch.
@@ -714,7 +800,7 @@ await retrievalV3.getDdsByIdentifiers('REFERENCE-NUMBER', 'VERIFICATION-NUMBER')
 
 **V3 retrieval response shapes:**
 - `getDds` / `getDdsByInternalReference` return `{ httpStatus, status, ddsInfo: [...] }` — `ddsInfo` is always an array of DDS overview entries (`uuid`, `internalReferenceNumber`, `referenceNumber`, `verificationNumber`, `status`, `date`, `updatedBy`, `version`, ...).
-- `getDdsByIdentifiers` returns `{ httpStatus, status, statement: {...} }` — the full DDS statement (`activityType`, `commodities`, `geoLocationConfidential`, ...), not an overview list.
+- `getDdsByIdentifiers` used to return `{ httpStatus, status, statement: {...} }` with the full DDS statement. **Since release 8.2.2 it always throws** `EUDR_DETAIL_RETRIEVAL_UNSUPPORTED` — see [V4 Clients](#v4-clients-release-822).
 
 **V1/V2 -> V3 breaking changes (no silent translation):** V3 does not accept old V1/V2 field names — the library throws a clear, tagged error instead of guessing a mapping:
 
@@ -805,7 +891,7 @@ await sdClient.getSdByIdentifiers('DECLARATION-IDENTIFIER', 'VERIFICATION-NUMBER
 - `submitSd` returns `{ httpStatus, status, sdIdentifier }`.
 - `updateSd` / `withdrawSd` return `{ httpStatus, status, uuid, version, status: lifecycleStatus }` (same `EudrStatusType` lifecycle values as DDS: `SUBMITTED`, `AVAILABLE`, `REJECTED`, `WITHDRAWN`, `ARCHIVED`, `SUSPENDED`, `UPDATED`, `GROUPED`, `OBSOLETE`).
 - `getSd` / `getSdByInternalReference` return `{ httpStatus, status, sdInfo: [...] }` (array of SD overview entries, same shape family as DDS `ddsInfo`).
-- `getSdByIdentifiers` returns `{ httpStatus, status, statement: {...} }` — the full SD statement. Note SD commodities have **no `speciesInfo`** field (unlike DDS).
+- `getSdByIdentifiers` used to return `{ httpStatus, status, statement: {...} }` with the full SD statement. **Since release 8.2.2 it always throws** `EUDR_DETAIL_RETRIEVAL_UNSUPPORTED` — see [V4 Clients](#v4-clients-release-822). Note SD commodities have **no `speciesInfo`** field (unlike DDS).
 
 **SD validation errors** (client-side, thrown before any network call — same `error.eudrErrorCode` / `error.eudrSpecific` pattern as DDS):
 
@@ -813,7 +899,7 @@ await sdClient.getSdByIdentifiers('DECLARATION-IDENTIFIER', 'VERIFICATION-NUMBER
 |---|---|
 | `EUDR_V3_SD_OPERATOR_ROLE_INVALID` | `operatorRole` is not one of `MICRO_OPERATOR`, `REPRESENTATIVE_MSPO`, `MEMBER_STATE` |
 | `EUDR_V3_SD_INTERNAL_REFERENCE_REQUIRED` | `statement.internalReferenceNumber` is missing (mandatory for SD) |
-| `EUDR_V3_SD_INTERNAL_REFERENCE_TOO_LONG` | `statement.internalReferenceNumber` is longer than 14 characters — see the note below |
+| `EUDR_V3_SD_INTERNAL_REFERENCE_TOO_LONG` | `statement.internalReferenceNumber` is longer than 14 characters on V3, or 50 on V4 — see the note below |
 | `EUDR_V3_SD_ACTIVITY_TYPE_INVALID` | `statement.activityType` is not `DOMESTIC`, `IMPORT`, or `EXPORT` |
 | `EUDR_V3_SD_PRODUCER_COUNTRY_REQUIRED` | a producer is missing `producerCountry` |
 | `EUDR_V3_SD_PRODUCER_LOCATION_INVALID` | a producer's location has zero or more than one of `geometryGeojson`/`postalAddress`/`cadastralIdentifier` |
@@ -821,9 +907,11 @@ await sdClient.getSdByIdentifiers('DECLARATION-IDENTIFIER', 'VERIFICATION-NUMBER
 | `EUDR_V3_SD_POSTAL_ADDRESS_LIMIT` | more than 100 `postalAddress` entries on one producer location |
 | `EUDR_V3_SD_CADASTRAL_IDENTIFIER_LIMIT` | more than 100 `cadastralIdentifier` entries on one producer location |
 
+A postal-address location also requires `producerStreet`, `producerPostalCode` and `producerCity` (all mandatory in the schema); a missing one throws a plain `Error` naming the field.
+
 The SD client also throws the shared V3 codes — `EUDR_V3_IDENTIFIER_TYPE_INVALID`, `EUDR_V3_OPERATOR_REFERENCE_NUMBER_LIMIT`, `EUDR_V3_GROUPED_DECLARATIONS_LIMIT`, `EUDR_V3_COMMODITIES_LIMIT`, `EUDR_V3_PRODUCERS_LIMIT`, `EUDR_V3_DESCRIPTION_OF_GOODS_REQUIRED`, `EUDR_V3_GOODS_MEASURE_REQUIRED`, `EUDR_V3_GEOJSON_INVALID`, `EUDR_V3_BODY_IDENTITY_INVALID`, `EUDR_V3_BODY_IDENTITY_TOO_LONG` — listed in [Client-side validation error codes](#business-rules--validation).
 
-> **`internalReferenceNumber` is capped at 14 characters for SD, not 50.** The schema types the SD field as `eudrCommon:ReferenceNumberType` (maxLength 14), while the DDS field and the `getSdByInternalReference` lookup both use `InternalReferenceNumberType` (maxLength 50) — and the EU's 1.5 reference doc separately claims 35. Three numbers for one field; the library follows the type that actually carries it, so keep SD internal references at 14 characters or fewer.
+> **`internalReferenceNumber` is capped at 14 characters for SD V3, and 50 for SD V4.** The V3 schema types the SD field as `eudrCommon:ReferenceNumberType` (maxLength 14), while the DDS field and the `getSdByInternalReference` lookup both use `InternalReferenceNumberType` (maxLength 50) — and the EU's 1.5 reference doc separately claims 35. V4 (release 8.2.2) fixes this by typing the SD field as `InternalReferenceNumberType` too. The library follows the type of the version you call, so use `EudrSimplifiedDeclarationClientV4` if you need longer references.
 
 > **`submitSd` returns a UUID, not the `S…` number.** `SubmitSdResponse/sdIdentifier` is typed `eudrCommon:UuidType`, so it is a plain UUID and is what you pass to `updateSd`/`withdrawSd`/`getSd`. The 14-character declaration reference (e.g. `S26FRNMNBSA96Q`) that accompanies goods through the supply chain is `referenceNumber` in the **`getSd` overview**, so obtaining it takes a second call. The EU's own annotation blurs the two — build against the types.
 
@@ -903,7 +991,7 @@ const result = await submissionV3.withdrawDds(
 // Returns: { httpStatus: 200, status: 'WITHDRAWN', uuid: 'dds-uuid-to-withdraw' }
 ```
 
-**`EudrStatusType` lifecycle values** (returned by `amendDds`/`withdrawDds`, and inside `ddsInfo`/`statement` from the retrieval client): `SUBMITTED`, `AVAILABLE`, `REJECTED`, `WITHDRAWN`, `ARCHIVED`, `SUSPENDED` (not active yet), `UPDATED` (not active yet), `GROUPED`, `OBSOLETE`.
+**`EudrStatusType` lifecycle values** (returned by `amendDds`/`withdrawDds`, and inside `ddsInfo`/`statement` from the retrieval client): `SUBMITTED`, `AVAILABLE`, `REJECTED`, `WITHDRAWN`, `ARCHIVED`, `SUSPENDED` (not active yet), `UPDATED` (not active yet), `GROUPED`, `OBSOLETE` — plus `CANCELLED` on V4 ("cancelled by the operator before availability").
 
 #### Error Handling
 
@@ -974,7 +1062,7 @@ Retrieval facade over the unified DDS V3 service. Unlike V1/V2, retrieval and su
 |--------|-------------|------------|---------|
 | `getDds(uuids, options)` | Retrieve DDS overview by UUID(s), renamed from `getDdsInfo` | `uuids` (String or Array, max 100), `options` (Object) | Promise with `ddsInfo` array |
 | `getDdsByInternalReference(internalReferenceNumber, options)` | Retrieve DDS overview by internal reference, renamed from `getDdsInfoByInternalReferenceNumber` | `internalReferenceNumber` (String), `options` (Object) | Promise with `ddsInfo` array |
-| `getDdsByIdentifiers(referenceNumber, verificationNumber, options)` | Retrieve full DDS content, renamed from `getStatementByIdentifiers` | `referenceNumber` (String), `verificationNumber` (String), `options` (Object) | Promise with full `statement` |
+| ~~`getDdsByIdentifiers(referenceNumber, verificationNumber, options)`~~ ⚠️ deprecated | Formerly retrieved full DDS content. **Since release 8.2.2 the server always rejects it** (detail is UI-only) | `referenceNumber` (String), `verificationNumber` (String), `options` (Object) | Always rejects with `EUDR_DETAIL_RETRIEVAL_UNSUPPORTED` |
 | ~~`getReferencedDds()`~~ | ❌ Not available in V3 — the spec removes this operation entirely, there is no replacement | N/A | N/A |
 
 #### Options
@@ -983,19 +1071,18 @@ Retrieval facade over the unified DDS V3 service. Unlike V1/V2, retrieval and su
 | `rawResponse` | boolean | false | Whether to return the raw XML response instead of the parsed result |
 | `bodyIdentity` | string\|Object | - | Operator identity for this call ([multi-operator authentication](#multi-operator-authentication)); overrides the configured value, `null` suppresses it |
 
-> ⚠️ **`getDdsByIdentifiers` is restricted by operator class.** The V3 WSDL states the operation is
-> available only to non-SME operators (standard operators and authorised representatives) — SME downstream
-> operators have no access to it. A rejected call comes back as a `NotFoundException`
-> (`error.notFound === true`, HTTP 404) with the message *"You are not authorized to view this DDS."*,
-> deliberately indistinguishable from a genuinely missing record. Use `getDds`/`getDdsByInternalReference`
-> for your own declarations — those are owner-scoped and not subject to this restriction.
+> ⚠️ **`getDdsByIdentifiers` no longer returns content (release 8.2.2).** Before 8.2.2 it was restricted to
+> non-SME operators; since 8.2.2 the server rejects **every** call, on V3 and V4, with a `NotFoundException`
+> (*"Statement details can only be accessed through the UI"*). The library surfaces this as
+> `error.detailRetrievalUnsupported === true` / `eudrErrorCode: 'EUDR_DETAIL_RETRIEVAL_UNSUPPORTED'` and logs a
+> one-time deprecation warning. Use `getDds`/`getDdsByInternalReference` for API lookups.
 
 > Note: unlike V1/V2, `decodeGeojson` auto-decoding is **not yet implemented** for V3 — `geometryGeojson` in `getDdsByIdentifiers` results comes back base64-encoded exactly as received from the server.
 
 #### Key Features
 - ✅ **Unified backend**: retrieval and submission are the same DDS V3 service under the hood
 - ✅ **Batch retrieval**: `getDds` accepts up to 100 UUIDs per call, same as V1/V2 `getDdsInfo`
-- ✅ **Full statement retrieval**: `getDdsByIdentifiers` returns the complete DDS statement, not just an overview
+- ⚠️ **Full statement retrieval discontinued**: `getDdsByIdentifiers` always rejects since release 8.2.2 (detail is UI-only)
 - ✅ **Consistent array fields**: `ddsInfo` is always an array (even for a single overview result); `commodities`/`producers`/`speciesInfo`/`groupedDeclarations` inside a full `statement` are always arrays
 - ⚠️ **No supply chain traversal**: V2's `getReferencedDds()` has no V3 equivalent — grouping (`groupedDeclarations`) is a different concept, not a drop-in replacement
 
@@ -1042,7 +1129,10 @@ const ddsList = await retrievalV3.getDdsByInternalReference('26BEDWNW9JD1TN');
 // Returns: same ddsInfo overview shape as getDds
 ```
 
-**`getDdsByIdentifiers(referenceNumber, verificationNumber, options)`**
+**`getDdsByIdentifiers(referenceNumber, verificationNumber, options)`** — deprecated
+
+> ⚠️ **Deprecated since release 8.2.2.** The server now rejects every `getDdsByIdentifiers` call (V3 and V4) with a `NotFoundException` — statement detail is available only in the web UI. The library throws `EUDR_DETAIL_RETRIEVAL_UNSUPPORTED` (`error.detailRetrievalUnsupported === true`). The response shape below is kept for reference only.
+
 ```javascript
 const fullDds = await retrievalV3.getDdsByIdentifiers('26BE7XTVCZAQ2S', 'SFFCB4Y3');
 
@@ -1128,7 +1218,7 @@ Single unified client for the new Simplified Declaration (SD) V3 service — see
 | `withdrawSd(sdIdentifier, options)` | Withdraw an SD | `sdIdentifier` (String), `options` (Object) | Promise with `uuid` + lifecycle `status` |
 | `getSd(uuids, options)` | Retrieve SD overview by UUID(s)/version, max 100 | `uuids` (String, `{uuid, version}`, or Array), `options` (Object) | Promise with `sdInfo` array |
 | `getSdByInternalReference(internalReferenceNumber, options)` | Retrieve SD overview by internal reference | `internalReferenceNumber` (String), `options` (Object) | Promise with `sdInfo` array |
-| `getSdByIdentifiers(referenceNumber, verificationNumber, options)` | Retrieve full SD content | `referenceNumber` (String), `verificationNumber` (String), `options` (Object) | Promise with full `statement` |
+| ~~`getSdByIdentifiers(referenceNumber, verificationNumber, options)`~~ ⚠️ deprecated | Formerly retrieved full SD content. **Since release 8.2.2 the server always rejects it** (detail is UI-only) | `referenceNumber` (String), `verificationNumber` (String), `options` (Object) | Always rejects with `EUDR_DETAIL_RETRIEVAL_UNSUPPORTED` |
 
 #### Options
 | Option | Type | Default | Description |
@@ -1203,7 +1293,10 @@ const sdList = await sdClient.getSdByInternalReference('SD-REF-001');
 // Returns: same sdInfo overview shape as getSd
 ```
 
-**`getSdByIdentifiers(referenceNumber, verificationNumber, options)`**
+**`getSdByIdentifiers(referenceNumber, verificationNumber, options)`** — deprecated
+
+> ⚠️ **Deprecated since release 8.2.2.** The server now rejects every `getSdByIdentifiers` call (V3 and V4) with a `NotFoundException` — declaration detail is available only in the web UI. The library throws `EUDR_DETAIL_RETRIEVAL_UNSUPPORTED` (`error.detailRetrievalUnsupported === true`). The response shape below is kept for reference only.
+
 ```javascript
 const fullSd = await sdClient.getSdByIdentifiers('S26BECB39D2GRX', 'H6ORMNTX');
 
@@ -1294,7 +1387,7 @@ v1.0" §4.1 (not the main Operator API Reference, which only lists this service 
 
 > **Wording:** the TRACES NT web interface labels these three outcomes **VALID**, **NOT VALID** and **NOT FOUND**. The API values are unchanged: `EXISTING_USABLE` → VALID, `EXISTING_NON_USABLE` → NOT VALID, `NON_EXISTENT` → NOT FOUND.
 >
-> To read the **full content** of a declaration rather than just verify it, use `getDdsByIdentifiers` / `getSdByIdentifiers` with the same reference + verification number pair. That operation is restricted to non-SME operators — SME downstream operators and traders can verify existence but cannot read content.
+> Reading the **full content** of a declaration is no longer possible over the API: since release 8.2.2 `getDdsByIdentifiers` / `getSdByIdentifiers` always reject (detail is UI-only). `verifyDeclaration` remains the API way to check a reference + verification number pair.
 
 #### Detailed Method Reference
 
@@ -1565,7 +1658,8 @@ See each client's dedicated section above for the exact shape of every operation
 - Write operations (`submitDds`, `submitSd`) return `{ httpStatus, status, uuid | sdIdentifier }`.
 - Modification operations (`amendDds`, `withdrawDds`, `updateSd`, `withdrawSd`) return `{ httpStatus, status: lifecycleStatus, uuid, ... }`.
 - Overview retrieval (`getDds`, `getDdsByInternalReference`, `getSd`, `getSdByInternalReference`) return `{ httpStatus, status, ddsInfo | sdInfo: [...] }` — always an array.
-- Full-content retrieval (`getDdsByIdentifiers`, `getSdByIdentifiers`) return `{ httpStatus, status, statement: {...} }`.
+- Full-content retrieval (`getDdsByIdentifiers`, `getSdByIdentifiers`) used to return `{ httpStatus, status, statement: {...} }`; since release 8.2.2 both always throw `EUDR_DETAIL_RETRIEVAL_UNSUPPORTED`.
+- Every parsed response also carries `userMessage` — the V4 `EudrUserMessage` announcement header, or `null`.
 - All responses additionally include `raw` (raw XML) and `parsed` (parsed XML object) unless `options.rawResponse` was used, in which case only `{ httpStatus, data }` (or `{ httpStatus, status, data }`) is returned.
 
 ### Advanced Usage
@@ -1744,13 +1838,14 @@ const decoded = JSON.parse(Buffer.from(encoded, 'base64').toString('utf-8'));
 error.httpStatus === 404, error.eudrErrorCode === 'EUDR_NOT_FOUND'
 ```
 
-**Solution**: `getDds`/`getSd` and their `ByInternalReference`/`ByIdentifiers` variants throw this when nothing matches the identifiers you passed. Check the `notFound` flag rather than string-matching the message:
+**Solution**: `getDds`/`getSd` and their `ByInternalReference` variants throw this when nothing matches the identifiers you passed — or, since release 8.2.2, when the declaration exists but you may not see it (the server deliberately does not distinguish the two). Check the `notFound` flag rather than string-matching the message. `getDdsByIdentifiers`/`getSdByIdentifiers` always throw a 404 since 8.2.2; `error.detailRetrievalUnsupported` tells that case apart:
 
 ```javascript
 try {
-  await retrievalV3.getDdsByIdentifiers(referenceNumber, verificationNumber);
+  await retrievalV3.getDds(uuid);
 } catch (error) {
-  if (error.notFound) { /* no such declaration */ }
+  if (error.detailRetrievalUnsupported) { /* get*ByIdentifiers: detail is UI-only since 8.2.2 */ }
+  else if (error.notFound) { /* no such declaration, or not visible to you */ }
 }
 ```
 

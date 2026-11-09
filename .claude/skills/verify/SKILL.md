@@ -6,8 +6,9 @@ description: How to manually verify changes to the eudr-api-client library end-t
 # Verifying eudr-api-client changes
 
 **A permanent live (no-mock) test suite now exists** — prefer it over a new throwaway script:
-`tests/services/{submission,retrieval,simplified-declaration}-service-v3.integration.test.js`
-(`npm run test:submission:v3` / `test:retrieval:v3` / `test:sd:v3`). See
+`tests/services/{submission,retrieval,simplified-declaration,verification}-service-v3.integration.test.js`
+(`npm run test:submission:v3` / `test:retrieval:v3` / `test:sd:v3` / `test:verification:v3`, and the same
+scripts with `:v4`). Since release 8.2.2 each file runs its suite for both V3 and V4. See
 [docs/analysis/v3-live-test-plan.md](../../../docs/analysis/v3-live-test-plan.md) for the coverage matrix
 and known limitations (amend never succeeds live yet, grouped declarations can't complete within the 20s
 poll window, SD write lifecycle is skip-gated pending an MSPO test account). Only write a new throwaway
@@ -24,7 +25,7 @@ submissions have no legal value — it's the sandbox EUDR provides for exactly t
 1. Write a throwaway script **at the repo root** (not in the OS temp/scratchpad dir) and delete it when done.
    Node resolves `node_modules` relative to the script's own location, so a script outside the repo can't
    `require('dotenv')` or the package itself — that's the #1 gotcha here.
-2. Require the public entry point: `const { EudrSubmissionClientV3, EudrRetrievalClientV3, EudrSimplifiedDeclarationClientV3, EudrEchoClient } = require('./index.js');` — not a deep path into `services/`.
+2. Require the public entry point: `const { EudrSubmissionClientV4, EudrRetrievalClientV4, EudrSimplifiedDeclarationClientV4, EudrVerifyDeclarationClientV4, EudrEchoClient } = require('./index.js');` (or the V3 classes) — not a deep path into `services/`.
 3. Load env with `require('dotenv').config()` before building the client config.
 4. Start with `EudrEchoClient.echo()` — safe, non-mutating, confirms WS-Security/auth/connectivity before
    trying anything that writes data.
@@ -40,7 +41,13 @@ submissions have no legal value — it's the sandbox EUDR provides for exactly t
   processes submissions asynchronously (risk profiling etc.) — the README already tells consumers to wait
   ~30 minutes before polling. Don't mistake this for a parsing bug.
 - **`amendDds` fails with `EUDR_API_AMEND_NOT_ALLOWED_FOR_STATUS`** if attempted right after submit — the
-  DDS is still in `SUBMITTED` status, not yet `AVAILABLE`. Expected.
+  DDS is still in `SUBMITTED` status, not yet `AVAILABLE`. Expected (since 8.2.2 the 72-hour amend window
+  only starts at AVAILABLE).
+- **`getDdsByIdentifiers` / `getSdByIdentifiers` always fail** since release 8.2.2 (V3 and V4) with a
+  NotFoundException — detail is UI-only. The library maps it to `EUDR_DETAIL_RETRIEVAL_UNSUPPORTED`. The
+  live DDS wording ("Statement details can only be accessed through the UI") differs from the documented one.
+- **V4 overview entries carry `referenceNumberInfo`** (free text, e.g. "The submission is currently under
+  analysis by the system"); V3 entries don't.
 - **`submitSd` fails with `EUDR_WEBSERVICE_USER_ACTIVITY_NOT_ALLOWED`** unless the account is actually
   registered in TRACES NT with the claimed `operatorRole` (e.g. `MICRO_OPERATOR` for SD). The test account
   in `.env` is a generic operator account, not MSPO-registered, so SD `submitSd` will likely always fail
@@ -56,9 +63,12 @@ submissions have no legal value — it's the sandbox EUDR provides for exactly t
 The WSDL/XSD served by the acceptance environment is the ground truth for field names, types, and
 cardinality — more reliable than the vendored reference PDF/MD in `docs/eudr_docs 1.5/`.
 
-A full snapshot fetched on 2026-09-04 (Information System release 8.2.1) is vendored in
-[docs/eudr_docs 8.2.1/](../../../docs/eudr_docs%208.2.1/README.md), including the re-fetch recipe —
-check that first, and re-fetch when you need to know whether the contract has moved since.
+The current snapshot (fetched 2026-11-09, release 8.2.2, V3 **and** V4) is vendored in
+[docs/eudr_docs 8.2.2/](../../../docs/eudr_docs%208.2.2/README.md), including the re-fetch recipe and the
+current `?xsd=N` map — check that first, and re-fetch when you need to know whether the contract has moved
+since. The older [docs/eudr_docs 8.2.1/](../../../docs/eudr_docs%208.2.1/README.md) is kept as history.
+To check generated envelopes against it offline, validate the SOAP Body child with Python `lxml` against
+the service XSD, resolving the `?xsd=N` imports to the vendored files.
 
 **The `?xsd=N` numbering is assigned per service and shifts when the Commission adds a schema** — it
 already changed once, when release 8.2.1 inserted the `body/v3` schema (the `BodyIdentity` header) as

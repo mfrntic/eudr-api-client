@@ -1,4 +1,4 @@
-const { EudrEchoClient, EudrRetrievalClient, EudrRetrievalClientV2, EudrSubmissionClient, EudrSubmissionClientV2, EudrSubmissionClientV3, EudrRetrievalClientV3, EudrSimplifiedDeclarationClientV3, EudrVerifyDeclarationClientV3 } = require('./services');
+const { EudrEchoClient, EudrRetrievalClient, EudrRetrievalClientV2, EudrSubmissionClient, EudrSubmissionClientV2, EudrSubmissionClientV3, EudrRetrievalClientV3, EudrSimplifiedDeclarationClientV3, EudrVerifyDeclarationClientV3, EudrSubmissionClientV4, EudrRetrievalClientV4, EudrSimplifiedDeclarationClientV4, EudrVerifyDeclarationClientV4 } = require('./services');
 const { EudrErrorHandler, logger, createLogger, createChildLogger, endpointUtils } = require('./utils');
 
 module.exports = {
@@ -11,6 +11,10 @@ module.exports = {
   EudrRetrievalClientV3,
   EudrSimplifiedDeclarationClientV3,
   EudrVerifyDeclarationClientV3,
+  EudrSubmissionClientV4,
+  EudrRetrievalClientV4,
+  EudrSimplifiedDeclarationClientV4,
+  EudrVerifyDeclarationClientV4,
   EudrErrorHandler,
   logger,
   createLogger,

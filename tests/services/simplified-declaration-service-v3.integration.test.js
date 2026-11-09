@@ -11,6 +11,7 @@
 
 const { expect } = require('chai');
 const EudrSimplifiedDeclarationClientV3 = require('../../services/simplified-declaration-service-v3');
+const EudrSimplifiedDeclarationClientV4 = require('../../services/simplified-declaration-service-v4');
 const { logger } = require('../../utils/logger');
 const { pollUntil, resolveOrCleanNotFound } = require('../helpers/wait');
 const { skipWithoutCredentials } = require('../helpers/credentials');
@@ -62,213 +63,222 @@ function buildSdStatement(internalReferenceNumber) {
   };
 }
 
-describe('EudrSimplifiedDeclarationClientV3 - Integration Tests', function() {
-  this.timeout(120000);
+// The same live suite runs against both API versions: V4 (release 8.2.2) keeps the V3
+// operations and data model, so every expectation applies to both unless noted.
+const API_VERSIONS = [
+  { label: 'V3', SimplifiedDeclarationClient: EudrSimplifiedDeclarationClientV3 },
+  { label: 'V4', SimplifiedDeclarationClient: EudrSimplifiedDeclarationClientV4 }
+];
 
-  let sdClient;
-  let mspoAvailable = false;
-  const createdSdIdentifiers = [];
+for (const api of API_VERSIONS) {
+  describe(`EudrSimplifiedDeclarationClient${api.label} - Integration Tests`, function() {
+    this.timeout(120000);
 
-  before(async function() {
-    if (logger && logger.level) {
-      logger.level = 'error';
-    }
-    require('dotenv').config();
+    let sdClient;
+    let mspoAvailable = false;
+    const createdSdIdentifiers = [];
 
-    const requiredEnvVars = ['EUDR_TRACES_USERNAME', 'EUDR_TRACES_PASSWORD', 'EUDR_TRACES_BASE_URL'];
-    if (skipWithoutCredentials(this, requiredEnvVars)) return;
+    before(async function() {
+      if (logger && logger.level) {
+        logger.level = 'error';
+      }
+      require('dotenv').config();
 
-    sdClient = new EudrSimplifiedDeclarationClientV3({
-      username: process.env.EUDR_TRACES_USERNAME,
-      password: process.env.EUDR_TRACES_PASSWORD,
-      webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
-    });
+      const requiredEnvVars = ['EUDR_TRACES_USERNAME', 'EUDR_TRACES_PASSWORD', 'EUDR_TRACES_BASE_URL'];
+      if (skipWithoutCredentials(this, requiredEnvVars)) return;
 
-    // Probe: does this account have MICRO_OPERATOR/MSPO role in TRACES NT?
-    try {
-      const probeResult = await sdClient.submitSd({
-        operatorRole: 'MICRO_OPERATOR',
-        statement: buildSdStatement(shortRef('PRB'))
+      sdClient = new api.SimplifiedDeclarationClient({
+        username: process.env.EUDR_TRACES_USERNAME,
+        password: process.env.EUDR_TRACES_PASSWORD,
+        webServiceClientId: process.env.EUDR_WEB_SERVICE_CLIENT_ID || 'eudr-test'
       });
-      mspoAvailable = true;
-      createdSdIdentifiers.push(probeResult.sdIdentifier);
-      logger.info('MSPO probe succeeded - SD write-lifecycle tests will run.');
-    } catch (error) {
-      if (error.eudrErrorCode === 'EUDR_WEBSERVICE_USER_ACTIVITY_NOT_ALLOWED') {
-        mspoAvailable = false;
-        logger.warn('MSPO probe failed: test account has no MICRO_OPERATOR/MSPO role. Write-lifecycle SD tests will be skipped.');
-      } else {
-        throw error;
-      }
-    }
-  });
 
-  after(async function() {
-    for (const sdIdentifier of createdSdIdentifiers) {
+      // Probe: does this account have MICRO_OPERATOR/MSPO role in TRACES NT?
       try {
-        await sdClient.withdrawSd(sdIdentifier);
-        logger.info(`Cleaned up (withdrawn) SD ${sdIdentifier}`);
-      } catch (error) {
-        logger.warn(`Cleanup withdrawSd failed for ${sdIdentifier}: ${error.message}`);
-      }
-    }
-  });
-
-  describe('submitSd - permission check (no MSPO role required)', function() {
-    it('should cleanly surface EUDR_WEBSERVICE_USER_ACTIVITY_NOT_ALLOWED for a non-MSPO account', async function() {
-      if (mspoAvailable) {
-        this.skip();
-        return;
-      }
-
-      try {
-        await sdClient.submitSd({
+        const probeResult = await sdClient.submitSd({
           operatorRole: 'MICRO_OPERATOR',
-          statement: buildSdStatement(shortRef('CHK'))
+          statement: buildSdStatement(shortRef('PRB'))
         });
-        expect.fail('Expected submitSd to be rejected for a non-MSPO account');
+        mspoAvailable = true;
+        createdSdIdentifiers.push(probeResult.sdIdentifier);
+        logger.info('MSPO probe succeeded - SD write-lifecycle tests will run.');
       } catch (error) {
-        expect(error.eudrErrorCode).to.equal('EUDR_WEBSERVICE_USER_ACTIVITY_NOT_ALLOWED');
-        expect(error.details.soapFault).to.exist;
-      }
-    });
-  });
-
-  describe('read operations - not-found paths (no MSPO role required)', function() {
-    it('getSd should cleanly handle a random non-existent uuid', async function() {
-      const { v4: uuidv4 } = require('uuid');
-      try {
-        const result = await sdClient.getSd(uuidv4());
-        console.log(`[getSd not-found] no fault thrown: ${JSON.stringify(result.sdInfo)}`);
-        expect(result.sdInfo).to.be.an('array').that.is.empty;
-      } catch (error) {
-        console.log(`[getSd not-found] error: ${error.eudrErrorCode || error.message}`);
-        expect(error).to.exist;
-      }
-    });
-
-    it('getSdByInternalReference should cleanly handle a bogus reference', async function() {
-      try {
-        const result = await sdClient.getSdByInternalReference('BOGUS-REF-1');
-        console.log(`[getSdByInternalReference not-found] no fault thrown: ${JSON.stringify(result.sdInfo)}`);
-        expect(result.sdInfo).to.be.an('array').that.is.empty;
-      } catch (error) {
-        console.log(`[getSdByInternalReference not-found] error: ${error.eudrErrorCode || error.message}`);
-        expect(error).to.exist;
-      }
-    });
-
-    it('getSdByIdentifiers should cleanly handle a bogus reference/verification pair', async function() {
-      try {
-        const result = await sdClient.getSdByIdentifiers('BOGUSSDREF123', 'BOGUSVER');
-        console.log(`[getSdByIdentifiers not-found] no fault thrown: ${JSON.stringify(result.statement)}`);
-      } catch (error) {
-        console.log(`[getSdByIdentifiers not-found] error: ${error.eudrErrorCode || error.message}`);
-        expect(error).to.exist;
-      }
-    });
-  });
-
-  describe('write lifecycle (requires MSPO role - skipped if account lacks it)', function() {
-    it('submitSd should succeed and return a real sdIdentifier', async function() {
-      if (!mspoAvailable) {
-        this.skip();
-        return;
-      }
-      const result = await sdClient.submitSd({
-        operatorRole: 'MICRO_OPERATOR',
-        statement: buildSdStatement(shortRef('LC'))
-      });
-      expect(result.httpStatus).to.equal(200);
-      expect(result.sdIdentifier).to.be.a('string');
-      createdSdIdentifiers.push(result.sdIdentifier);
-    });
-
-    it('updateSd should succeed and return uuid + status (not sdIdentifier)', async function() {
-      if (!mspoAvailable) {
-        this.skip();
-        return;
-      }
-      const submitResult = await sdClient.submitSd({
-        operatorRole: 'MICRO_OPERATOR',
-        statement: buildSdStatement(shortRef('UPD'))
-      });
-      createdSdIdentifiers.push(submitResult.sdIdentifier);
-
-      // Server processes a freshly submitted SD asynchronously (status starts as SUBMITTED);
-      // updateSd is only accepted once it reaches AVAILABLE - see EUDR_API_AMEND_NOT_ALLOWED_FOR_STATUS
-      // in docs/analysis/v3-live-test-plan.md (same known async-delay limitation as amendDds).
-      // pollUntil expects its probe to resolve rather than throw, but in this window getSd can
-      // answer with a NotFoundException instead of an empty array - treat that as "not ready yet".
-      const poll = await pollUntil(
-        () => sdClient.getSd(submitResult.sdIdentifier).catch((error) => {
-          if (error.notFound) return { sdInfo: [] };
+        if (error.eudrErrorCode === 'EUDR_WEBSERVICE_USER_ACTIVITY_NOT_ALLOWED') {
+          mspoAvailable = false;
+          logger.warn('MSPO probe failed: test account has no MICRO_OPERATOR/MSPO role. Write-lifecycle SD tests will be skipped.');
+        } else {
           throw error;
-        }),
-        (result) => Boolean(result.sdInfo && result.sdInfo[0] && result.sdInfo[0].status === 'AVAILABLE'),
-        { intervalMs: 3000, timeoutMs: 30000 }
-      );
-
-      if (!poll.ready) {
-        console.log('[updateSd] SD did not reach AVAILABLE status within 30s - skipping update assertion (known async-delay limitation).');
-        this.skip();
-        return;
+        }
       }
-
-      const updateResult = await sdClient.updateSd(submitResult.sdIdentifier, buildSdStatement(shortRef('UPD')));
-      expect(updateResult.uuid).to.equal(submitResult.sdIdentifier);
-      expect(updateResult.status).to.be.a('string');
     });
 
-    it('withdrawSd should succeed and return status WITHDRAWN', async function() {
-      if (!mspoAvailable) {
-        this.skip();
-        return;
+    after(async function() {
+      for (const sdIdentifier of createdSdIdentifiers) {
+        try {
+          await sdClient.withdrawSd(sdIdentifier);
+          logger.info(`Cleaned up (withdrawn) SD ${sdIdentifier}`);
+        } catch (error) {
+          logger.warn(`Cleanup withdrawSd failed for ${sdIdentifier}: ${error.message}`);
+        }
       }
-      const submitResult = await sdClient.submitSd({
-        operatorRole: 'MICRO_OPERATOR',
-        statement: buildSdStatement(shortRef('WD'))
-      });
-
-      const withdrawResult = await sdClient.withdrawSd(submitResult.sdIdentifier);
-      expect(withdrawResult.status).to.equal('WITHDRAWN');
-      // already withdrawn - no need to track for after-hook cleanup
     });
 
-    it('getSd/getSdByInternalReference/getSdByIdentifiers should retrieve the real submitted SD', async function() {
-      if (!mspoAvailable) {
-        this.skip();
-        return;
-      }
-      const internalRef = shortRef('GET');
-      const submitResult = await sdClient.submitSd({
-        operatorRole: 'MICRO_OPERATOR',
-        statement: buildSdStatement(internalRef)
+    describe('submitSd - permission check (no MSPO role required)', function() {
+      it('should cleanly surface EUDR_WEBSERVICE_USER_ACTIVITY_NOT_ALLOWED for a non-MSPO account', async function() {
+        if (mspoAvailable) {
+          this.skip();
+          return;
+        }
+
+        try {
+          await sdClient.submitSd({
+            operatorRole: 'MICRO_OPERATOR',
+            statement: buildSdStatement(shortRef('CHK'))
+          });
+          expect.fail('Expected submitSd to be rejected for a non-MSPO account');
+        } catch (error) {
+          expect(error.eudrErrorCode).to.equal('EUDR_WEBSERVICE_USER_ACTIVITY_NOT_ALLOWED');
+          expect(error.details.soapFault).to.exist;
+        }
       });
-      createdSdIdentifiers.push(submitResult.sdIdentifier);
+    });
 
-      const byUuid = await resolveOrCleanNotFound(
-        sdClient.getSd(submitResult.sdIdentifier),
-        'getSd immediately after submit',
-        expect
-      );
-      if (!byUuid) {
-        this.skip();
-        return;
-      }
+    describe('read operations - not-found paths (no MSPO role required)', function() {
+      it('getSd should cleanly handle a random non-existent uuid', async function() {
+        const { v4: uuidv4 } = require('uuid');
+        try {
+          const result = await sdClient.getSd(uuidv4());
+          console.log(`[getSd not-found] no fault thrown: ${JSON.stringify(result.sdInfo)}`);
+          expect(result.sdInfo).to.be.an('array').that.is.empty;
+        } catch (error) {
+          console.log(`[getSd not-found] error: ${error.eudrErrorCode || error.message}`);
+          expect(error).to.exist;
+        }
+      });
 
-      console.log(`[getSd] ${JSON.stringify(byUuid.sdInfo)}`);
-      expect(byUuid.sdInfo).to.be.an('array');
+      it('getSdByInternalReference should cleanly handle a bogus reference', async function() {
+        try {
+          const result = await sdClient.getSdByInternalReference('BOGUS-REF-1');
+          console.log(`[getSdByInternalReference not-found] no fault thrown: ${JSON.stringify(result.sdInfo)}`);
+          expect(result.sdInfo).to.be.an('array').that.is.empty;
+        } catch (error) {
+          console.log(`[getSdByInternalReference not-found] error: ${error.eudrErrorCode || error.message}`);
+          expect(error).to.exist;
+        }
+      });
 
-      const byRef = await resolveOrCleanNotFound(
-        sdClient.getSdByInternalReference(internalRef),
-        'getSdByInternalReference immediately after submit',
-        expect
-      );
-      if (!byRef) return;
+      it('getSdByIdentifiers should cleanly handle a bogus reference/verification pair', async function() {
+        try {
+          const result = await sdClient.getSdByIdentifiers('BOGUSSDREF123', 'BOGUSVER');
+          console.log(`[getSdByIdentifiers not-found] no fault thrown: ${JSON.stringify(result.statement)}`);
+        } catch (error) {
+          console.log(`[getSdByIdentifiers not-found] error: ${error.eudrErrorCode || error.message}`);
+          expect(error).to.exist;
+        }
+      });
+    });
 
-      console.log(`[getSdByInternalReference] ${JSON.stringify(byRef.sdInfo)}`);
-      expect(byRef.sdInfo).to.be.an('array');
+    describe('write lifecycle (requires MSPO role - skipped if account lacks it)', function() {
+      it('submitSd should succeed and return a real sdIdentifier', async function() {
+        if (!mspoAvailable) {
+          this.skip();
+          return;
+        }
+        const result = await sdClient.submitSd({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: buildSdStatement(shortRef('LC'))
+        });
+        expect(result.httpStatus).to.equal(200);
+        expect(result.sdIdentifier).to.be.a('string');
+        createdSdIdentifiers.push(result.sdIdentifier);
+      });
+
+      it('updateSd should succeed and return uuid + status (not sdIdentifier)', async function() {
+        if (!mspoAvailable) {
+          this.skip();
+          return;
+        }
+        const submitResult = await sdClient.submitSd({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: buildSdStatement(shortRef('UPD'))
+        });
+        createdSdIdentifiers.push(submitResult.sdIdentifier);
+
+        // Server processes a freshly submitted SD asynchronously (status starts as SUBMITTED);
+        // updateSd is only accepted once it reaches AVAILABLE - see EUDR_API_AMEND_NOT_ALLOWED_FOR_STATUS
+        // in docs/analysis/v3-live-test-plan.md (same known async-delay limitation as amendDds).
+        // pollUntil expects its probe to resolve rather than throw, but in this window getSd can
+        // answer with a NotFoundException instead of an empty array - treat that as "not ready yet".
+        const poll = await pollUntil(
+          () => sdClient.getSd(submitResult.sdIdentifier).catch((error) => {
+            if (error.notFound) return { sdInfo: [] };
+            throw error;
+          }),
+          (result) => Boolean(result.sdInfo && result.sdInfo[0] && result.sdInfo[0].status === 'AVAILABLE'),
+          { intervalMs: 3000, timeoutMs: 30000 }
+        );
+
+        if (!poll.ready) {
+          console.log('[updateSd] SD did not reach AVAILABLE status within 30s - skipping update assertion (known async-delay limitation).');
+          this.skip();
+          return;
+        }
+
+        const updateResult = await sdClient.updateSd(submitResult.sdIdentifier, buildSdStatement(shortRef('UPD')));
+        expect(updateResult.uuid).to.equal(submitResult.sdIdentifier);
+        expect(updateResult.status).to.be.a('string');
+      });
+
+      it('withdrawSd should succeed and return status WITHDRAWN', async function() {
+        if (!mspoAvailable) {
+          this.skip();
+          return;
+        }
+        const submitResult = await sdClient.submitSd({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: buildSdStatement(shortRef('WD'))
+        });
+
+        const withdrawResult = await sdClient.withdrawSd(submitResult.sdIdentifier);
+        expect(withdrawResult.status).to.equal('WITHDRAWN');
+        // already withdrawn - no need to track for after-hook cleanup
+      });
+
+      it('getSd/getSdByInternalReference/getSdByIdentifiers should retrieve the real submitted SD', async function() {
+        if (!mspoAvailable) {
+          this.skip();
+          return;
+        }
+        const internalRef = shortRef('GET');
+        const submitResult = await sdClient.submitSd({
+          operatorRole: 'MICRO_OPERATOR',
+          statement: buildSdStatement(internalRef)
+        });
+        createdSdIdentifiers.push(submitResult.sdIdentifier);
+
+        const byUuid = await resolveOrCleanNotFound(
+          sdClient.getSd(submitResult.sdIdentifier),
+          'getSd immediately after submit',
+          expect
+        );
+        if (!byUuid) {
+          this.skip();
+          return;
+        }
+
+        console.log(`[getSd] ${JSON.stringify(byUuid.sdInfo)}`);
+        expect(byUuid.sdInfo).to.be.an('array');
+
+        const byRef = await resolveOrCleanNotFound(
+          sdClient.getSdByInternalReference(internalRef),
+          'getSdByInternalReference immediately after submit',
+          expect
+        );
+        if (!byRef) return;
+
+        console.log(`[getSdByInternalReference] ${JSON.stringify(byRef.sdInfo)}`);
+        expect(byRef.sdInfo).to.be.an('array');
+      });
     });
   });
-});
+}

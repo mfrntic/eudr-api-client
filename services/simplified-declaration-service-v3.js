@@ -20,6 +20,9 @@ const { logger } = require('../utils/logger');
 const { validateAndGenerateEndpoint } = require('../utils/endpoint-utils');
 const { compactSoapEnvelope } = require('../utils/soap-envelope');
 const { buildBodyIdentityHeaderXml } = require('../utils/body-identity');
+const { getApiVersionProfile } = require('../utils/eudr-api-versions');
+const { extractUserMessage } = require('../utils/soap-response');
+const { warnDetailRetrievalDeprecated } = require('../utils/deprecation');
 const {
   IDENTIFIER_TYPES,
   MAX_OPERATOR_REFERENCE_NUMBERS,
@@ -28,27 +31,17 @@ const {
   MAX_PRODUCERS,
   MAX_POSTAL_ADDRESSES,
   MAX_CADASTRAL_IDENTIFIERS,
-  MAX_SD_INTERNAL_REFERENCE_LENGTH,
-  encodeGeoJsonBase64
+  encodeGeoJsonBase64,
+  generateSummaryAddressXml
 } = require('../utils/eudr-v3-schema');
 
-const SD_V3_NAMESPACE = 'http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3';
-const DDS_V3_NAMESPACE = 'http://ec.europa.eu/tracesnt/certificate/eudr/due-diligence-statement/v3';
-
 /**
- * Real WSDL quirk (confirmed against the live acceptance WSDL): submitSd/updateSd/withdrawSd
- * use the simplified-declaration namespace path, but getSd/getSdByInternalReference/
- * getSdByIdentifiers use the due-diligence-statement namespace path instead. This is not
- * a typo in this file - it mirrors what the published WSDL actually specifies.
+ * SOAPActions come from the version profile (utils/eudr-api-versions.js). Real V3 WSDL quirk
+ * (confirmed against the live acceptance WSDL): submitSd/updateSd/withdrawSd use the
+ * simplified-declaration namespace path, but getSd/getSdByInternalReference/getSdByIdentifiers
+ * use the due-diligence-statement namespace path instead. V4 fixed this - all six actions use
+ * the simplified-declaration/v4 path.
  */
-const SD_SOAP_ACTIONS = {
-  submitSd: `${SD_V3_NAMESPACE}/submitSd`,
-  updateSd: `${SD_V3_NAMESPACE}/updateSd`,
-  withdrawSd: `${SD_V3_NAMESPACE}/withdrawSd`,
-  getSd: `${DDS_V3_NAMESPACE}/getSd`,
-  getSdByInternalReference: `${DDS_V3_NAMESPACE}/getSdByInternalReference`,
-  getSdByIdentifiers: `${DDS_V3_NAMESPACE}/getSdByIdentifiers`
-};
 
 class EudrSimplifiedDeclarationClientV3 {
   /**
@@ -65,9 +58,12 @@ class EudrSimplifiedDeclarationClientV3 {
    * @param {number} [config.timestampValidity=60]
    * @param {number} [config.timeout=10000]
    * @param {boolean} [config.ssl=false]
+   * @param {string} [apiVersion='v3'] Wire version ('v3' or 'v4'); the V4 client passes 'v4'.
    */
-  constructor(config) {
-    const validatedConfig = validateAndGenerateEndpoint(config, 'simplified-declaration', 'v3');
+  constructor(config, apiVersion = 'v3') {
+    this.apiProfile = getApiVersionProfile(apiVersion);
+    this.apiVersion = this.apiProfile.version;
+    const validatedConfig = validateAndGenerateEndpoint(config, 'simplified-declaration', this.apiVersion);
 
     this.config = {
       timestampValidity: 60,
@@ -95,9 +91,9 @@ class EudrSimplifiedDeclarationClientV3 {
   }
 
   sdSoapActionFor(operationName) {
-    const soapAction = SD_SOAP_ACTIONS[operationName];
+    const soapAction = this.apiProfile.sdSoapActions[operationName];
     if (!soapAction) {
-      throw new Error(`Unknown SD V3 operation: ${operationName}`);
+      throw new Error(`Unknown SD ${this.apiProfile.serviceSuffix} operation: ${operationName}`);
     }
     return soapAction;
   }
@@ -174,16 +170,17 @@ class EudrSimplifiedDeclarationClientV3 {
    */
   createBodyIdentityHeaderXml(bodyIdentity) {
     return buildBodyIdentityHeaderXml(
-      bodyIdentity === undefined ? this.config.bodyIdentity : bodyIdentity
+      bodyIdentity === undefined ? this.config.bodyIdentity : bodyIdentity,
+      this.apiProfile.bodyNamespace
     );
   }
 
   createSoapEnvelope(bodyXml, bodyIdentity) {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-                  xmlns:v4="http://ec.europa.eu/sanco/tracesnt/base/v4"
-                  xmlns:sd="http://ec.europa.eu/tracesnt/certificate/eudr/simplified-declaration/v3"
-                  xmlns:eudrCommon="http://ec.europa.eu/tracesnt/certificate/eudr/common/v3">
+                  xmlns:v4="${this.apiProfile.baseHeaderNamespace}"
+                  xmlns:sd="${this.apiProfile.sdNamespace}"
+                  xmlns:eudrCommon="${this.apiProfile.commonNamespace}">
     <soapenv:Header>
 ${this.createSecurityHeaderXml(bodyIdentity)}
     </soapenv:Header>
@@ -255,6 +252,8 @@ ${bodyXml}
       xml += '</eudrCommon:operatorAddress>';
     }
 
+    xml += generateSummaryAddressXml(operator.summaryAddress, this.apiVersion, (value) => this.escapeXml(value));
+
     if (operator.operatorEmail) {
       xml += `<eudrCommon:operatorEmail>${this.escapeXml(operator.operatorEmail)}</eudrCommon:operatorEmail>`;
     }
@@ -284,11 +283,14 @@ ${bodyXml}
       error.eudrSpecific = true;
       throw error;
     }
-    if (String(statement.internalReferenceNumber).length > MAX_SD_INTERNAL_REFERENCE_LENGTH) {
+    const maxInternalReferenceLength = this.apiProfile.maxSdInternalReferenceLength;
+    if (String(statement.internalReferenceNumber).length > maxInternalReferenceLength) {
       const error = new Error(
         `statement.internalReferenceNumber is ${String(statement.internalReferenceNumber).length} characters; ` +
-        `SD types it as ReferenceNumberType, which allows a maximum of ${MAX_SD_INTERNAL_REFERENCE_LENGTH} ` +
-        '(the DDS field and the getSdByInternalReference lookup allow 50 — the schema is inconsistent here).'
+        (this.apiVersion === 'v3'
+          ? `SD V3 types it as ReferenceNumberType, which allows a maximum of ${maxInternalReferenceLength} ` +
+            '(the DDS field and the getSdByInternalReference lookup allow 50; V4 widens SD to 50 as well).'
+          : `SD ${this.apiProfile.serviceSuffix} allows a maximum of ${maxInternalReferenceLength}.`)
       );
       error.eudrErrorCode = 'EUDR_V3_SD_INTERNAL_REFERENCE_TOO_LONG';
       error.eudrSpecific = true;
@@ -514,9 +516,11 @@ ${bodyXml}
 
       for (const address of addresses) {
         xml += '<sd:postalAddress>';
-        if (address.producerStreet) {
-          xml += `<sd:producerStreet>${this.escapeXml(address.producerStreet)}</sd:producerStreet>`;
+        if (!address.producerStreet) {
+          // Mandatory in SdProducerPostalAddressType in both the V3 and the V4 XSD.
+          throw new Error('postalAddress.producerStreet is required');
         }
+        xml += `<sd:producerStreet>${this.escapeXml(address.producerStreet)}</sd:producerStreet>`;
         if (!address.producerPostalCode) {
           throw new Error('postalAddress.producerPostalCode is required');
         }
@@ -679,6 +683,7 @@ ${bodyXml}
 
           resolve({
             raw: xmlResponse,
+            userMessage: extractUserMessage(xmlResponse),
             parsed: result,
             sdIdentifier: sdIdentifierKey ? response[sdIdentifierKey] : null
           });
@@ -709,6 +714,7 @@ ${bodyXml}
 
           resolve({
             raw: xmlResponse,
+            userMessage: extractUserMessage(xmlResponse),
             parsed: result,
             uuid: uuidKey ? response[uuidKey] : null,
             version: versionKey ? response[versionKey] : null,
@@ -748,6 +754,7 @@ ${bodyXml}
 
           resolve({
             raw: xmlResponse,
+            userMessage: extractUserMessage(xmlResponse),
             parsed: result,
             sdInfo: overviewList.map((item) => this.mapOverviewItem(item))
           });
@@ -799,6 +806,7 @@ ${bodyXml}
 
           resolve({
             raw: xmlResponse,
+            userMessage: extractUserMessage(xmlResponse),
             parsed: result,
             statement: rawStatement ? this.normalizeSdStatement(rawStatement) : null
           });
@@ -950,7 +958,14 @@ ${bodyXml}
     }
   }
 
+  /**
+   * @deprecated Discontinued by the Commission in release 8.2.2 (V3 and V4): every call now fails
+   * with a NotFoundException ("Declaration detail access is possible only over UI"), surfaced as
+   * `eudrErrorCode: 'EUDR_DETAIL_RETRIEVAL_UNSUPPORTED'`. The request is still sent because the
+   * operation remains in the WSDL. Use getSd / getSdByInternalReference for API lookups.
+   */
   async getSdByIdentifiers(referenceNumber, verificationNumber, options = {}) {
+    warnDetailRetrievalDeprecated('getSdByIdentifiers');
     try {
       const soapEnvelope = this.createGetSdByIdentifiersSoapEnvelope(referenceNumber, verificationNumber, options.bodyIdentity);
       const response = await this.sendSoapRequest(soapEnvelope, this.sdSoapActionFor('getSdByIdentifiers'));

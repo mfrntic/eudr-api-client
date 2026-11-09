@@ -193,7 +193,7 @@ describe('EudrSimplifiedDeclarationClientV3', function() {
             producers: [{
               producerCountry: 'FR',
               producerLocation: {
-                postalAddress: { producerPostalCode: '75001', producerCity: 'Paris' }
+                postalAddress: { producerStreet: 'Rue de Rivoli 1', producerPostalCode: '75001', producerCity: 'Paris' }
               }
             }]
           }]
@@ -201,6 +201,7 @@ describe('EudrSimplifiedDeclarationClientV3', function() {
       });
 
       expect(soapEnvelope).to.include('<sd:postalAddress>');
+      expect(soapEnvelope).to.include('<sd:producerStreet>Rue de Rivoli 1</sd:producerStreet>');
       expect(soapEnvelope).to.include('<sd:producerPostalCode>75001</sd:producerPostalCode>');
       expect(soapEnvelope).to.include('<sd:producerCity>Paris</sd:producerCity>');
     });
@@ -542,7 +543,7 @@ describe('EudrSimplifiedDeclarationClientV3', function() {
 
     it('should reject more than 100 postal addresses', function() {
       const client = new EudrSimplifiedDeclarationClientV3(baseConfig);
-      const address = { producerPostalCode: '10000', producerCity: 'Zagreb' };
+      const address = { producerStreet: 'Ilica 1', producerPostalCode: '10000', producerCity: 'Zagreb' };
       try {
         client.createSubmitSoapEnvelope({
           operatorRole: 'MICRO_OPERATOR',

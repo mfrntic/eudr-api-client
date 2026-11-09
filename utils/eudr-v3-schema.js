@@ -88,7 +88,60 @@ function encodeGeoJsonBase64(value, fieldPath) {
   throw error;
 }
 
+/**
+ * eudrCommon:SummaryAddressType (V4 only): an abbreviated operator address carrying just an
+ * optional `name` (1-200 chars) and an optional ISO 3166-1 alpha-2 `country`. It sits between
+ * operatorAddress and operatorEmail in EconomicOperatorIdentificationType. The V3 schema has no
+ * such element, so a V3 request carrying it is rejected here instead of being silently dropped.
+ *
+ * @param {Object} summaryAddress
+ * @param {string} apiVersion
+ * @param {function(string): string} escapeXml
+ * @returns {string}
+ */
+function generateSummaryAddressXml(summaryAddress, apiVersion, escapeXml) {
+  if (summaryAddress === undefined || summaryAddress === null) {
+    return '';
+  }
+
+  const fail = (message, code) => {
+    const error = new Error(message);
+    error.eudrErrorCode = code;
+    error.eudrSpecific = true;
+    throw error;
+  };
+
+  if (apiVersion === 'v3') {
+    fail(
+      'representedOperator.summaryAddress is a V4 field (EUDR API V4); the V3 schema does not define it. Use the V4 clients or remove it.',
+      'EUDR_V3_SUMMARY_ADDRESS_NOT_SUPPORTED'
+    );
+  }
+  if (typeof summaryAddress !== 'object') {
+    fail('representedOperator.summaryAddress must be an object with optional name and country.', 'EUDR_V4_SUMMARY_ADDRESS_INVALID');
+  }
+
+  const { name, country } = summaryAddress;
+  let xml = '';
+  if (name !== undefined && name !== null) {
+    const text = String(name);
+    if (text.length < 1 || text.length > 200) {
+      fail(`representedOperator.summaryAddress.name must be 1-200 characters (received ${text.length}).`, 'EUDR_V4_SUMMARY_ADDRESS_INVALID');
+    }
+    xml += `<eudrCommon:name>${escapeXml(text)}</eudrCommon:name>`;
+  }
+  if (country !== undefined && country !== null) {
+    if (!/^[a-zA-Z]{2}$/.test(String(country))) {
+      fail(`representedOperator.summaryAddress.country must be an ISO 3166-1 alpha-2 code (received '${country}').`, 'EUDR_V4_SUMMARY_ADDRESS_INVALID');
+    }
+    xml += `<eudrCommon:country>${escapeXml(country)}</eudrCommon:country>`;
+  }
+
+  return `<eudrCommon:summaryAddress>${xml}</eudrCommon:summaryAddress>`;
+}
+
 module.exports = {
+  generateSummaryAddressXml,
   IDENTIFIER_TYPES,
   MAX_OPERATOR_REFERENCE_NUMBERS,
   MAX_GROUPED_DECLARATIONS,

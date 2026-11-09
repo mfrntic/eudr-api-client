@@ -6,6 +6,9 @@
  * The header is declared on all six DDS V3 and all six SD V3 operations; it is NOT declared
  * on the Verify Declaration V3 service.
  *
+ * The V4 services (release 8.2.2) declare the same header under http://ec.europa.eu/tracesnt/body/v4;
+ * the namespace must match the endpoint version, otherwise the header is ignored or rejected.
+ *
  * Wire contract (namespace http://ec.europa.eu/tracesnt/body/v3, `elementFormDefault` absent
  * so the child element is unqualified):
  *
@@ -19,6 +22,7 @@
  */
 
 const BODY_IDENTITY_NAMESPACE = 'http://ec.europa.eu/tracesnt/body/v3';
+const BODY_IDENTITY_NAMESPACE_V4 = 'http://ec.europa.eu/tracesnt/body/v4';
 
 /**
  * Per-element `xs:maxLength` from xsd2-body-v3.xsd. `OtherBodyAccessIdentifierType` allows 32;
@@ -141,22 +145,24 @@ function normalizeBodyIdentity(bodyIdentity) {
  * to the pre-8.2.1 output.
  *
  * @param {string|Object} [bodyIdentity]
+ * @param {string} [namespace=BODY_IDENTITY_NAMESPACE] body namespace of the target service version
  * @returns {string}
  */
-function buildBodyIdentityHeaderXml(bodyIdentity) {
+function buildBodyIdentityHeaderXml(bodyIdentity, namespace = BODY_IDENTITY_NAMESPACE) {
   const normalized = normalizeBodyIdentity(bodyIdentity);
   if (!normalized) {
     return '';
   }
 
   return `
-        <body:BodyIdentity xmlns:body="${BODY_IDENTITY_NAMESPACE}">
+        <body:BodyIdentity xmlns:body="${namespace}">
             <${normalized.element}>${escapeXml(normalized.value)}</${normalized.element}>
         </body:BodyIdentity>`;
 }
 
 module.exports = {
   BODY_IDENTITY_NAMESPACE,
+  BODY_IDENTITY_NAMESPACE_V4,
   BODY_IDENTITY_MAX_LENGTH,
   BODY_IDENTITY_MAX_LENGTHS,
   BODY_IDENTITY_ELEMENTS,
